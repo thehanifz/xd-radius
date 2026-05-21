@@ -48,6 +48,14 @@
                 @if(request()->hasAny(['search','batch_id','status']))
                     <a href="{{ route('vouchers.index') }}" class="text-sm text-slate-500 hover:text-slate-700">Reset</a>
                 @endif
+                
+                @if(request('batch_id'))
+                    <div class="border-l border-slate-300 mx-2 h-6"></div>
+                    <a href="{{ route('vouchers.print', request('batch_id')) }}" target="_blank" class="btn-primary flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        Print Batch
+                    </a>
+                @endif
             </form>
         </div>
     </div>

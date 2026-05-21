@@ -87,15 +87,4 @@ class VoucherController extends Controller
 
         return response()->json(['examples' => $examples]);
     }
-
-    /**
-     * Print vouchers by batch
-     */
-    public function print(VoucherBatch $batch, Request $request)
-    {
-        $vouchers = Voucher::where('batch_id', $batch->id)->get();
-        $template = $request->get('template', 'a4'); // a4 or thermal
-
-        return view('vouchers.print', compact('batch', 'vouchers', 'template'));
-    }
 }

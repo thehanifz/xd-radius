@@ -28,6 +28,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/vouchers/create',    [VoucherController::class, 'create'])->name('vouchers.create');
     Route::post('/vouchers/generate', [VoucherController::class, 'generate'])->name('vouchers.generate');
     Route::get('/vouchers/preview',   [VoucherController::class, 'preview'])->name('vouchers.preview');
+    Route::get('/vouchers/batch/{batch}/print', [VoucherController::class, 'print'])->name('vouchers.print');
     Route::get('/vouchers/{voucher}', [VoucherController::class, 'show'])->name('vouchers.show');
 
     // Members
