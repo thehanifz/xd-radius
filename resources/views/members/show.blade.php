@@ -3,6 +3,7 @@
 
 @section('topbar-actions')
     <div class="flex gap-2">
+        <a href="{{ route('billing.create', ['member_id' => $member->id]) }}" class="btn-secondary">+ Invoice</a>
         <a href="{{ route('members.edit', $member) }}" class="btn-secondary">Edit</a>
         <form method="POST" action="{{ route('members.toggle-status', $member) }}">
             @csrf @method('PATCH')
@@ -18,6 +19,14 @@
 
 @section('content')
 <div class="max-w-4xl space-y-5">
+
+    {{-- Flash message --}}
+    @if(session('success'))
+    <div class="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        {{ session('success') }}
+    </div>
+    @endif
 
     {{-- Info Utama --}}
     <div class="card">
@@ -82,6 +91,82 @@
             </div>
             @endif
         </div>
+    </div>
+
+    {{-- Riwayat Invoice Billing --}}
+    <div class="card">
+        <div class="card-header flex items-center justify-between">
+            <span>Riwayat Invoice</span>
+            <a href="{{ route('billing.create', ['member_id' => $member->id]) }}"
+               class="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">
+                + Buat Invoice
+            </a>
+        </div>
+        @if($invoices->isEmpty())
+            <div class="py-10 text-center text-slate-400 text-sm">Belum ada invoice untuk member ini.</div>
+        @else
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="text-left px-4 py-3 font-medium text-slate-600">PERIODE</th>
+                            <th class="text-left px-4 py-3 font-medium text-slate-600">NOMINAL</th>
+                            <th class="text-left px-4 py-3 font-medium text-slate-600">JATUH TEMPO</th>
+                            <th class="text-left px-4 py-3 font-medium text-slate-600">STATUS</th>
+                            <th class="text-right px-4 py-3 font-medium text-slate-600">AKSI</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach ($invoices as $invoice)
+                        @php
+                            $statusColor = match($invoice->status) {
+                                'paid'      => 'bg-green-100 text-green-700',
+                                'overdue'   => 'bg-red-100 text-red-700',
+                                'cancelled' => 'bg-gray-100 text-gray-500',
+                                default     => 'bg-yellow-100 text-yellow-700',
+                            };
+                            $statusLabel = match($invoice->status) {
+                                'paid'      => 'Lunas',
+                                'overdue'   => 'Overdue',
+                                'cancelled' => 'Batal',
+                                default     => 'Pending',
+                            };
+                        @endphp
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-4 py-2.5 text-xs text-slate-600">
+                                {{ \Carbon\Carbon::parse($invoice->period_start)->format('d M Y') }}
+                                &ndash;
+                                {{ \Carbon\Carbon::parse($invoice->period_end)->format('d M Y') }}
+                            </td>
+                            <td class="px-4 py-2.5 font-medium tabular-nums">
+                                Rp {{ number_format($invoice->amount, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-2.5 text-xs {{ \Carbon\Carbon::parse($invoice->due_date)->isPast() && $invoice->status !== 'paid' ? 'text-red-600 font-medium' : 'text-slate-500' }}">
+                                {{ \Carbon\Carbon::parse($invoice->due_date)->format('d M Y') }}
+                            </td>
+                            <td class="px-4 py-2.5">
+                                <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
+                                    {{ $statusLabel }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-2.5 text-right">
+                                <div class="flex justify-end gap-2">
+                                    <a href="{{ route('billing.show', $invoice) }}"
+                                       class="text-xs text-blue-600 hover:text-blue-800 transition-colors">Detail</a>
+                                    @if(in_array($invoice->status, ['pending', 'overdue']))
+                                    <a href="{{ route('billing.pay.form', $invoice) }}"
+                                       class="text-xs text-green-600 hover:text-green-800 transition-colors">Bayar</a>
+                                    @endif
+                                    <a href="{{ route('billing.pdf', $invoice) }}"
+                                       class="text-xs text-slate-500 hover:text-slate-700 transition-colors" target="_blank">PDF</a>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 
     {{-- Sesi Terakhir --}}

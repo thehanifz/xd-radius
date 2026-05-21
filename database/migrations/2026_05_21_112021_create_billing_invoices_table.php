@@ -4,10 +4,16 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Superseded by 2026_05_21_150001_create_billing_invoices_table.php
+// File ini dipertahankan agar migration history tidak putus, tapi skip jika tabel sudah ada.
 return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('billing_invoices')) {
+            return;
+        }
+
         Schema::create('billing_invoices', function (Blueprint $table) {
             $table->id();
             $table->foreignId('member_id')->constrained('members');
@@ -19,15 +25,11 @@ return new class extends Migration
             $table->timestamp('paid_at')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
-
-            $table->index('member_id');
-            $table->index('status');
-            $table->index('due_date');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('billing_invoices');
+        // Handled by 150001
     }
 };

@@ -4,30 +4,28 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Superseded by 2026_05_21_150002_create_payments_table.php
 return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('payments')) {
+            return;
+        }
+
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('invoice_id')->constrained('billing_invoices');
             $table->unsignedBigInteger('amount');
-            $table->timestamp('paid_at');
-            $table->string('payment_method')->nullable();
-            $table->string('external_transaction_id')->nullable();
-            $table->string('gateway_status')->nullable();
+            $table->timestamp('paid_at')->nullable();
+            $table->string('payment_method')->default('cash');
             $table->text('notes')->nullable();
-            $table->foreignId('recorded_by')->constrained('app_users');
             $table->timestamps();
-
-            $table->index('invoice_id');
-            $table->index('paid_at');
-            $table->index('payment_method');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('payments');
+        // Handled by 150002
     }
 };

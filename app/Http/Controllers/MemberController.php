@@ -51,13 +51,17 @@ class MemberController extends Controller
 
     public function show(Member $member)
     {
-        $member->load('plan');
+        $member->load(['plan', 'invoices.payments']);
+
         $sessions = DB::table('radacct')
             ->where('username', $member->username)
             ->orderByDesc('acctstarttime')
             ->limit(20)
             ->get();
-        return view('members.show', compact('member', 'sessions'));
+
+        $invoices = $member->invoices;
+
+        return view('members.show', compact('member', 'sessions', 'invoices'));
     }
 
     public function edit(Member $member)

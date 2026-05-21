@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Member extends Model
 {
@@ -34,10 +35,19 @@ class Member extends Model
         'simultaneous_use' => 'integer',
     ];
 
+    // ─── Relations ───────────────────────────────────────────────────────────
+
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
     }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(BillingInvoice::class)->latest();
+    }
+
+    // ─── Accessors ───────────────────────────────────────────────────────────
 
     public function getStatusColorAttribute(): string
     {
@@ -64,5 +74,21 @@ class Member extends Model
     public function getPriceSnapshotLabelAttribute(): string
     {
         return 'Rp ' . number_format($this->price_snapshot, 0, ',', '.');
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    /**
+     * Cek apakah member pernah di-isolir (ada entry Auth-Type := Reject di radcheck).
+     * Digunakan oleh BillingService::renewMember() untuk memulihkan akses RADIUS.
+     */
+    public function wasRecentlyIsolated(): bool
+    {
+        return \Illuminate\Support\Facades\DB::table('radcheck')
+            ->where('username', $this->username)
+            ->where('attribute', 'Auth-Type')
+            ->where('op', ':=')
+            ->where('value', 'Reject')
+            ->exists();
     }
 }
