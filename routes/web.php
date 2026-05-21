@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 
 // -------------------------------------------------------
@@ -32,16 +33,21 @@ Route::middleware(['auth:app', 'active'])->group(function () {
         Route::patch('plans/{plan}/toggle', [PlanController::class, 'toggleActive'])->name('plans.toggle');
 
         // Placeholder routes (akan diisi bertahap)
-        Route::get('/routers',         fn() => 'Coming soon')->name('routers.index');
-        Route::get('/users',           fn() => 'Coming soon')->name('users.index');
+        Route::get('/routers', fn() => 'Coming soon')->name('routers.index');
+        Route::get('/users',   fn() => 'Coming soon')->name('users.index');
     });
 
     // -------------------------------------------------------
     // Superuser + Operator
     // -------------------------------------------------------
-    Route::get('/vouchers',        fn() => 'Coming soon')->name('vouchers.index');
-    Route::get('/voucher-batches', fn() => 'Coming soon')->name('voucher-batches.index');
-    Route::get('/members',         fn() => 'Coming soon')->name('members.index');
-    Route::get('/billing',         fn() => 'Coming soon')->name('billing.index');
-    Route::get('/reports',         fn() => 'Coming soon')->name('reports.index');
+
+    // Vouchers
+    Route::get('/vouchers',          [VoucherController::class, 'index'])->name('vouchers.index');
+    Route::get('/vouchers/create',   [VoucherController::class, 'create'])->name('vouchers.create');
+    Route::post('/vouchers/generate',[VoucherController::class, 'generate'])->name('vouchers.generate');
+    Route::get('/vouchers/preview',  [VoucherController::class, 'preview'])->name('vouchers.preview');
+
+    Route::get('/members', fn() => 'Coming soon')->name('members.index');
+    Route::get('/billing', fn() => 'Coming soon')->name('billing.index');
+    Route::get('/reports', fn() => 'Coming soon')->name('reports.index');
 });
