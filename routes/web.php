@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\PlanController;
@@ -35,4 +36,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('members', MemberController::class);
     Route::patch('/members/{member}/toggle-status', [MemberController::class, 'toggleStatus'])
         ->name('members.toggle-status');
+
+    // Billing
+    Route::get('/billing',                          [BillingController::class, 'index'])->name('billing.index');
+    Route::get('/billing/create',                   [BillingController::class, 'create'])->name('billing.create');
+    Route::post('/billing',                         [BillingController::class, 'store'])->name('billing.store');
+    Route::get('/billing/{billing}',                [BillingController::class, 'show'])->name('billing.show');
+    Route::get('/billing/{billing}/pay',            [BillingController::class, 'payForm'])->name('billing.pay.form');
+    Route::post('/billing/{billing}/pay',           [BillingController::class, 'pay'])->name('billing.pay');
+    Route::patch('/billing/{billing}/cancel',       [BillingController::class, 'cancel'])->name('billing.cancel');
+    Route::get('/billing/{billing}/pdf',            [BillingController::class, 'pdf'])->name('billing.pdf');
 });
