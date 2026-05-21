@@ -86,19 +86,18 @@
 
                         <div>
                             <label class="form-label">Jenis Karakter <span class="text-red-500">*</span></label>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
                                 @foreach([
-                                    'numeric'      => 'Angka (0-9)',
-                                    'alpha_upper'  => 'Huruf Besar',
-                                    'alpha_lower'  => 'Huruf Kecil',
-                                    'alpha'        => 'Huruf Campuran',
-                                    'alphanumeric' => 'Huruf + Angka',
+                                    'numeric'   => 'Angka (0-9)',
+                                    'uppercase' => 'Huruf Besar',
+                                    'lowercase' => 'Huruf Kecil',
+                                    'mixed'     => 'Huruf + Angka',
                                 ] as $value => $label)
                                 <label class="cursor-pointer">
                                     <input type="radio" name="charset_mode" value="{{ $value }}"
                                         x-model="charsetMode"
                                         @change="updatePreview"
-                                        {{ old('charset_mode', 'alphanumeric') === $value ? 'checked' : '' }}
+                                        {{ old('charset_mode', 'mixed') === $value ? 'checked' : '' }}
                                         class="sr-only peer">
                                     <div class="px-3 py-2 text-sm border rounded-lg text-center cursor-pointer
                                         peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-700
@@ -163,9 +162,7 @@
                         <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-400 space-y-1">
                             <div>Panjang: <span class="font-medium text-slate-600" x-text="length + ' karakter'"></span></div>
                             <div>Suffix: <span class="font-medium text-slate-600" x-text="Math.max(0, length - prefix.length) + ' karakter'"></span></div>
-                            <div x-show="length - prefix.length < 2" class="text-amber-500">
-                                &#9888; Suffix terlalu pendek, tingkatkan panjang.
-                            </div>
+                            <div x-show="length - prefix.length < 2" class="text-amber-500">&#9888; Suffix terlalu pendek.</div>
                         </div>
 
                         <div class="mt-6 space-y-2">
@@ -197,7 +194,7 @@ function voucherGenerator() {
         planId: '{{ old('plan_id', '') }}',
         prefix: '{{ old('prefix', '') }}',
         length: {{ old('length', 8) }},
-        charsetMode: '{{ old('charset_mode', 'alphanumeric') }}',
+        charsetMode: '{{ old('charset_mode', 'mixed') }}',
         quantity: {{ old('quantity', 10) }},
         planInfo: null,
         examples: [],

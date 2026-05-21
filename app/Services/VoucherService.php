@@ -12,19 +12,11 @@ class VoucherService
 {
     public function __construct(protected RadiusService $radius) {}
 
-    /**
-     * Generate voucher batch
-     *
-     * @param array $data {
-     *   plan_id, prefix, length, charset_mode, quantity, notes, generated_by
-     * }
-     */
     public function generate(array $data): VoucherBatch
     {
         $plan = Plan::findOrFail($data['plan_id']);
 
         return DB::transaction(function () use ($data, $plan) {
-            // Buat batch record
             $batch = VoucherBatch::create([
                 'batch_code'   => $this->generateBatchCode(),
                 'prefix'       => $data['prefix'] ?? null,
@@ -37,9 +29,9 @@ class VoucherService
                 'notes'        => $data['notes'] ?? null,
             ]);
 
-            $vouchers  = [];
-            $usedNames = [];
-            $attempts  = 0;
+            $vouchers    = [];
+            $usedNames   = [];
+            $attempts    = 0;
             $maxAttempts = $data['quantity'] * 10;
 
             while (count($vouchers) < $data['quantity'] && $attempts < $maxAttempts) {
@@ -50,7 +42,6 @@ class VoucherService
                     $data['charset_mode'],
                     $usedNames
                 );
-
                 if ($username === null) continue;
 
                 $usedNames[] = $username;
@@ -59,7 +50,7 @@ class VoucherService
                 $vouchers[] = [
                     'batch_id'       => $batch->id,
                     'username'       => $username,
-                    'password_plain' => encrypt($username), // username = password
+                    'password_plain' => $username,
                     'plan_id'        => $plan->id,
                     'price_snapshot' => $plan->price,
                     'status'         => 'active',
@@ -69,37 +60,18 @@ class VoucherService
                 ];
             }
 
-            // Bulk insert vouchers
             Voucher::insert($vouchers);
 
-            // Provision ke RADIUS — bulk insert langsung untuk performa
-            $radchecks   = [];
-            $radreplies  = [];
+            $rateLimit     = "{$plan->download_speed_kbps}k/{$plan->upload_speed_kbps}k";
+            $radchecks     = [];
+            $radreplies    = [];
             $radusergroups = [];
-            $rateLimit = "{$plan->download_speed_kbps}k/{$plan->upload_speed_kbps}k";
 
             foreach ($vouchers as $v) {
-                $username = $v['username'];
-
-                $radchecks[] = [
-                    'username'  => $username,
-                    'attribute' => 'Cleartext-Password',
-                    'op'        => ':=',
-                    'value'     => $username, // plaintext untuk FreeRADIUS
-                ];
-
-                $radreplies[] = [
-                    'username'  => $username,
-                    'attribute' => 'Mikrotik-Rate-Limit',
-                    'op'        => ':=',
-                    'value'     => $rateLimit,
-                ];
-
-                $radusergroups[] = [
-                    'username'  => $username,
-                    'groupname' => $plan->radius_group_name,
-                    'priority'  => 1,
-                ];
+                $u = $v['username'];
+                $radchecks[]     = ['username' => $u, 'attribute' => 'Cleartext-Password', 'op' => ':=', 'value' => $u];
+                $radreplies[]    = ['username' => $u, 'attribute' => 'Mikrotik-Rate-Limit', 'op' => ':=', 'value' => $rateLimit];
+                $radusergroups[] = ['username' => $u, 'groupname' => $plan->radius_group_name, 'priority' => 1];
             }
 
             DB::table('radcheck')->insert($radchecks);
@@ -110,41 +82,34 @@ class VoucherService
         });
     }
 
-    /**
-     * Generate username unik
-     */
     private function generateUsername(string $prefix, int $length, string $charsetMode, array $used): ?string
     {
+        // Nilai sesuai DB constraint: uppercase, lowercase, numeric, mixed
         $chars = match ($charsetMode) {
-            'numeric'      => '0123456789',
-            'alpha_upper'  => 'ABCDEFGHJKLMNPQRSTUVWXYZ', // hapus I,O supaya tidak mirip 1,0
-            'alpha_lower'  => 'abcdefghjkmnpqrstuvwxyz',  // hapus i,l,o
-            'alpha'        => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz',
-            'alphanumeric' => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', // no ambiguous chars
-            default        => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+            'numeric'   => '0123456789',
+            'uppercase' => 'ABCDEFGHJKLMNPQRSTUVWXYZ',
+            'lowercase' => 'abcdefghjkmnpqrstuvwxyz',
+            'mixed'     => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+            default     => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
         };
 
         $suffixLength = $length - strlen($prefix);
         if ($suffixLength <= 0) return null;
 
-        $maxTries = 20;
-        for ($i = 0; $i < $maxTries; $i++) {
-            $suffix   = '';
+        for ($i = 0; $i < 20; $i++) {
+            $suffix = '';
             for ($j = 0; $j < $suffixLength; $j++) {
                 $suffix .= $chars[random_int(0, strlen($chars) - 1)];
             }
             $username = $prefix . $suffix;
 
-            // Cek duplikasi di batch saat ini
             if (in_array($username, $used)) continue;
 
-            // Cek duplikasi di database (vouchers + members)
             $exists = DB::table('vouchers')->where('username', $username)->exists()
                    || DB::table('members')->where('username', $username)->exists();
 
             if (!$exists) return $username;
         }
-
         return null;
     }
 
@@ -153,26 +118,23 @@ class VoucherService
         return 'BATCH-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
     }
 
-    /**
-     * Preview contoh username berdasarkan konfigurasi
-     */
     public static function previewExample(string $prefix, int $length, string $charsetMode): string
     {
         $chars = match ($charsetMode) {
-            'numeric'      => '0123456789',
-            'alpha_upper'  => 'ABCDEFGHJKLMNPQRSTUVWXYZ',
-            'alpha_lower'  => 'abcdefghjkmnpqrstuvwxyz',
-            'alpha'        => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz',
-            'alphanumeric' => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
-            default        => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+            'numeric'   => '0123456789',
+            'uppercase' => 'ABCDEFGHJKLMNPQRSTUVWXYZ',
+            'lowercase' => 'abcdefghjkmnpqrstuvwxyz',
+            'mixed'     => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+            default     => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
         };
 
         $suffixLength = $length - strlen($prefix);
         if ($suffixLength <= 0) return $prefix;
 
-        $suffix = '';
+        $charArr = str_split($chars);
+        $suffix  = '';
         for ($i = 0; $i < $suffixLength; $i++) {
-            $suffix .= $chars[array_rand(str_split($chars))];
+            $suffix .= $charArr[array_rand($charArr)];
         }
         return $prefix . $suffix;
     }
