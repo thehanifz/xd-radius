@@ -6,6 +6,7 @@ use App\Models\BillingInvoice;
 use App\Models\Member;
 use App\Models\Payment;
 use App\Models\ServiceActionLog;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class BillingService
@@ -16,17 +17,23 @@ class BillingService
      */
     public function createInvoice(Member $member, array $data = []): BillingInvoice
     {
-        $periodStart = $member->expired_at ?? now();
-        $periodEnd   = (clone $periodStart)->modify('+' . ($member->plan->duration_days ?? 30) . ' days');
-        $dueDate     = $data['due_date'] ?? now()->addDays(7);
+        $periodStart = $member->expired_at
+            ? Carbon::parse($member->expired_at)
+            : now();
+
+        $durationDays = $member->plan->duration_days ?? 30;
+        $periodEnd    = $periodStart->copy()->addDays($durationDays);
+        $dueDate      = isset($data['due_date'])
+            ? Carbon::parse($data['due_date'])
+            : now()->addDays(7);
 
         return BillingInvoice::create([
             'member_id'    => $member->id,
-            'period_start' => $periodStart,
-            'period_end'   => $periodEnd,
+            'period_start' => $periodStart->toDateString(),
+            'period_end'   => $periodEnd->toDateString(),
             'amount'       => $data['amount'] ?? $member->price_snapshot,
             'status'       => 'pending',
-            'due_date'     => $dueDate,
+            'due_date'     => $dueDate->toDateString(),
             'notes'        => $data['notes'] ?? null,
         ]);
     }
@@ -38,11 +45,13 @@ class BillingService
     {
         return DB::transaction(function () use ($invoice, $data) {
             $payment = Payment::create([
-                'invoice_id'     => $invoice->id,
-                'amount'         => $data['amount'],
-                'paid_at'        => $data['paid_at'] ?? now(),
-                'payment_method' => $data['payment_method'] ?? 'cash',
-                'notes'          => $data['notes'] ?? null,
+                'invoice_id'             => $invoice->id,
+                'amount'                 => $data['amount'],
+                'paid_at'                => isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : now(),
+                'payment_method'         => $data['payment_method'] ?? 'cash',
+                'notes'                  => $data['notes'] ?? null,
+                'external_transaction_id'=> null,
+                'gateway_status'         => null,
             ]);
 
             $invoice->update(['status' => 'paid']);
@@ -52,17 +61,19 @@ class BillingService
     }
 
     /**
-     * Perpanjang member — hitung dari expired_at lama.
+     * Perpanjang member — hitung dari expired_at lama (period_end invoice).
      * Jika invoice pending/overdue ditemukan, tandai paid sekaligus.
      */
     public function renewMember(Member $member, BillingInvoice $invoice, array $paymentData): void
     {
         DB::transaction(function () use ($member, $invoice, $paymentData) {
+            $prevStatus = $member->status;
+
             // Catat pembayaran & tutup invoice
             $this->recordPayment($invoice, $paymentData);
 
-            // Hitung expired baru dari expired_at lama
-            $newExpiredAt = $invoice->period_end;
+            // Hitung expired baru dari period_end invoice
+            $newExpiredAt = Carbon::parse($invoice->period_end);
 
             $member->update([
                 'expired_at' => $newExpiredAt,
@@ -78,11 +89,12 @@ class BillingService
             }
 
             ServiceActionLog::record(
-                'member', $member->id,
-                'renew',
-                $member->getOriginal('status'),
-                'active',
-                auth('app')->id()
+                entity_type: 'member',
+                entityId:     $member->id,
+                action:       'renew',
+                prev:         $prevStatus,
+                next:         'active',
+                userId:       auth('app')->id()
             );
         });
     }
@@ -98,7 +110,7 @@ class BillingService
 
     /**
      * Tandai semua invoice pending yang melewati due_date → overdue.
-     * Dipanggil oleh Scheduler.
+     * Dipanggil oleh Scheduler dan BillingController::index().
      */
     public function markOverdue(): int
     {
