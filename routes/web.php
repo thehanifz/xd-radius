@@ -25,12 +25,12 @@ Route::middleware('auth')->group(function () {
         ->name('plans.toggle');
 
     // Vouchers
-    Route::get('/vouchers',           [VoucherController::class, 'index'])->name('vouchers.index');
-    Route::get('/vouchers/create',    [VoucherController::class, 'create'])->name('vouchers.create');
-    Route::post('/vouchers/generate', [VoucherController::class, 'generate'])->name('vouchers.generate');
-    Route::get('/vouchers/preview',   [VoucherController::class, 'preview'])->name('vouchers.preview');
-    Route::get('/vouchers/batch/{batch}/print', [VoucherController::class, 'print'])->name('vouchers.print');
-    Route::get('/vouchers/{voucher}', [VoucherController::class, 'show'])->name('vouchers.show');
+    Route::get('/vouchers',                         [VoucherController::class, 'index'])->name('vouchers.index');
+    Route::get('/vouchers/create',                  [VoucherController::class, 'create'])->name('vouchers.create');
+    Route::post('/vouchers/generate',               [VoucherController::class, 'generate'])->name('vouchers.generate');
+    Route::get('/vouchers/preview',                 [VoucherController::class, 'preview'])->name('vouchers.preview');
+    Route::get('/vouchers/batch/{batch}/print',     [VoucherController::class, 'print'])->name('vouchers.print');
+    Route::get('/vouchers/{voucher}',               [VoucherController::class, 'show'])->name('vouchers.show');
 
     // Members
     Route::resource('members', MemberController::class);
@@ -38,12 +38,12 @@ Route::middleware('auth')->group(function () {
         ->name('members.toggle-status');
 
     // Billing
-    Route::get('/billing',                          [BillingController::class, 'index'])->name('billing.index');
-    Route::get('/billing/create',                   [BillingController::class, 'create'])->name('billing.create');
-    Route::post('/billing',                         [BillingController::class, 'store'])->name('billing.store');
-    Route::get('/billing/{billing}',                [BillingController::class, 'show'])->name('billing.show');
-    Route::get('/billing/{billing}/pay',            [BillingController::class, 'payForm'])->name('billing.pay.form');
-    Route::post('/billing/{billing}/pay',           [BillingController::class, 'pay'])->name('billing.pay');
-    Route::patch('/billing/{billing}/cancel',       [BillingController::class, 'cancel'])->name('billing.cancel');
-    Route::get('/billing/{billing}/pdf',            [BillingController::class, 'pdf'])->name('billing.pdf');
+    Route::get('/billing',                     [BillingController::class, 'index'])->name('billing.index');
+    Route::get('/billing/create',              [BillingController::class, 'create'])->name('billing.create');
+    Route::post('/billing',                    [BillingController::class, 'store'])->name('billing.store');
+    Route::get('/billing/{billing}',           [BillingController::class, 'show'])->name('billing.show');
+    Route::get('/billing/{billing}/pay',       [BillingController::class, 'payForm'])->name('billing.pay.form');
+    Route::post('/billing/{billing}/pay',      [BillingController::class, 'pay'])->name('billing.pay');
+    Route::patch('/billing/{billing}/cancel',  [BillingController::class, 'cancel'])->name('billing.cancel');
+    Route::get('/billing/{billing}/pdf',       [BillingController::class, 'pdf'])->name('billing.pdf');
 });

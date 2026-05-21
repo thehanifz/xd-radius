@@ -8,14 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('service_action_logs')) {
+            return;
+        }
+
         Schema::create('service_action_logs', function (Blueprint $table) {
             $table->id();
-            $table->string('entity_type'); // 'member' | 'voucher'
+            $table->string('entity_type');
             $table->unsignedBigInteger('entity_id');
-            $table->string('action');          // 'isolate' | 'activate' | 'renew'
+            $table->string('action');
             $table->string('previous_status')->nullable();
             $table->string('new_status');
-            $table->unsignedBigInteger('performed_by')->nullable(); // app_user id
+            $table->unsignedBigInteger('performed_by')->nullable();
             $table->timestamp('performed_at');
             $table->text('notes')->nullable();
 

@@ -2,100 +2,86 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\GenerateVoucherRequest;
 use App\Models\Plan;
 use App\Models\Voucher;
-use App\Models\VoucherBatch;
 use App\Services\VoucherService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class VoucherController extends Controller
 {
-    public function __construct(protected VoucherService $voucherService) {}
+    public function __construct(protected VoucherService $service) {}
 
-    /**
-     * Daftar voucher dengan filter
-     */
     public function index(Request $request)
     {
-        $batches = VoucherBatch::with('plan')
-            ->orderByDesc('generated_at')
-            ->get();
+        $query = Voucher::with('plan');
 
-        $query = Voucher::with(['plan', 'batch'])
-            ->orderByDesc('created_at');
-
-        if ($request->filled('batch_id')) {
-            $query->where('batch_id', $request->batch_id);
+        if ($search = $request->search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('username', 'ilike', "%{$search}%")
+                  ->orWhere('batch', 'ilike', "%{$search}%");
+            });
         }
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if ($status = $request->status) {
+            $query->where('status', $status);
         }
-        if ($request->filled('search')) {
-            $query->where('username', 'ilike', '%' . $request->search . '%');
+        if ($planId = $request->plan_id) {
+            $query->where('plan_id', $planId);
+        }
+        if ($batch = $request->batch) {
+            $query->where('batch', $batch);
         }
 
-        $vouchers = $query->paginate(50)->withQueryString();
+        $vouchers = $query->orderByDesc('created_at')->paginate(50)->withQueryString();
+        $plans    = Plan::active()->orderBy('name')->get();
+        $batches  = Voucher::select('batch')->distinct()->orderByDesc('batch')->pluck('batch');
 
-        return view('vouchers.index', compact('vouchers', 'batches'));
+        return view('vouchers.index', compact('vouchers', 'plans', 'batches'));
     }
 
-    /**
-     * Form generate voucher
-     */
     public function create()
     {
-        $plans = Plan::active()->voucher()->orderBy('name')->get();
+        $plans = Plan::active()->orderBy('name')->get();
         return view('vouchers.create', compact('plans'));
     }
 
-    /**
-     * Proses generate voucher
-     */
-    public function generate(GenerateVoucherRequest $request)
+    public function generate(Request $request)
     {
-        $batch = $this->voucherService->generate([
-            ...$request->validated(),
-            'generated_by' => Auth::guard('app')->id(),
+        $data = $request->validate([
+            'plan_id'  => 'required|exists:plans,id',
+            'quantity' => 'required|integer|min:1|max:500',
+            'prefix'   => 'nullable|string|max:10',
         ]);
 
-        return redirect()
-            ->route('vouchers.index', ['batch_id' => $batch->id])
-            ->with('success', "Batch {$batch->batch_code} berhasil dibuat — {$batch->quantity} voucher.");
+        $batch    = $this->service->generateBatch($data);
+        $vouchers = Voucher::where('batch', $batch)->with('plan')->get();
+        $plans    = Plan::active()->orderBy('name')->get();
+
+        return view('vouchers.create', compact('plans', 'vouchers', 'batch'))
+            ->with('success', count($vouchers) . ' voucher berhasil digenerate. Batch: ' . $batch);
     }
 
-    /**
-     * Preview format username (AJAX)
-     */
     public function preview(Request $request)
     {
-        $request->validate([
-            'prefix'       => ['nullable', 'string', 'max:10'],
-            'length'       => ['required', 'integer', 'min:4', 'max:20'],
-            'charset_mode' => ['required', 'string'],
-        ]);
-
-        $examples = [];
-        for ($i = 0; $i < 3; $i++) {
-            $examples[] = VoucherService::previewExample(
-                $request->prefix ?? '',
-                (int) $request->length,
-                $request->charset_mode
-            );
-        }
-
-        return response()->json(['examples' => $examples]);
+        $batch    = $request->batch;
+        $vouchers = Voucher::where('batch', $batch)->with('plan')->get();
+        return view('vouchers.preview', compact('vouchers', 'batch'));
     }
 
-    /**
-     * Print vouchers by batch
-     */
-    public function print(VoucherBatch $batch, Request $request)
+    public function print(Request $request, string $batch)
     {
-        $vouchers = Voucher::where('batch_id', $batch->id)->get();
-        $template = $request->get('template', 'a4'); // a4 or thermal
+        $vouchers = Voucher::where('batch', $batch)->with('plan')->get();
 
-        return view('vouchers.print', compact('batch', 'vouchers', 'template'));
+        $type = $request->get('type', 'a4'); // a4 | thermal
+        $view = $type === 'thermal'
+            ? 'vouchers.print-thermal'
+            : 'vouchers.print';
+
+        return view($view, compact('vouchers', 'batch'));
+    }
+
+    public function show(Voucher $voucher)
+    {
+        $voucher->load('plan');
+        return view('vouchers.show', compact('voucher'));
     }
 }

@@ -7,7 +7,6 @@
     <title>{{ config('app.name', 'RadiusManager') }} — @yield('title', 'Dashboard')</title>
     <meta name="description" content="RadiusManager — Panel administrasi FreeRADIUS terpusat">
 
-    {{-- Fonts --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -19,13 +18,12 @@
 
 <div class="flex h-screen">
 
-    {{-- =================== SIDEBAR =================== --}}
+    {{-- SIDEBAR --}}
     <aside id="sidebar"
         class="flex flex-col w-64 flex-shrink-0 transition-transform duration-300 ease-in-out
                lg:translate-x-0 -translate-x-full fixed lg:static inset-y-0 z-40"
         style="background: linear-gradient(180deg, #0d1117 0%, #0f1623 100%);">
 
-        {{-- Logo area --}}
         <div class="flex items-center gap-3 px-5 h-16 border-b border-white/5 flex-shrink-0">
             <div class="flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
                  style="background: linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow: 0 4px 14px rgba(99,102,241,0.4);">
@@ -41,43 +39,35 @@
             </div>
         </div>
 
-        {{-- Navigation --}}
         <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
             @php $role = auth('app')->user()?->role; @endphp
 
-            {{-- Dashboard --}}
             <x-nav-item route="dashboard" icon="home">Dashboard</x-nav-item>
 
-            {{-- Voucher section --}}
             <p class="section-divider">Voucher</p>
             <x-nav-item route="vouchers.index" icon="ticket">Daftar Voucher</x-nav-item>
             <x-nav-item route="vouchers.create" icon="layers">Generate Batch</x-nav-item>
 
-            {{-- Member section --}}
             <p class="section-divider">Member</p>
             <x-nav-item route="members.index" icon="users">Daftar Member</x-nav-item>
+            <x-nav-item route="billing.index" icon="receipt">Billing & Tagihan</x-nav-item>
 
-            {{-- Superuser only --}}
             @if($role === 'superuser')
             <p class="section-divider">Manajemen</p>
             <x-nav-item route="plans.index" icon="package">Paket Internet</x-nav-item>
             @endif
         </nav>
 
-        {{-- User profile footer --}}
         <div class="px-3 py-3 border-t border-white/5 flex-shrink-0">
             <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all duration-150 group">
-                {{-- Avatar --}}
                 <div class="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-xs text-white"
                      style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
                     {{ strtoupper(substr(auth('app')->user()?->name ?? 'U', 0, 1)) }}
                 </div>
-                {{-- Info --}}
                 <div class="flex-1 min-w-0">
                     <p class="text-xs font-semibold text-slate-200 truncate">{{ auth('app')->user()?->name }}</p>
                     <p class="text-[10px] text-slate-500 capitalize tracking-wide">{{ auth('app')->user()?->role }}</p>
                 </div>
-                {{-- Logout --}}
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" title="Logout"
@@ -93,19 +83,16 @@
         </div>
     </aside>
 
-    {{-- Overlay mobile --}}
     <div id="sidebar-overlay"
          class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden hidden transition-opacity duration-300"
          onclick="toggleSidebar()"></div>
 
-    {{-- =================== MAIN =================== --}}
+    {{-- MAIN --}}
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {{-- Topbar --}}
         <header class="flex items-center justify-between px-6 h-16 bg-white/80 backdrop-blur-md border-b border-slate-100 flex-shrink-0 sticky top-0 z-20"
                 style="box-shadow: 0 1px 0 rgba(0,0,0,0.04);">
             <div class="flex items-center gap-4">
-                {{-- Hamburger mobile --}}
                 <button id="hamburger-btn" onclick="toggleSidebar()"
                     class="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -114,7 +101,6 @@
                         <line x1="3" y1="18" x2="21" y2="18"/>
                     </svg>
                 </button>
-                {{-- Breadcrumb / Page title --}}
                 <div>
                     <h1 class="text-sm font-bold text-slate-800 tracking-tight">@yield('title', 'Dashboard')</h1>
                 </div>
@@ -124,9 +110,7 @@
             </div>
         </header>
 
-        {{-- Page content --}}
         <main class="flex-1 overflow-y-auto p-6">
-            {{-- Flash messages --}}
             @if(session('success'))
             <div class="flash-success mb-5 animate-slide-up">
                 <svg class="flex-shrink-0 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -164,7 +148,6 @@ function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
     const isOpen  = !sidebar.classList.contains('-translate-x-full');
-
     if (isOpen) {
         sidebar.classList.add('-translate-x-full');
         overlay.classList.add('hidden');
@@ -173,8 +156,6 @@ function toggleSidebar() {
         overlay.classList.remove('hidden');
     }
 }
-
-// Auto-dismiss flash messages after 4s
 document.addEventListener('DOMContentLoaded', function () {
     setTimeout(function () {
         document.querySelectorAll('.flash-success, .flash-error, .flash-warning').forEach(function (el) {

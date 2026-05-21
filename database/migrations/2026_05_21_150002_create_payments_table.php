@@ -8,14 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('payments')) {
+            return;
+        }
+
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('invoice_id')->constrained('billing_invoices')->cascadeOnDelete();
             $table->unsignedBigInteger('amount');
             $table->timestamp('paid_at');
-            $table->string('payment_method')->default('cash'); // cash, transfer, etc.
-            $table->string('external_transaction_id')->nullable(); // foundation payment gateway
-            $table->string('gateway_status')->nullable();          // foundation payment gateway
+            $table->string('payment_method')->default('cash');
+            $table->string('external_transaction_id')->nullable();
+            $table->string('gateway_status')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
         });
