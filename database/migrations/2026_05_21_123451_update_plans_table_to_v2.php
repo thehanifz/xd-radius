@@ -10,7 +10,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('plans', function (Blueprint $table) {
-            // Hapus kolom lama yang tidak dipakai
             $table->dropColumn([
                 'upload_speed',
                 'download_speed',
@@ -21,28 +20,29 @@ return new class extends Migration
         });
 
         Schema::table('plans', function (Blueprint $table) {
-            // Tambah kolom baru
-            $table->string('type', 20)->default('voucher')->after('name');         // voucher | member
+            $table->string('type', 20)->default('voucher')->after('name');
             $table->unsignedInteger('download_speed_kbps')->default(1024)->after('type');
             $table->unsignedInteger('upload_speed_kbps')->default(512)->after('download_speed_kbps');
             $table->unsignedInteger('duration_days')->default(30)->after('upload_speed_kbps');
             $table->unsignedBigInteger('data_quota_mb')->nullable()->after('duration_days');
-            $table->string('radius_group_name', 100)->unique()->after('data_quota_mb');
-
-            // Index
+            $table->string('radius_group_name', 100)->nullable()->after('data_quota_mb');
             $table->index('type');
         });
 
-        // Update price kolom: rename tidak perlu, sudah ada
-        // Isi radius_group_name dengan slug dari name untuk data existing
-        DB::statement("UPDATE plans SET radius_group_name = LOWER(REPLACE(REPLACE(name, ' ', '-'), '/', '-')) || '-' || id WHERE radius_group_name IS NULL OR radius_group_name = ''");
+        DB::statement("UPDATE plans SET radius_group_name = LOWER(REPLACE(REPLACE(name, ' ', '-'), '/', '-')) || '-' || id::text");
+
+        Schema::table('plans', function (Blueprint $table) {
+            $table->string('radius_group_name', 100)->nullable(false)->unique()->change();
+        });
     }
 
     public function down(): void
     {
+        // Drop index jika ada
+        DB::statement('DROP INDEX IF EXISTS plans_type_index');
+        DB::statement('DROP INDEX IF EXISTS plans_radius_group_name_unique');
+
         Schema::table('plans', function (Blueprint $table) {
-            $table->dropIndex(['type']);
-            $table->dropUnique(['radius_group_name']);
             $table->dropColumn([
                 'type',
                 'download_speed_kbps',
@@ -51,8 +51,6 @@ return new class extends Migration
                 'data_quota_mb',
                 'radius_group_name',
             ]);
-
-            // Restore kolom lama
             $table->integer('upload_speed')->default(512);
             $table->integer('download_speed')->default(1024);
             $table->integer('duration_value')->default(1);
