@@ -42,10 +42,13 @@ Route::middleware(['auth:app', 'active'])->group(function () {
     // -------------------------------------------------------
 
     // Vouchers
-    Route::get('/vouchers',          [VoucherController::class, 'index'])->name('vouchers.index');
-    Route::get('/vouchers/create',   [VoucherController::class, 'create'])->name('vouchers.create');
-    Route::post('/vouchers/generate',[VoucherController::class, 'generate'])->name('vouchers.generate');
-    Route::get('/vouchers/preview',  [VoucherController::class, 'preview'])->name('vouchers.preview');
+    Route::get('/vouchers',           [VoucherController::class, 'index'])->name('vouchers.index');
+    Route::get('/vouchers/create',    [VoucherController::class, 'create'])->name('vouchers.create');
+    Route::post('/vouchers/generate', [VoucherController::class, 'generate'])->name('vouchers.generate');
+    Route::get('/vouchers/preview',   [VoucherController::class, 'preview'])->name('vouchers.preview');
+
+    // Voucher Batches — alias ke vouchers.index untuk sementara
+    Route::get('/voucher-batches', [VoucherController::class, 'index'])->name('voucher-batches.index');
 
     Route::get('/members', fn() => 'Coming soon')->name('members.index');
     Route::get('/billing', fn() => 'Coming soon')->name('billing.index');
