@@ -20,6 +20,8 @@ Route::middleware('auth')->group(function () {
 
     // Plans
     Route::resource('plans', PlanController::class);
+    Route::patch('/plans/{plan}/toggle', [PlanController::class, 'toggleActive'])
+        ->name('plans.toggle');
 
     // Vouchers
     Route::get('/vouchers',           [VoucherController::class, 'index'])->name('vouchers.index');
