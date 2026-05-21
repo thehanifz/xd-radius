@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    {{-- Batch Print Actions (muncul jika ada batch dipilih) --}}
+    {{-- Batch Print Actions Bar --}}
     <div id="batch-actions" class="{{ request('batch_id') ? '' : 'hidden' }} bg-indigo-50 border border-indigo-200 rounded-xl px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
             <div class="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center">
@@ -92,7 +92,7 @@
             <span class="text-xs text-slate-400">{{ $batches->count() }} batch</span>
         </div>
         <div class="divide-y divide-slate-100">
-            @foreach($batches->take(8) as $b)
+            @foreach($batches->take(10) as $b)
             <div class="flex items-center justify-between px-5 py-3 hover:bg-slate-50">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
@@ -105,14 +105,14 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <a href="{{ route('vouchers.index', ['batch_id' => $b->id]) }}"
-                       class="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors">Lihat</a>
+                       class="text-xs text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">Lihat</a>
                     <a href="{{ route('vouchers.print', $b->id) }}?type=a4" target="_blank"
-                       class="text-xs text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors flex items-center gap-1">
+                       class="text-xs text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 border border-indigo-200 transition-colors flex items-center gap-1">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                         A4
                     </a>
                     <a href="{{ route('vouchers.print', $b->id) }}?type=thermal" target="_blank"
-                       class="text-xs text-white bg-indigo-500 hover:bg-indigo-600 px-2 py-1 rounded-lg transition-colors flex items-center gap-1">
+                       class="text-xs text-white bg-indigo-500 hover:bg-indigo-600 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
                         Thermal
                     </a>
@@ -218,7 +218,10 @@
 
 @push('scripts')
 <script>
-const BASE_PRINT_URL = '{{ url("/vouchers/batch") }}';
+// URL pattern: /vouchers/batch/{id}/print?type=a4
+function printUrl(batchId, type) {
+    return '/vouchers/batch/' + batchId + '/print?type=' + type;
+}
 
 function updateBatchButtons(batchId, batchText) {
     const actions = document.getElementById('batch-actions');
@@ -228,17 +231,15 @@ function updateBatchButtons(batchId, batchText) {
 
     if (batchId) {
         actions.classList.remove('hidden');
-        // Ambil batch_code dari teks option (sebelum " (")
         label.textContent = batchText.split(' (')[0].trim();
-        btnA4.href  = BASE_PRINT_URL + '/' + batchId + '?type=a4';
-        btnThm.href = BASE_PRINT_URL + '/' + batchId + '?type=thermal';
+        btnA4.href  = printUrl(batchId, 'a4');
+        btnThm.href = printUrl(batchId, 'thermal');
     } else {
         actions.classList.add('hidden');
     }
 }
 
-// Init: jika sudah ada batch_id dari query string
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const sel = document.getElementById('batch-select');
     if (sel && sel.value) {
         updateBatchButtons(sel.value, sel.options[sel.selectedIndex].text);
