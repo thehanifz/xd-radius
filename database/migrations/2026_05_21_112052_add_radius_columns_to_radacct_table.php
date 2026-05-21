@@ -6,23 +6,21 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('radacct', function (Blueprint $table) {
-            //
+            $table->boolean('is_stale')->default(false)->after('acctstoptime');
+            $table->timestamp('stale_detected_at')->nullable()->after('is_stale');
+
+            $table->index('is_stale');
+            $table->index('stale_detected_at');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('radacct', function (Blueprint $table) {
-            //
+            $table->dropColumn(['is_stale', 'stale_detected_at']);
         });
     }
 };

@@ -6,20 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('app_user_preferences', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained('app_users')->onDelete('cascade');
+            $table->string('key');
+            $table->text('value')->nullable();
             $table->timestamps();
+
+            $table->unique(['user_id', 'key']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('app_user_preferences');
