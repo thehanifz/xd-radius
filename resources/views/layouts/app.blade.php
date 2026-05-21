@@ -45,14 +45,13 @@
                 <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Voucher</p>
             </div>
             <x-nav-item route="vouchers.index" icon="ticket">Daftar Voucher</x-nav-item>
-            <x-nav-item route="voucher-batches.index" icon="layers">Generate Batch</x-nav-item>
+            <x-nav-item route="vouchers.create" icon="layers">Generate Batch</x-nav-item>
 
             {{-- Member --}}
             <div class="pt-4 pb-1 px-3">
                 <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Member</p>
             </div>
             <x-nav-item route="members.index" icon="users">Daftar Member</x-nav-item>
-            <x-nav-item route="billing.index" icon="file-text">Tagihan</x-nav-item>
 
             {{-- Superuser only --}}
             @if($role === 'superuser')
@@ -60,14 +59,7 @@
                 <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Manajemen</p>
             </div>
             <x-nav-item route="plans.index" icon="package">Paket Internet</x-nav-item>
-            <x-nav-item route="routers.index" icon="router">Router</x-nav-item>
-            <x-nav-item route="users.index" icon="user-cog">Operator</x-nav-item>
             @endif
-
-            <div class="pt-4 pb-1 px-3">
-                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Laporan</p>
-            </div>
-            <x-nav-item route="reports.index" icon="bar-chart-2">Laporan</x-nav-item>
 
         </nav>
 
