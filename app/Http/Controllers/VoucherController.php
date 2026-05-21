@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Plan;
 use App\Models\Voucher;
+use App\Models\VoucherBatch;
 use App\Services\VoucherService;
 use Illuminate\Http\Request;
 
@@ -13,13 +14,10 @@ class VoucherController extends Controller
 
     public function index(Request $request)
     {
-        $query = Voucher::with('plan');
+        $query = Voucher::with(['batch', 'plan']);
 
         if ($search = $request->search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('username', 'ilike', "%{$search}%")
-                  ->orWhere('batch', 'ilike', "%{$search}%");
-            });
+            $query->where('username', 'ilike', "%{$search}%");
         }
         if ($status = $request->status) {
             $query->where('status', $status);
@@ -27,13 +25,13 @@ class VoucherController extends Controller
         if ($planId = $request->plan_id) {
             $query->where('plan_id', $planId);
         }
-        if ($batch = $request->batch) {
-            $query->where('batch', $batch);
+        if ($batchId = $request->batch_id) {
+            $query->where('batch_id', $batchId);
         }
 
         $vouchers = $query->orderByDesc('created_at')->paginate(50)->withQueryString();
         $plans    = Plan::active()->orderBy('name')->get();
-        $batches  = Voucher::select('batch')->distinct()->orderByDesc('batch')->pluck('batch');
+        $batches  = VoucherBatch::orderByDesc('created_at')->get(['id', 'batch_code', 'created_at']);
 
         return view('vouchers.index', compact('vouchers', 'plans', 'batches'));
     }
@@ -52,31 +50,48 @@ class VoucherController extends Controller
             'prefix'   => 'nullable|string|max:10',
         ]);
 
-        $batch    = $this->service->generateBatch($data);
-        $vouchers = Voucher::where('batch', $batch)->with('plan')->get();
+        $voucherBatch = $this->service->generateBatch($data);
+
+        // generateBatch bisa return VoucherBatch object atau batch_code string
+        if ($voucherBatch instanceof VoucherBatch) {
+            $batchId   = $voucherBatch->id;
+            $batchCode = $voucherBatch->batch_code;
+        } else {
+            // fallback: jika service return batch_code string
+            $batchCode    = $voucherBatch;
+            $voucherBatch = VoucherBatch::where('batch_code', $batchCode)->first();
+            $batchId      = $voucherBatch?->id;
+        }
+
+        $vouchers = Voucher::where('batch_id', $batchId)->with('plan')->get();
         $plans    = Plan::active()->orderBy('name')->get();
 
-        return view('vouchers.create', compact('plans', 'vouchers', 'batch'))
-            ->with('success', count($vouchers) . ' voucher berhasil digenerate. Batch: ' . $batch);
+        return view('vouchers.create', compact('plans', 'vouchers', 'batchId', 'batchCode'))
+            ->with('success', count($vouchers) . ' voucher berhasil digenerate. Batch: ' . $batchCode);
     }
 
     public function preview(Request $request)
     {
-        $batch    = $request->batch;
-        $vouchers = Voucher::where('batch', $batch)->with('plan')->get();
+        $batchId = $request->batch_id;
+        $batch   = VoucherBatch::with(['plan', 'vouchers.plan'])->findOrFail($batchId);
+        $vouchers = $batch->vouchers;
         return view('vouchers.preview', compact('vouchers', 'batch'));
     }
 
     public function print(Request $request, string $batch)
     {
-        $vouchers = Voucher::where('batch', $batch)->with('plan')->get();
+        // $batch bisa berupa ID atau batch_code
+        $voucherBatch = is_numeric($batch)
+            ? VoucherBatch::with('plan')->findOrFail($batch)
+            : VoucherBatch::with('plan')->where('batch_code', $batch)->firstOrFail();
 
-        $type = $request->get('type', 'a4'); // a4 | thermal
-        $view = $type === 'thermal'
-            ? 'vouchers.print-thermal'
-            : 'vouchers.print';
+        $vouchers = Voucher::where('batch_id', $voucherBatch->id)->with('plan')->get();
+        $batchCode = $voucherBatch->batch_code;
 
-        return view($view, compact('vouchers', 'batch'));
+        $type = $request->get('type', 'a4');
+        $view = $type === 'thermal' ? 'vouchers.print-thermal' : 'vouchers.print';
+
+        return view($view, compact('vouchers', 'batch', 'batchCode', 'voucherBatch'));
     }
 
     public function show(Voucher $voucher)
