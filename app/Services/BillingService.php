@@ -45,13 +45,13 @@ class BillingService
     {
         return DB::transaction(function () use ($invoice, $data) {
             $payment = Payment::create([
-                'invoice_id'             => $invoice->id,
-                'amount'                 => $data['amount'],
-                'paid_at'                => isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : now(),
-                'payment_method'         => $data['payment_method'] ?? 'cash',
-                'notes'                  => $data['notes'] ?? null,
-                'external_transaction_id'=> null,
-                'gateway_status'         => null,
+                'invoice_id'              => $invoice->id,
+                'amount'                  => $data['amount'],
+                'paid_at'                 => isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : now(),
+                'payment_method'          => $data['payment_method'] ?? 'cash',
+                'notes'                   => $data['notes'] ?? null,
+                'external_transaction_id' => null,
+                'gateway_status'          => null,
             ]);
 
             $invoice->update(['status' => 'paid']);
@@ -88,13 +88,16 @@ class BillingService
                     ->delete();
             }
 
+            // FIX: gunakan positional arguments, bukan named arguments
+            // Named argument 'entity_type:' tidak cocok dengan parameter '$entityType'
             ServiceActionLog::record(
-                entity_type: 'member',
-                entityId:     $member->id,
-                action:       'renew',
-                prev:         $prevStatus,
-                next:         'active',
-                userId:       auth('app')->id()
+                'member',           // entityType
+                $member->id,        // entityId
+                'renew',            // action
+                $prevStatus,        // prev
+                'active',           // next
+                auth('app')->id(),  // userId
+                null                // notes
             );
         });
     }

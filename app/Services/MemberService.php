@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Member;
 use App\Models\Plan;
+use App\Models\ServiceActionLog;
 use Illuminate\Support\Facades\DB;
 
 class MemberService
@@ -28,6 +29,8 @@ class MemberService
                 'notes'            => $data['notes'] ?? null,
             ]);
 
+            // Sync ke FreeRADIUS — gunakan password dari request (plaintext),
+            // BUKAN dari $member->password_plain karena sudah ter-encrypt di model
             $this->syncToRadius($member, $plan, $data['password']);
 
             return $member->load('plan');
@@ -39,23 +42,26 @@ class MemberService
         $plan = Plan::findOrFail($data['plan_id']);
 
         return DB::transaction(function () use ($member, $data, $plan) {
-            $passwordChanged = isset($data['password']) && $data['password'] !== '';
-            $newPassword     = $passwordChanged ? $data['password'] : null;
+            $newPassword     = (isset($data['password']) && $data['password'] !== '') ? $data['password'] : null;
+            $passwordChanged = $newPassword !== null;
 
-            $member->update([
+            $updateData = [
                 'plan_id'          => $plan->id,
                 'price_snapshot'   => $data['price_snapshot'] ?? $member->price_snapshot,
                 'simultaneous_use' => $data['simultaneous_use'] ?? $member->simultaneous_use,
                 'status'           => $data['status'] ?? $member->status,
                 'expired_at'       => $data['expired_at'] ?? $member->expired_at,
                 'notes'            => $data['notes'] ?? null,
-            ]);
+            ];
 
+            // Update password_plain (encrypted) hanya jika ada password baru
             if ($passwordChanged) {
-                $member->password_plain = $newPassword;
-                $member->save();
+                $updateData['password_plain'] = $newPassword;
             }
 
+            $member->update($updateData);
+
+            // Update RADIUS — jika password berubah, kirim plaintext baru
             $this->updateRadius($member, $plan, $newPassword);
 
             return $member->fresh('plan');
@@ -76,24 +82,47 @@ class MemberService
     public function toggleStatus(Member $member): Member
     {
         return DB::transaction(function () use ($member) {
-            $newStatus = $member->status === 'active' ? 'isolated' : 'active';
+            $prevStatus = $member->status;
+            $newStatus  = $prevStatus === 'active' ? 'isolated' : 'active';
 
             if ($newStatus === 'isolated') {
+                // Tambah Auth-Type := Reject ke radcheck
                 DB::table('radcheck')->updateOrInsert(
-                    ['username' => $member->username, 'attribute' => 'Auth-Type'],
-                    ['op' => ':=', 'value' => 'Reject']
+                    [
+                        'username'  => $member->username,
+                        'attribute' => 'Auth-Type',
+                    ],
+                    [
+                        'op'    => ':=',
+                        'value' => 'Reject',
+                    ]
                 );
             } else {
+                // Hapus entry Reject dari radcheck
                 DB::table('radcheck')
                     ->where('username', $member->username)
                     ->where('attribute', 'Auth-Type')
+                    ->where('value', 'Reject')
                     ->delete();
             }
 
             $member->update(['status' => $newStatus]);
+
+            // Catat di service_action_logs
+            ServiceActionLog::record(
+                'member',
+                $member->id,
+                $newStatus === 'isolated' ? 'isolate' : 'activate',
+                $prevStatus,
+                $newStatus,
+                auth('app')->id()
+            );
+
             return $member->fresh();
         });
     }
+
+    // ─── Private helpers ─────────────────────────────────────────────────────
 
     private function syncToRadius(Member $member, Plan $plan, string $password): void
     {
@@ -104,12 +133,22 @@ class MemberService
             'username'  => $u,
             'attribute' => 'Cleartext-Password',
             'op'        => ':=',
-            'value'     => $password,
+            'value'     => $password,  // plaintext dari request, sebelum encrypt
         ]);
 
         DB::table('radreply')->insert([
-            ['username' => $u, 'attribute' => 'Mikrotik-Rate-Limit', 'op' => ':=', 'value' => $rateLimit],
-            ['username' => $u, 'attribute' => 'Simultaneous-Use',   'op' => ':=', 'value' => (string) $member->simultaneous_use],
+            [
+                'username'  => $u,
+                'attribute' => 'Mikrotik-Rate-Limit',
+                'op'        => ':=',
+                'value'     => $rateLimit,
+            ],
+            [
+                'username'  => $u,
+                'attribute' => 'Simultaneous-Use',
+                'op'        => ':=',
+                'value'     => (string) $member->simultaneous_use,
+            ],
         ]);
 
         DB::table('radusergroup')->insert([
@@ -124,7 +163,7 @@ class MemberService
         $u         = $member->username;
         $rateLimit = "{$plan->download_speed_kbps}k/{$plan->upload_speed_kbps}k";
 
-        if ($newPassword) {
+        if ($newPassword !== null) {
             DB::table('radcheck')
                 ->where('username', $u)
                 ->where('attribute', 'Cleartext-Password')
@@ -149,13 +188,7 @@ class MemberService
     private function calcExpiry(\DateTime $from, Plan $plan): \DateTime
     {
         $dt   = clone $from;
-        $val  = $plan->duration_value ?? 30;
-        $unit = $plan->duration_unit  ?? 'days';
-
-        return match ($unit) {
-            'hours'  => $dt->modify("+{$val} hours"),
-            'months' => $dt->modify("+{$val} months"),
-            default  => $dt->modify("+{$val} days"),
-        };
+        $days = $plan->duration_days ?? 30;
+        return $dt->modify("+{$days} days");
     }
 }

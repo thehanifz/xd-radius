@@ -11,6 +11,18 @@
 @section('content')
 <div class="max-w-5xl" x-data="voucherGenerator()" x-init="init()">
 
+    {{-- Flash setelah generate berhasil --}}
+    @if(isset($batchCode))
+    <div class="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium animate-slide-up">
+        <svg class="flex-shrink-0 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>
+            Batch <strong class="font-mono">{{ $batchCode }}</strong> berhasil dibuat —
+            {{ isset($vouchers) ? count($vouchers) : 0 }} voucher.
+            <a href="{{ route('vouchers.index', ['batch_id' => $batchId ?? '']) }}" class="underline ml-2">Lihat voucher →</a>
+        </span>
+    </div>
+    @endif
+
     <form method="POST" action="{{ route('vouchers.generate') }}" @submit="submitting = true">
         @csrf
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -20,11 +32,12 @@
 
                 {{-- Paket --}}
                 <div class="card">
-                    <div class="card-header">Paket Internet</div>
+                    <div class="card-header"><span class="card-title">Paket Internet</span></div>
                     <div class="card-body space-y-3">
                         <div>
                             <label class="form-label">Pilih Paket <span class="text-red-500">*</span></label>
-                            <select name="plan_id" x-model="planId" @change="fetchPlanInfo" class="form-input @error('plan_id') border-red-400 @enderror" required>
+                            <select name="plan_id" x-model="planId" @change="fetchPlanInfo"
+                                class="form-input @error('plan_id') border-red-400 @enderror" required>
                                 <option value="">-- Pilih Paket --</option>
                                 @foreach ($plans as $plan)
                                     <option value="{{ $plan->id }}"
@@ -39,17 +52,18 @@
                             @error('plan_id')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
                         </div>
 
-                        <div x-show="planInfo" x-cloak class="p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm space-y-1">
+                        <div x-show="planInfo" x-cloak
+                             class="p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm space-y-1">
                             <div class="flex gap-2 text-slate-600">
-                                <span class="text-slate-400 w-24">Kecepatan:</span>
+                                <span class="text-slate-400 w-24 flex-shrink-0">Kecepatan:</span>
                                 <span class="font-medium" x-text="planInfo?.speed"></span>
                             </div>
                             <div class="flex gap-2 text-slate-600">
-                                <span class="text-slate-400 w-24">Durasi:</span>
+                                <span class="text-slate-400 w-24 flex-shrink-0">Durasi:</span>
                                 <span class="font-medium" x-text="planInfo?.duration"></span>
                             </div>
                             <div class="flex gap-2 text-slate-600">
-                                <span class="text-slate-400 w-24">Harga:</span>
+                                <span class="text-slate-400 w-24 flex-shrink-0">Harga:</span>
                                 <span class="font-medium" x-text="planInfo?.price"></span>
                             </div>
                         </div>
@@ -58,7 +72,7 @@
 
                 {{-- Format Voucher --}}
                 <div class="card">
-                    <div class="card-header">Format Voucher</div>
+                    <div class="card-header"><span class="card-title">Format Voucher</span></div>
                     <div class="card-body space-y-4">
 
                         <div class="grid grid-cols-2 gap-4">
@@ -115,7 +129,7 @@
 
                 {{-- Jumlah & Catatan --}}
                 <div class="card">
-                    <div class="card-header">Jumlah & Catatan</div>
+                    <div class="card-header"><span class="card-title">Jumlah & Catatan</span></div>
                     <div class="card-body space-y-4">
                         <div>
                             <label class="form-label">Jumlah Voucher <span class="text-red-500">*</span></label>
@@ -141,40 +155,58 @@
             {{-- ===== KANAN: Preview ===== --}}
             <div class="lg:col-span-2">
                 <div class="card sticky top-6">
-                    <div class="card-header">Preview Format</div>
+                    <div class="card-header"><span class="card-title">Preview Format</span></div>
                     <div class="card-body">
 
                         <p class="text-xs text-slate-500 mb-3">Contoh username yang akan digenerate:</p>
 
-                        <div class="space-y-2" x-show="!loadingPreview">
-                            <template x-for="ex in examples" :key="ex">
-                                <div class="font-mono text-sm px-3 py-2 bg-slate-50 rounded border border-slate-200" x-text="ex"></div>
-                            </template>
-                            <div x-show="examples.length === 0" class="text-sm text-slate-400 italic">Isi form untuk melihat preview.</div>
-                        </div>
-
+                        {{-- Loading skeleton --}}
                         <div x-show="loadingPreview" class="space-y-2">
                             <div class="h-9 bg-slate-100 rounded animate-pulse"></div>
                             <div class="h-9 bg-slate-100 rounded animate-pulse"></div>
                             <div class="h-9 bg-slate-100 rounded animate-pulse"></div>
                         </div>
 
-                        <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-400 space-y-1">
-                            <div>Panjang: <span class="font-medium text-slate-600" x-text="length + ' karakter'"></span></div>
-                            <div>Suffix: <span class="font-medium text-slate-600" x-text="Math.max(0, length - prefix.length) + ' karakter'"></span></div>
-                            <div x-show="length - prefix.length < 2" class="text-amber-500">&#9888; Suffix terlalu pendek.</div>
+                        {{-- Preview examples --}}
+                        <div class="space-y-2" x-show="!loadingPreview">
+                            <template x-for="ex in examples" :key="ex">
+                                <div class="font-mono text-sm px-3 py-2 bg-slate-50 rounded border border-slate-200"
+                                     x-text="ex"></div>
+                            </template>
+                            <div x-show="examples.length === 0"
+                                 class="text-sm text-slate-400 italic text-center py-4">
+                                Isi form untuk melihat preview.
+                            </div>
                         </div>
 
+                        {{-- Info suffix --}}
+                        <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-400 space-y-1">
+                            <div>Panjang total: <span class="font-medium text-slate-600" x-text="length + ' karakter'"></span></div>
+                            <div>Suffix acak: <span class="font-medium text-slate-600" x-text="Math.max(0, length - prefix.length) + ' karakter'"></span></div>
+                            <div x-show="prefix.length > 0 && (length - prefix.length) < 2"
+                                 class="text-amber-500 font-medium">
+                                ⚠ Suffix terlalu pendek, tingkatkan panjang total.
+                            </div>
+                        </div>
+
+                        {{-- Submit --}}
                         <div class="mt-6 space-y-2">
                             <button type="submit"
-                                :disabled="submitting || !planId"
+                                :disabled="submitting || !planId || (length - prefix.length) < 2"
                                 class="btn-primary w-full justify-center"
-                                :class="{'opacity-50 cursor-not-allowed': submitting || !planId}">
-                                <span x-show="!submitting">
-                                    <svg class="inline w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                :class="{'opacity-50 cursor-not-allowed': submitting || !planId || (length - prefix.length) < 2}">
+                                <span x-show="!submitting" class="flex items-center gap-2">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                    </svg>
                                     Generate <span x-text="quantity"></span> Voucher
                                 </span>
-                                <span x-show="submitting">Memproses...</span>
+                                <span x-show="submitting" class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                                    </svg>
+                                    Memproses...
+                                </span>
                             </button>
                             <p class="text-xs text-center text-slate-400">Username = Password untuk semua voucher.</p>
                         </div>
@@ -191,15 +223,15 @@
 <script>
 function voucherGenerator() {
     return {
-        planId: '{{ old('plan_id', '') }}',
-        prefix: '{{ old('prefix', '') }}',
-        length: {{ old('length', 8) }},
+        planId:      '{{ old('plan_id', '') }}',
+        prefix:      '{{ old('prefix', '') }}',
+        length:      {{ old('length', 8) }},
         charsetMode: '{{ old('charset_mode', 'mixed') }}',
-        quantity: {{ old('quantity', 10) }},
-        planInfo: null,
-        examples: [],
+        quantity:    {{ old('quantity', 10) }},
+        planInfo:    null,
+        examples:    [],
         loadingPreview: false,
-        submitting: false,
+        submitting:  false,
 
         init() {
             this.$nextTick(() => {
@@ -220,20 +252,24 @@ function voucherGenerator() {
         },
 
         async updatePreview() {
-            if (this.length < 4 || this.length <= this.prefix.length) {
+            const suffixLen = this.length - this.prefix.length;
+            if (this.length < 4 || suffixLen < 2) {
                 this.examples = [];
                 return;
             }
             this.loadingPreview = true;
             try {
-                const res = await fetch('{{ route('vouchers.preview') }}?' + new URLSearchParams({
-                    prefix: this.prefix,
-                    length: this.length,
+                // BUG FIX: gunakan route 'vouchers.preview-format' bukan 'vouchers.preview'
+                const res = await fetch('{{ route('vouchers.preview-format') }}?' + new URLSearchParams({
+                    prefix:       this.prefix,
+                    length:       this.length,
                     charset_mode: this.charsetMode,
                 }));
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 this.examples = data.examples ?? [];
             } catch (e) {
+                console.error('Preview error:', e);
                 this.examples = [];
             } finally {
                 this.loadingPreview = false;

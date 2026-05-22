@@ -3,17 +3,24 @@
 
 @section('topbar-actions')
     <div class="flex gap-2">
-        <a href="{{ route('billing.create', ['member_id' => $member->id]) }}" class="btn-secondary">+ Invoice</a>
+        <a href="{{ route('billing.create', ['member_id' => $member->id]) }}" class="btn-secondary">
+            + Invoice
+        </a>
         <a href="{{ route('members.edit', $member) }}" class="btn-secondary">Edit</a>
 
-        {{-- Toggle Status dengan modal konfirmasi --}}
+        {{-- Toggle Status --}}
         @if($member->status === 'active')
-            <button type="button" onclick="openIsolirModal()" class="btn-danger">Isolir</button>
-        @else
-            <form method="POST" action="{{ route('members.toggle-status', $member) }}">
-                @csrf @method('PATCH')
-                <button type="submit" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">Aktifkan</button>
-            </form>
+            <button type="button"
+                    data-modal-open="modal-isolir-{{ $member->id }}"
+                    class="btn-danger">
+                Isolir
+            </button>
+        @elseif($member->status === 'isolated')
+            <button type="button"
+                    data-modal-open="modal-aktif-{{ $member->id }}"
+                    class="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-sm font-semibold rounded-xl shadow-md hover:from-emerald-400 hover:to-green-500 transition-all">
+                Aktifkan
+            </button>
         @endif
 
         <a href="{{ route('members.index') }}" class="btn-ghost">Kembali</a>
@@ -25,64 +32,61 @@
 
     {{-- Info Utama --}}
     <div class="card">
-        <div class="card-header">Informasi Member</div>
+        <div class="card-header">
+            <span class="card-title">Informasi Member</span>
+            {{-- Status badge --}}
+            @php
+                $statusColor = match($member->status) {
+                    'active'   => 'badge-green',
+                    'isolated' => 'badge-red',
+                    'expired'  => 'badge-slate',
+                    default    => 'badge-yellow',
+                };
+            @endphp
+            <span class="badge {{ $statusColor }}">{{ $member->status_label }}</span>
+        </div>
         <div class="card-body">
             <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide">Username</dt>
+                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Username</dt>
                     <dd class="font-mono font-semibold text-slate-800 mt-1">{{ $member->username }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide">Paket</dt>
+                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Paket</dt>
                     <dd class="font-medium mt-1">{{ $member->plan?->name ?? '-' }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide">Status</dt>
-                    <dd class="mt-1">
-                        @php
-                            $color = match($member->status) {
-                                'active'   => 'bg-green-100 text-green-700',
-                                'isolated' => 'bg-red-100 text-red-700',
-                                'expired'  => 'bg-gray-100 text-gray-600',
-                                default    => 'bg-yellow-100 text-yellow-700',
-                            };
-                        @endphp
-                        <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $color }}">
-                            {{ $member->status_label }}
-                        </span>
-                    </dd>
+                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Harga</dt>
+                    <dd class="font-medium mt-1 tabular-nums">{{ $member->price_snapshot_label }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide">Harga</dt>
-                    <dd class="font-medium mt-1">{{ $member->price_snapshot_label }}</dd>
+                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Simultaneous Use</dt>
+                    <dd class="mt-1">{{ $member->simultaneous_use }}x sesi</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide">Simultaneous Use</dt>
-                    <dd class="mt-1">{{ $member->simultaneous_use }}x</dd>
-                </div>
-                <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide">Aktif Sejak</dt>
+                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Aktif Sejak</dt>
                     <dd class="mt-1">{{ $member->activated_at?->format('d M Y') ?? '-' }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide">Pertama Login</dt>
+                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Pertama Login</dt>
                     <dd class="mt-1">{{ $member->first_login_at?->format('d M Y H:i') ?? '-' }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide">Expired</dt>
-                    <dd class="mt-1 {{ $member->expired_at?->isPast() ? 'text-red-600 font-medium' : '' }}">
+                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Expired</dt>
+                    <dd class="mt-1 {{ $member->expired_at?->isPast() ? 'text-red-600 font-semibold' : '' }}">
                         {{ $member->expired_at?->format('d M Y H:i') ?? '-' }}
                     </dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide">Dibuat</dt>
+                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Dibuat</dt>
                     <dd class="mt-1">{{ $member->created_at?->format('d M Y') ?? '-' }}</dd>
                 </div>
             </dl>
+
             @if($member->notes)
             <div class="mt-4 pt-4 border-t border-slate-100">
-                <p class="text-xs text-slate-400 uppercase tracking-wide">Catatan</p>
-                <p class="mt-1 text-sm text-slate-600">{{ $member->notes }}</p>
+                <p class="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-1">Catatan</p>
+                <p class="text-sm text-slate-600">{{ $member->notes }}</p>
             </div>
             @endif
         </div>
@@ -90,61 +94,54 @@
 
     {{-- Riwayat Invoice --}}
     <div class="card">
-        <div class="card-header flex items-center justify-between">
-            <span>Riwayat Invoice</span>
+        <div class="card-header">
+            <span class="card-title">Riwayat Invoice</span>
             <a href="{{ route('billing.create', ['member_id' => $member->id]) }}"
-               class="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">+ Buat Invoice</a>
+               class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                + Buat Invoice
+            </a>
         </div>
         @if($invoices->isEmpty())
-            <div class="py-10 text-center text-slate-400 text-sm">Belum ada invoice untuk member ini.</div>
+            <div class="py-10 text-center text-slate-400 text-sm">
+                Belum ada invoice untuk member ini.
+            </div>
         @else
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th class="text-left px-4 py-3 font-medium text-slate-600">PERIODE</th>
-                            <th class="text-left px-4 py-3 font-medium text-slate-600">NOMINAL</th>
-                            <th class="text-left px-4 py-3 font-medium text-slate-600">JATUH TEMPO</th>
-                            <th class="text-left px-4 py-3 font-medium text-slate-600">STATUS</th>
-                            <th class="text-right px-4 py-3 font-medium text-slate-600">AKSI</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Periode</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Nominal</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Jatuh Tempo</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Status</th>
+                            <th class="text-right px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @foreach ($invoices as $invoice)
-                        @php
-                            $sc = match($invoice->status) {
-                                'paid'      => 'bg-green-100 text-green-700',
-                                'overdue'   => 'bg-red-100 text-red-700',
-                                'cancelled' => 'bg-gray-100 text-gray-500',
-                                default     => 'bg-yellow-100 text-yellow-700',
-                            };
-                            $sl = match($invoice->status) {
-                                'paid' => 'Lunas', 'overdue' => 'Overdue',
-                                'cancelled' => 'Batal', default => 'Pending',
-                            };
-                        @endphp
-                        <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-2.5 text-xs text-slate-600">
-                                {{ \Carbon\Carbon::parse($invoice->period_start)->format('d M Y') }}
-                                &ndash;
-                                {{ \Carbon\Carbon::parse($invoice->period_end)->format('d M Y') }}
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-4 py-3 text-xs text-slate-600 tabular-nums">
+                                {{ $invoice->period_start->format('d M Y') }}
+                                <span class="text-slate-400">–</span>
+                                {{ $invoice->period_end->format('d M Y') }}
                             </td>
-                            <td class="px-4 py-2.5 font-medium tabular-nums">
-                                Rp {{ number_format($invoice->amount, 0, ',', '.') }}
+                            <td class="px-4 py-3 font-semibold tabular-nums">{{ $invoice->amount_label }}</td>
+                            <td class="px-4 py-3 text-xs tabular-nums {{ $invoice->due_date->isPast() && $invoice->status !== 'paid' ? 'text-red-600 font-semibold' : 'text-slate-500' }}">
+                                {{ $invoice->due_date->format('d M Y') }}
                             </td>
-                            <td class="px-4 py-2.5 text-xs {{ \Carbon\Carbon::parse($invoice->due_date)->isPast() && $invoice->status !== 'paid' ? 'text-red-600 font-medium' : 'text-slate-500' }}">
-                                {{ \Carbon\Carbon::parse($invoice->due_date)->format('d M Y') }}
+                            <td class="px-4 py-3">
+                                <span class="badge {{ $invoice->status_badge_class }}">{{ $invoice->status_label }}</span>
                             </td>
-                            <td class="px-4 py-2.5">
-                                <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $sc }}">{{ $sl }}</span>
-                            </td>
-                            <td class="px-4 py-2.5 text-right">
+                            <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-3">
-                                    <a href="{{ route('billing.show', $invoice) }}" class="text-xs text-blue-600 hover:text-blue-800">Detail</a>
+                                    <a href="{{ route('billing.show', $invoice) }}"
+                                       class="text-xs text-indigo-600 hover:text-indigo-800">Detail</a>
                                     @if(in_array($invoice->status, ['pending', 'overdue']))
-                                    <a href="{{ route('billing.pay.form', $invoice) }}" class="text-xs text-green-600 hover:text-green-800">Bayar</a>
+                                    <a href="{{ route('billing.pay.form', $invoice) }}"
+                                       class="text-xs text-green-600 hover:text-green-800">Bayar</a>
                                     @endif
-                                    <a href="{{ route('billing.pdf', $invoice) }}" class="text-xs text-slate-500 hover:text-slate-700" target="_blank">PDF</a>
+                                    <a href="{{ route('billing.pdf', $invoice) }}"
+                                       class="text-xs text-slate-500 hover:text-slate-700" target="_blank">PDF</a>
                                 </div>
                             </td>
                         </tr>
@@ -155,37 +152,43 @@
         @endif
     </div>
 
-    {{-- Sesi Terakhir --}}
+    {{-- Riwayat Sesi (radacct) --}}
     <div class="card">
-        <div class="card-header">Riwayat Sesi (20 Terakhir)</div>
+        <div class="card-header">
+            <span class="card-title">Riwayat Sesi (20 Terakhir)</span>
+        </div>
         @if($sessions->isEmpty())
-            <div class="py-10 text-center text-slate-400 text-sm">Belum ada sesi tercatat di radacct.</div>
+            <div class="py-10 text-center text-slate-400 text-sm">
+                Belum ada sesi tercatat di radacct.
+            </div>
         @else
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
-                        <th class="text-left px-4 py-3 font-medium text-slate-600">LOGIN</th>
-                        <th class="text-left px-4 py-3 font-medium text-slate-600">LOGOUT</th>
-                        <th class="text-left px-4 py-3 font-medium text-slate-600">DURASI</th>
-                        <th class="text-left px-4 py-3 font-medium text-slate-600">NAS / IP</th>
+                        <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Login</th>
+                        <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Logout</th>
+                        <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Durasi</th>
+                        <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">NAS / IP</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @foreach ($sessions as $s)
-                    <tr class="hover:bg-slate-50">
-                        <td class="px-4 py-2 text-xs">{{ $s->acctstarttime }}</td>
-                        <td class="px-4 py-2 text-xs text-slate-500">
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-2.5 text-xs tabular-nums">{{ $s->acctstarttime }}</td>
+                        <td class="px-4 py-2.5 text-xs text-slate-500">
                             {{ $s->acctstoptime ?? '—' }}
                             @if(!$s->acctstoptime)
-                                <span class="ml-1 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Online</span>
+                                <span class="ml-1 badge badge-green text-[10px] py-0">Online</span>
                             @endif
                         </td>
-                        <td class="px-4 py-2 text-xs text-slate-500">
+                        <td class="px-4 py-2.5 text-xs text-slate-500">
                             @php $sec = $s->acctsessiontime ?? 0; @endphp
                             {{ $sec >= 3600 ? floor($sec/3600).'j '.floor(($sec%3600)/60).'m' : floor($sec/60).'m '.($sec%60).'d' }}
                         </td>
-                        <td class="px-4 py-2 text-xs text-slate-500">{{ $s->nasipaddress ?? '-' }} / {{ $s->framedipaddress ?? '-' }}</td>
+                        <td class="px-4 py-2.5 text-xs text-slate-500 font-mono">
+                            {{ $s->nasipaddress ?? '-' }} / {{ $s->framedipaddress ?? '-' }}
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -199,11 +202,13 @@
         <div class="card-body">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="font-medium text-slate-700">Hapus Member</p>
-                    <p class="text-sm text-slate-400 mt-0.5">Menghapus member dan semua data RADIUS terkait.</p>
+                    <p class="font-semibold text-slate-700">Hapus Member</p>
+                    <p class="text-sm text-slate-400 mt-0.5">
+                        Menghapus member dan semua data RADIUS terkait. Tidak bisa dibatalkan.
+                    </p>
                 </div>
                 <form method="POST" action="{{ route('members.destroy', $member) }}"
-                    onsubmit="return confirm('Yakin hapus member {{ $member->username }}?')">
+                      onsubmit="return confirm('Yakin hapus member {{ $member->username }}? Aksi ini tidak bisa dibatalkan.')">
                     @csrf @method('DELETE')
                     <button type="submit" class="btn-danger">Hapus Member</button>
                 </form>
@@ -213,77 +218,32 @@
 
 </div>
 
-{{-- Modal Konfirmasi Isolir --}}
+{{-- Modal Konfirmasi Isolir (pakai x-confirm-modal component dengan DB preference) --}}
 @if($member->status === 'active')
-<div id="modal-isolir" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
-    {{-- Backdrop --}}
-    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeIsolirModal()"></div>
+<x-confirm-modal
+    id="modal-isolir-{{ $member->id }}"
+    title="Isolir Member?"
+    message="Member {{ $member->username }} akan diblokir dari jaringan."
+    confirm-label="Ya, Isolir"
+    confirm-class="btn-danger"
+    action-url="{{ route('members.toggle-status', $member) }}"
+    method="PATCH"
+    preference-key="confirm_isolir_member_{{ $member->id }}"
+    info-text="ℹ️  Tahap 1: user yang sedang online mungkin tetap terkoneksi hingga sesi berakhir sendiri."
+/>
+@endif
 
-    {{-- Panel --}}
-    <div class="absolute inset-0 flex items-center justify-center p-4">
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-slide-up">
-
-            {{-- Icon warning --}}
-            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mx-auto mb-4">
-                <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                </svg>
-            </div>
-
-            <h3 class="text-base font-bold text-slate-800 text-center">Isolir Member?</h3>
-            <p class="mt-2 text-sm text-slate-500 text-center">
-                Member <span class="font-semibold text-slate-700 font-mono">{{ $member->username }}</span> akan diblokir
-                dari jaringan. Koneksi aktif akan terputus.
-            </p>
-
-            <div class="mt-4 flex items-start gap-2.5">
-                <input type="checkbox" id="no-confirm-isolir" class="mt-0.5 accent-red-500 cursor-pointer">
-                <label for="no-confirm-isolir" class="text-xs text-slate-500 cursor-pointer leading-relaxed">
-                    Jangan tanya lagi untuk member ini di sesi ini
-                </label>
-            </div>
-
-            <div class="mt-5 flex gap-3">
-                <button type="button" onclick="closeIsolirModal()"
-                    class="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
-                    Batal
-                </button>
-                <form method="POST" action="{{ route('members.toggle-status', $member) }}" class="flex-1">
-                    @csrf @method('PATCH')
-                    <button type="submit"
-                        class="w-full px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors">
-                        Ya, Isolir Sekarang
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-@push('scripts')
-<script>
-const SKIP_KEY = 'skip_isolir_confirm_{{ $member->id }}';
-
-function openIsolirModal() {
-    if (sessionStorage.getItem(SKIP_KEY) === '1') {
-        document.querySelector('#modal-isolir form').submit();
-        return;
-    }
-    document.getElementById('modal-isolir').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeIsolirModal() {
-    const skip = document.getElementById('no-confirm-isolir')?.checked;
-    if (skip) sessionStorage.setItem(SKIP_KEY, '1');
-    document.getElementById('modal-isolir').classList.add('hidden');
-    document.body.style.overflow = '';
-}
-
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeIsolirModal();
-});
-</script>
-@endpush
+{{-- Modal Konfirmasi Aktifkan --}}
+@if($member->status === 'isolated')
+<x-confirm-modal
+    id="modal-aktif-{{ $member->id }}"
+    title="Aktifkan Member?"
+    message="Member {{ $member->username }} akan dapat login kembali ke jaringan."
+    confirm-label="Ya, Aktifkan"
+    confirm-class="btn-primary"
+    action-url="{{ route('members.toggle-status', $member) }}"
+    method="PATCH"
+    preference-key="confirm_aktif_member_{{ $member->id }}"
+/>
 @endif
 @endsection

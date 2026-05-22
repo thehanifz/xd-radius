@@ -10,9 +10,11 @@ use Illuminate\Support\Str;
 
 class VoucherService
 {
-    public function __construct(protected RadiusService $radius) {}
-
-    public function generate(array $data): VoucherBatch
+    /**
+     * Generate batch voucher baru.
+     * Dipanggil dari VoucherController::generate()
+     */
+    public function generateBatch(array $data): VoucherBatch
     {
         $plan = Plan::findOrFail($data['plan_id']);
 
@@ -32,9 +34,9 @@ class VoucherService
             $vouchers    = [];
             $usedNames   = [];
             $attempts    = 0;
-            $maxAttempts = $data['quantity'] * 10;
+            $maxAttempts = (int) $data['quantity'] * 10;
 
-            while (count($vouchers) < $data['quantity'] && $attempts < $maxAttempts) {
+            while (count($vouchers) < (int) $data['quantity'] && $attempts < $maxAttempts) {
                 $attempts++;
                 $username = $this->generateUsername(
                     $data['prefix'] ?? '',
@@ -50,7 +52,7 @@ class VoucherService
                 $vouchers[] = [
                     'batch_id'       => $batch->id,
                     'username'       => $username,
-                    'password_plain' => $username,
+                    'password_plain' => $username, // username = password untuk voucher
                     'plan_id'        => $plan->id,
                     'price_snapshot' => $plan->price,
                     'status'         => 'active',
@@ -60,8 +62,13 @@ class VoucherService
                 ];
             }
 
+            if (empty($vouchers)) {
+                throw new \RuntimeException('Gagal generate voucher: tidak ada username unik yang bisa dibuat.');
+            }
+
             Voucher::insert($vouchers);
 
+            // Sync ke FreeRADIUS tables
             $rateLimit     = "{$plan->download_speed_kbps}k/{$plan->upload_speed_kbps}k";
             $radchecks     = [];
             $radreplies    = [];
@@ -69,9 +76,23 @@ class VoucherService
 
             foreach ($vouchers as $v) {
                 $u = $v['username'];
-                $radchecks[]     = ['username' => $u, 'attribute' => 'Cleartext-Password', 'op' => ':=', 'value' => $u];
-                $radreplies[]    = ['username' => $u, 'attribute' => 'Mikrotik-Rate-Limit', 'op' => ':=', 'value' => $rateLimit];
-                $radusergroups[] = ['username' => $u, 'groupname' => $plan->radius_group_name, 'priority' => 1];
+                $radchecks[]     = [
+                    'username'  => $u,
+                    'attribute' => 'Cleartext-Password',
+                    'op'        => ':=',
+                    'value'     => $u, // username = password untuk voucher
+                ];
+                $radreplies[]    = [
+                    'username'  => $u,
+                    'attribute' => 'Mikrotik-Rate-Limit',
+                    'op'        => ':=',
+                    'value'     => $rateLimit,
+                ];
+                $radusergroups[] = [
+                    'username'  => $u,
+                    'groupname' => $plan->radius_group_name,
+                    'priority'  => 1,
+                ];
             }
 
             DB::table('radcheck')->insert($radchecks);
@@ -82,9 +103,15 @@ class VoucherService
         });
     }
 
-    private function generateUsername(string $prefix, int $length, string $charsetMode, array $used): ?string
-    {
-        // Nilai sesuai DB constraint: uppercase, lowercase, numeric, mixed
+    /**
+     * Generate username unik dengan format sesuai konfigurasi batch.
+     */
+    private function generateUsername(
+        string $prefix,
+        int $length,
+        string $charsetMode,
+        array $used
+    ): ?string {
         $chars = match ($charsetMode) {
             'numeric'   => '0123456789',
             'uppercase' => 'ABCDEFGHJKLMNPQRSTUVWXYZ',
@@ -110,14 +137,26 @@ class VoucherService
 
             if (!$exists) return $username;
         }
+
         return null;
     }
 
+    /**
+     * Generate batch code unik: BATCH-YYYYMMDD-XXXXXX
+     */
     private function generateBatchCode(): string
     {
-        return 'BATCH-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+        do {
+            $code = 'BATCH-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+        } while (VoucherBatch::where('batch_code', $code)->exists());
+
+        return $code;
     }
 
+    /**
+     * Generate contoh username untuk preview di form generate voucher.
+     * Method static agar bisa dipanggil tanpa instance.
+     */
     public static function previewExample(string $prefix, int $length, string $charsetMode): string
     {
         $chars = match ($charsetMode) {
@@ -136,6 +175,7 @@ class VoucherService
         for ($i = 0; $i < $suffixLength; $i++) {
             $suffix .= $charArr[array_rand($charArr)];
         }
+
         return $prefix . $suffix;
     }
 }

@@ -5,39 +5,53 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\UserPreferenceController;
 use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 
-// Auth
+// ─── Auth ────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
     Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
 });
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
-// App
+// ─── App (requires login) ────────────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
+
+    // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Plans
+    // ─── User Preferences (DB-based, bukan localStorage) ─────────────────────
+    Route::get('/user/preferences',          [UserPreferenceController::class, 'index'])->name('preferences.index');
+    Route::post('/user/preferences',         [UserPreferenceController::class, 'store'])->name('preferences.store');
+    Route::delete('/user/preferences/{key}', [UserPreferenceController::class, 'destroy'])->name('preferences.destroy');
+
+    // ─── Plans ───────────────────────────────────────────────────────────────
     Route::resource('plans', PlanController::class);
     Route::patch('/plans/{plan}/toggle', [PlanController::class, 'toggleActive'])
         ->name('plans.toggle');
 
-    // Vouchers
-    Route::get('/vouchers',                         [VoucherController::class, 'index'])->name('vouchers.index');
-    Route::get('/vouchers/create',                  [VoucherController::class, 'create'])->name('vouchers.create');
-    Route::post('/vouchers/generate',               [VoucherController::class, 'generate'])->name('vouchers.generate');
-    Route::get('/vouchers/preview',                 [VoucherController::class, 'preview'])->name('vouchers.preview');
-    Route::get('/vouchers/batch/{batch}/print',     [VoucherController::class, 'print'])->name('vouchers.print');
-    Route::get('/vouchers/{voucher}',               [VoucherController::class, 'show'])->name('vouchers.show');
+    // ─── Vouchers ────────────────────────────────────────────────────────────
+    Route::get('/vouchers',                        [VoucherController::class, 'index'])->name('vouchers.index');
+    Route::get('/vouchers/create',                 [VoucherController::class, 'create'])->name('vouchers.create');
+    Route::post('/vouchers/generate',              [VoucherController::class, 'generate'])->name('vouchers.generate');
 
-    // Members
+    // AJAX preview format username (dipanggil Alpine.js, BUKAN batch preview)
+    Route::get('/vouchers/preview-format',         [VoucherController::class, 'previewFormat'])->name('vouchers.preview-format');
+
+    // Print — harus sebelum /{voucher} agar tidak tertangkap sebagai show
+    Route::get('/vouchers/batch/{batch}/print',    [VoucherController::class, 'print'])->name('vouchers.print');
+
+    // Show detail voucher
+    Route::get('/vouchers/{voucher}',              [VoucherController::class, 'show'])->name('vouchers.show');
+
+    // ─── Members ─────────────────────────────────────────────────────────────
     Route::resource('members', MemberController::class);
     Route::patch('/members/{member}/toggle-status', [MemberController::class, 'toggleStatus'])
         ->name('members.toggle-status');
 
-    // Billing
+    // ─── Billing ─────────────────────────────────────────────────────────────
     Route::get('/billing',                     [BillingController::class, 'index'])->name('billing.index');
     Route::get('/billing/create',              [BillingController::class, 'create'])->name('billing.create');
     Route::post('/billing',                    [BillingController::class, 'store'])->name('billing.store');
