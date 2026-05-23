@@ -35,19 +35,36 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="form-label">Username API <span class="text-red-500">*</span></label>
-                        <input type="text" name="api_username" value="{{ old('api_username', $router->api_username) }}"
-                            class="form-input font-mono @error('api_username') border-red-400 @enderror">
-                        @error('api_username')<p class="form-error">{{ $message }}</p>@enderror
+                {{-- RouterOS API --}}
+                <div class="rounded-lg border border-slate-200 p-4 space-y-4">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Kredensial RouterOS API</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Username API <span class="text-red-500">*</span></label>
+                            <input type="text" name="api_username" value="{{ old('api_username', $router->api_username) }}"
+                                class="form-input font-mono @error('api_username') border-red-400 @enderror">
+                            @error('api_username')<p class="form-error">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label class="form-label">Password API</label>
+                            <input type="password" name="api_secret"
+                                class="form-input @error('api_secret') border-red-400 @enderror"
+                                placeholder="Kosongkan jika tidak berubah">
+                            @error('api_secret')<p class="form-error">{{ $message }}</p>@enderror
+                        </div>
                     </div>
+                </div>
+
+                {{-- FreeRADIUS NAS Secret --}}
+                <div class="rounded-lg border border-indigo-100 bg-indigo-50/40 p-4 space-y-2">
+                    <p class="text-xs font-semibold text-indigo-600 uppercase tracking-wide">RADIUS Shared Secret</p>
+                    <p class="text-xs text-slate-500">Secret yang sama harus diisi di MikroTik: <strong>Radius → Secret</strong>. Kosongkan jika tidak ingin mengubah.</p>
                     <div>
-                        <label class="form-label">Password API</label>
-                        <input type="password" name="api_secret"
-                            class="form-input @error('api_secret') border-red-400 @enderror"
+                        <label class="form-label">RADIUS Secret</label>
+                        <input type="text" name="radius_secret" value="{{ old('radius_secret', $router->radius_secret) }}"
+                            class="form-input font-mono @error('radius_secret') border-red-400 @enderror"
                             placeholder="Kosongkan jika tidak berubah">
-                        @error('api_secret')<p class="form-error">{{ $message }}</p>@enderror
+                        @error('radius_secret')<p class="form-error">{{ $message }}</p>@enderror
                     </div>
                 </div>
 

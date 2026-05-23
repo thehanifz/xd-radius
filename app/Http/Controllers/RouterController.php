@@ -21,22 +21,26 @@ class RouterController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'         => ['required', 'string', 'max:100'],
-            'ip_address'   => ['required', 'ip'],
-            'api_port'     => ['required', 'integer', 'min:1', 'max:65535'],
-            'api_username' => ['required', 'string', 'max:100'],
-            'api_secret'   => ['required', 'string', 'max:255'],
-            'location'     => ['nullable', 'string', 'max:200'],
-            'is_active'    => ['nullable', 'boolean'],
+            'name'          => ['required', 'string', 'max:100'],
+            'ip_address'    => ['required', 'ip'],
+            'api_port'      => ['required', 'integer', 'min:1', 'max:65535'],
+            'api_username'  => ['required', 'string', 'max:100'],
+            'api_secret'    => ['required', 'string', 'max:255'],
+            'radius_secret' => ['nullable', 'string', 'max:255'],
+            'location'      => ['nullable', 'string', 'max:200'],
+            'is_active'     => ['nullable', 'boolean'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
 
         $router = Router::create($data);
 
+        // Sync ke tabel nas FreeRADIUS
+        $router->syncToNas();
+
         return redirect()
             ->route('routers.show', $router)
-            ->with('success', "Router '{$router->name}' berhasil ditambahkan.");
+            ->with('success', "Router '{$router->name}' berhasil ditambahkan" . ($router->radius_secret ? ' dan didaftarkan ke FreeRADIUS.' : '.'));
     }
 
     public function show(Router $router)
@@ -52,23 +56,37 @@ class RouterController extends Controller
     public function update(Request $request, Router $router)
     {
         $data = $request->validate([
-            'name'         => ['required', 'string', 'max:100'],
-            'ip_address'   => ['required', 'ip'],
-            'api_port'     => ['required', 'integer', 'min:1', 'max:65535'],
-            'api_username' => ['required', 'string', 'max:100'],
-            'api_secret'   => ['nullable', 'string', 'max:255'],
-            'location'     => ['nullable', 'string', 'max:200'],
-            'is_active'    => ['nullable', 'boolean'],
+            'name'          => ['required', 'string', 'max:100'],
+            'ip_address'    => ['required', 'ip'],
+            'api_port'      => ['required', 'integer', 'min:1', 'max:65535'],
+            'api_username'  => ['required', 'string', 'max:100'],
+            'api_secret'    => ['nullable', 'string', 'max:255'],
+            'radius_secret' => ['nullable', 'string', 'max:255'],
+            'location'      => ['nullable', 'string', 'max:200'],
+            'is_active'     => ['nullable', 'boolean'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active', false);
 
-        // Kosong = tidak ubah secret
+        // Kosong = tidak ubah api_secret
         if (empty($data['api_secret'])) {
             unset($data['api_secret']);
         }
 
+        // Simpan old IP sebelum update (untuk update nas jika IP berubah)
+        $oldIp = $router->ip_address;
+
         $router->update($data);
+
+        // Jika IP berubah, hapus entry nas lama dulu
+        if ($oldIp !== $router->ip_address) {
+            \Illuminate\Support\Facades\DB::table('nas')
+                ->where('nasname', $oldIp)
+                ->delete();
+        }
+
+        // Sync ke tabel nas FreeRADIUS
+        $router->syncToNas();
 
         return redirect()
             ->route('routers.show', $router)
@@ -78,6 +96,10 @@ class RouterController extends Controller
     public function destroy(Router $router)
     {
         $name = $router->name;
+
+        // Hapus dari tabel nas FreeRADIUS
+        $router->removeFromNas();
+
         $router->delete();
 
         return redirect()

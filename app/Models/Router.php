@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -19,6 +20,7 @@ class Router extends Model
         'api_port',
         'api_username',
         'api_secret',
+        'radius_secret',
         'location',
         'is_active',
         'last_connection_status',
@@ -41,6 +43,38 @@ class Router extends Model
             ->logOnly(['name', 'ip_address', 'api_port', 'api_username', 'location', 'is_active'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
+    }
+
+    // --- Sync ke tabel nas FreeRADIUS ---
+
+    /**
+     * Upsert baris di tabel nas agar FreeRADIUS mengenali router ini sebagai RADIUS client.
+     * Dipanggil setelah store / update.
+     */
+    public function syncToNas(): void
+    {
+        if (! $this->radius_secret) return;
+
+        DB::table('nas')->updateOrInsert(
+            ['nasname' => $this->ip_address],
+            [
+                'shortname'   => $this->name,
+                'type'        => 'other',
+                'secret'      => $this->radius_secret,
+                'description' => $this->location ?? $this->name,
+                'server'      => null,
+                'community'   => null,
+                'ports'       => 0,
+            ]
+        );
+    }
+
+    /**
+     * Hapus baris dari tabel nas saat router dihapus.
+     */
+    public function removeFromNas(): void
+    {
+        DB::table('nas')->where('nasname', $this->ip_address)->delete();
     }
 
     // --- Accessors ---
