@@ -1,66 +1,308 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 📡 RadiusManager — xd-radius
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**RadiusManager** adalah panel manajemen jaringan hotspot berbasis web yang dibangun di atas Laravel 11 + FreeRADIUS + PostgreSQL. Dirancang untuk ISP kecil dan RT/RW Net yang membutuhkan manajemen voucher, member, billing, dan monitoring sesi secara terpusat.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## ✨ Fitur Utama
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Modul | Fitur |
+|---|---|
+| **Voucher** | Generate batch, cetak kartu, expire otomatis |
+| **Member** | Paket internet, masa aktif, toggle isolir |
+| **Billing** | Invoice otomatis, pembayaran, PDF |
+| **Monitoring** | Sesi online real-time, deteksi stale session |
+| **Router / NAS** | Manajemen MikroTik, sync ke FreeRADIUS otomatis |
+| **Operator** | Multi-user dengan role Superuser / Operator |
+| **Laporan** | Laporan bulanan, export PDF |
+| **Pengaturan** | Nama app, SSID, threshold, billing config |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 🏗️ Arsitektur
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+```
+MikroTik (NAS)
+  │
+  ├──► FreeRADIUS :1812/:1813   ← Auth & Accounting
+  │         │
+  │         └── Baca: radcheck, radreply, nas
+  │         └── Tulis: radacct, radpostauth
+  │
+  └──► ◄── xd-radius (Laravel) ← Web Management Panel
+                │
+                └── PostgreSQL (satu DB, dua schema)
+```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- **FreeRADIUS** menangani semua autentikasi dan accounting
+- **xd-radius** mengelola data user, billing, dan konfigurasi
+- **MikroTik** dikonfigurasi sebagai RADIUS client dan dikontrol via RouterOS API untuk CoA
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## ⚙️ Kebutuhan Sistem
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+| Komponen | Versi Minimum |
+|---|---|
+| PHP | 8.2+ |
+| Laravel | 11.x |
+| PostgreSQL | 14+ |
+| FreeRADIUS | 3.x |
+| Composer | 2.x |
+| Node.js | 18+ (untuk asset build) |
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## 🚀 Instalasi
 
-## Contributing
+### 1. Clone Repository
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+git clone https://github.com/thehanifz/xd-radius.git
+cd xd-radius
+```
 
-## Code of Conduct
+### 2. Install Dependencies
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+composer install
+npm install && npm run build
+```
 
-## Security Vulnerabilities
+### 3. Konfigurasi Environment
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## License
+Edit `.env`, sesuaikan konfigurasi database:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```env
+APP_NAME=RadiusManager
+APP_URL=http://your-domain.com
+
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5433
+DB_DATABASE=radius_db
+DB_USERNAME=radius_user
+DB_PASSWORD=your_password
+```
+
+> ⚠️ **Pastikan** database yang digunakan **sama** dengan yang dikonfigurasi di FreeRADIUS (`radius_db`), agar tabel `radcheck`, `radacct`, `nas`, dll dapat diakses bersama.
+
+### 4. Migrasi Database
+
+```bash
+php artisan migrate
+php artisan db:seed --class=SystemSettingSeeder
+```
+
+### 5. Setup Sudoers untuk Auto-Reload FreeRADIUS
+
+Agar xd-radius dapat reload FreeRADIUS otomatis setelah perubahan router/NAS:
+
+```bash
+echo "www-data ALL=(ALL) NOPASSWD: /bin/systemctl reload freeradius" \
+  | sudo tee /etc/sudoers.d/freeradius-reload
+chmod 440 /etc/sudoers.d/freeradius-reload
+```
+
+### 6. Konfigurasi FreeRADIUS (baca NAS dari database)
+
+Pastikan di `/etc/freeradius/3.0/mods-enabled/sql`:
+
+```
+read_clients = yes
+client_table = "nas"
+```
+
+Dan `radius_db` mengarah ke database yang sama dengan xd-radius.
+
+### 7. Queue Worker (opsional, untuk job scheduler)
+
+```bash
+php artisan queue:work --daemon
+```
+
+Atau gunakan Supervisor. Scheduler dijalankan via cron:
+
+```bash
+* * * * * cd /path/to/xd-radius && php artisan schedule:run >> /dev/null 2>&1
+```
+
+### 8. Web Server
+
+Arahkan document root ke `/public`. Contoh Nginx:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    root /var/www/xd-radius/public;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+}
+```
+
+---
+
+## 🔧 Setup Awal (Onboarding)
+
+### Langkah 1 — Buat Akun Super Administrator
+
+Buka browser ke:
+```
+https://your-domain.com/setup
+```
+
+Isi nama, email, dan password untuk akun Superuser pertama.
+
+### Langkah 2 — Pengaturan Sistem
+
+Masuk ke **Pengaturan Sistem** (`/settings`) dan sesuaikan:
+
+| Key | Keterangan |
+|---|---|
+| `app_name` | Nama aplikasi (tampil di header & PDF) |
+| `ssid_name` | Nama WiFi yang dicetak di voucher |
+| `stale_threshold_minutes` | Menit sebelum sesi dianggap stale (default: 30) |
+| `invoice_days_before` | H-N generate invoice sebelum expire (default: 7) |
+| `overdue_isolate_auto` | Auto isolir member overdue (default: off) |
+
+### Langkah 3 — Tambah Router / NAS
+
+Masuk ke **Router / NAS** (`/routers/create`) dan isi:
+
+**Kredensial RouterOS API** (untuk CoA & kontrol MikroTik):
+- IP Address MikroTik
+- API Port (default: `8728`)
+- Username & Password API
+
+**RADIUS Shared Secret** (untuk autentikasi FreeRADIUS):
+- Isi secret yang sama persis dengan yang akan diisi di MikroTik
+
+Setelah simpan, xd-radius otomatis:
+1. Insert/update tabel `nas` di PostgreSQL
+2. Reload FreeRADIUS (tanpa memutus sesi aktif)
+
+### Langkah 4 — Konfigurasi MikroTik
+
+Di **Winbox** → **Radius** → **Add**:
+
+| Field | Value |
+|---|---|
+| Service | `hotspot` (dan/atau `ppp`) |
+| Address | IP server FreeRADIUS |
+| Secret | Secret yang diisi di xd-radius |
+| Authentication Port | `1812` |
+| Accounting Port | `1813` |
+| Timeout | `3000` ms |
+
+Aktifkan RADIUS di **Hotspot** → **Server Profiles** → centang **Use RADIUS**.
+
+---
+
+## 📋 Contoh Penggunaan
+
+### Generate Voucher
+
+1. Buat **Paket Internet** dulu di `/plans/create`
+   - Nama paket, harga, masa aktif (hari), batas data/kecepatan
+2. Buka `/vouchers/create`
+3. Pilih paket, isi jumlah voucher, prefix kode
+4. Klik **Generate** → voucher otomatis masuk `radcheck`
+5. Cetak via tombol **Print Batch**
+
+### Tambah Member Pascabayar
+
+1. Buka `/members/create`
+2. Isi nama, username RADIUS, paket, tanggal aktif
+3. Simpan → user otomatis masuk `radcheck` & `radreply`
+4. Invoice akan dibuat otomatis H-7 sebelum expire
+
+### Monitoring Sesi Online
+
+Buka `/online` → tampil semua sesi aktif dari `radacct`:
+- Username, IP, NAS, durasi, upload/download
+- Sesi yang tidak update lebih dari `stale_threshold_minutes` ditandai **Diduga Putus**
+
+### Laporan Bulanan
+
+Buka `/reports/monthly` → pilih bulan/tahun → tampil:
+- Total pendapatan, jumlah member aktif, voucher terjual
+- Export PDF siap cetak
+
+---
+
+## 🔒 Role & Akses
+
+| Role | Akses |
+|---|---|
+| **Superuser** | Semua fitur termasuk Operator, Router, Pengaturan |
+| **Operator** | Voucher, Member, Billing, Monitoring, Laporan |
+
+---
+
+## 📅 Scheduled Jobs
+
+| Job | Jadwal | Fungsi |
+|---|---|---|
+| `ReconcileStaleSessionsJob` | Setiap 5 menit | Tandai sesi stale |
+| `GenerateOverdueInvoicesJob` | Setiap hari 08:00 | Generate invoice jatuh tempo |
+| `AutoIsolateOverdueMembersJob` | Setiap hari 02:00 | Isolir member overdue (jika aktif) |
+| `SyncFirstLoginAtJob` | Setiap jam | Sinkronisasi first login member |
+
+---
+
+## 🛠️ Perintah Berguna
+
+```bash
+# Clear semua cache
+php artisan config:clear && php artisan cache:clear && php artisan view:clear
+
+# Cek status migration
+php artisan migrate:status
+
+# Jalankan scheduler manual
+php artisan schedule:run
+
+# Cek semua route
+php artisan route:list
+
+# Tail log aplikasi
+tail -f storage/logs/laravel.log
+```
+
+---
+
+## 📦 Tech Stack
+
+- **Backend**: Laravel 11, PHP 8.2
+- **Frontend**: Tailwind CSS (via CDN), Blade Templates
+- **Database**: PostgreSQL 14+
+- **AAA Server**: FreeRADIUS 3.x
+- **Activity Log**: spatie/laravel-activitylog
+- **PDF**: barryvdh/laravel-dompdf
+
+---
+
+## 📄 Lisensi
+
+MIT License — bebas digunakan dan dimodifikasi.
+
+---
+
+> Dibuat untuk kebutuhan manajemen jaringan RT/RW Net & ISP lokal Indonesia 🇮🇩
