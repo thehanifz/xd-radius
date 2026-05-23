@@ -5,6 +5,7 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\RouterController;
 use App\Http\Controllers\UserPreferenceController;
 use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
@@ -22,7 +23,7 @@ Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    // ─── User Preferences (DB-based, bukan localStorage) ─────────────────────
+    // ─── User Preferences (DB-based) ─────────────────────────────────────────
     Route::get('/user/preferences',          [UserPreferenceController::class, 'index'])->name('preferences.index');
     Route::post('/user/preferences',         [UserPreferenceController::class, 'store'])->name('preferences.store');
     Route::delete('/user/preferences/{key}', [UserPreferenceController::class, 'destroy'])->name('preferences.destroy');
@@ -36,14 +37,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/vouchers',                        [VoucherController::class, 'index'])->name('vouchers.index');
     Route::get('/vouchers/create',                 [VoucherController::class, 'create'])->name('vouchers.create');
     Route::post('/vouchers/generate',              [VoucherController::class, 'generate'])->name('vouchers.generate');
-
-    // AJAX preview format username (dipanggil Alpine.js, BUKAN batch preview)
     Route::get('/vouchers/preview-format',         [VoucherController::class, 'previewFormat'])->name('vouchers.preview-format');
-
-    // Print — harus sebelum /{voucher} agar tidak tertangkap sebagai show
     Route::get('/vouchers/batch/{batch}/print',    [VoucherController::class, 'print'])->name('vouchers.print');
-
-    // Show detail voucher
     Route::get('/vouchers/{voucher}',              [VoucherController::class, 'show'])->name('vouchers.show');
 
     // ─── Members ─────────────────────────────────────────────────────────────
@@ -60,4 +55,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/billing/{billing}/pay',      [BillingController::class, 'pay'])->name('billing.pay');
     Route::patch('/billing/{billing}/cancel',  [BillingController::class, 'cancel'])->name('billing.cancel');
     Route::get('/billing/{billing}/pdf',       [BillingController::class, 'pdf'])->name('billing.pdf');
+
+    // ─── Routers / NAS ───────────────────────────────────────────────────────
+    Route::resource('routers', RouterController::class);
+    Route::patch('/routers/{router}/toggle', [RouterController::class, 'toggleActive'])
+        ->name('routers.toggle');
 });

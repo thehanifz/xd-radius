@@ -55,6 +55,7 @@
             @if($role === 'superuser')
             <p class="section-divider">Manajemen</p>
             <x-nav-item route="plans.index" icon="package">Paket Internet</x-nav-item>
+            <x-nav-item route="routers.index" icon="server">Router / NAS</x-nav-item>
             @endif
         </nav>
 
