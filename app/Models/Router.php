@@ -29,7 +29,7 @@ class Router extends Model
     ];
 
     protected $casts = [
-        'api_secret'        => 'encrypted',   // AES-256-CBC via APP_KEY
+        'api_secret'        => 'encrypted',
         'api_port'          => 'integer',
         'is_active'         => 'boolean',
         'last_connected_at' => 'datetime',
@@ -49,7 +49,7 @@ class Router extends Model
 
     /**
      * Upsert baris di tabel nas agar FreeRADIUS mengenali router ini sebagai RADIUS client.
-     * Dipanggil setelah store / update.
+     * Hanya dijalankan jika radius_secret diisi.
      */
     public function syncToNas(): void
     {

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Router;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RouterController extends Controller
 {
@@ -35,8 +37,9 @@ class RouterController extends Controller
 
         $router = Router::create($data);
 
-        // Sync ke tabel nas FreeRADIUS
+        // Sync ke tabel nas & reload FreeRADIUS
         $router->syncToNas();
+        $this->reloadFreeRadius();
 
         return redirect()
             ->route('routers.show', $router)
@@ -80,13 +83,12 @@ class RouterController extends Controller
 
         // Jika IP berubah, hapus entry nas lama dulu
         if ($oldIp !== $router->ip_address) {
-            \Illuminate\Support\Facades\DB::table('nas')
-                ->where('nasname', $oldIp)
-                ->delete();
+            DB::table('nas')->where('nasname', $oldIp)->delete();
         }
 
-        // Sync ke tabel nas FreeRADIUS
+        // Sync ke tabel nas & reload FreeRADIUS
         $router->syncToNas();
+        $this->reloadFreeRadius();
 
         return redirect()
             ->route('routers.show', $router)
@@ -97,8 +99,9 @@ class RouterController extends Controller
     {
         $name = $router->name;
 
-        // Hapus dari tabel nas FreeRADIUS
+        // Hapus dari tabel nas & reload FreeRADIUS
         $router->removeFromNas();
+        $this->reloadFreeRadius();
 
         $router->delete();
 
@@ -113,5 +116,26 @@ class RouterController extends Controller
         $label = $router->fresh()->status_label;
 
         return back()->with('success', "Status router '{$router->name}' diubah ke {$label}.");
+    }
+
+    /**
+     * Graceful reload FreeRADIUS agar membaca ulang tabel nas
+     * tanpa memutus sesi aktif yang sedang berjalan.
+     *
+     * Requires sudoers: www-data ALL=(ALL) NOPASSWD: /bin/systemctl reload freeradius
+     */
+    private function reloadFreeRadius(): void
+    {
+        $output = [];
+        $code   = 0;
+
+        exec('sudo /bin/systemctl reload freeradius 2>&1', $output, $code);
+
+        if ($code !== 0) {
+            Log::warning('FreeRADIUS reload gagal', [
+                'exit_code' => $code,
+                'output'    => implode('\n', $output),
+            ]);
+        }
     }
 }
