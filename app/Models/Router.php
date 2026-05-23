@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Router extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsActivity;
 
     protected $table = 'routers';
 
@@ -19,15 +21,29 @@ class Router extends Model
         'api_secret',
         'location',
         'is_active',
+        'last_connection_status',
+        'last_connected_at',
+        'last_connection_message',
     ];
 
     protected $casts = [
-        'api_port'  => 'integer',
-        'is_active' => 'boolean',
+        'api_secret'        => 'encrypted',   // AES-256-CBC via APP_KEY
+        'api_port'          => 'integer',
+        'is_active'         => 'boolean',
         'last_connected_at' => 'datetime',
     ];
 
-    // ─── Accessors ───────────────────────────────────────────────────────────
+    // --- Activity Log ---
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'ip_address', 'api_port', 'api_username', 'location', 'is_active'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+
+    // --- Accessors ---
 
     public function getStatusLabelAttribute(): string
     {
@@ -57,7 +73,7 @@ class Router extends Model
         };
     }
 
-    // ─── Scopes ──────────────────────────────────────────────────────────────
+    // --- Scopes ---
 
     public function scopeActive($query)
     {
