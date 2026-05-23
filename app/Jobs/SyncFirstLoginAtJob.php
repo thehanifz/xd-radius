@@ -2,56 +2,47 @@
 
 namespace App\Jobs;
 
+use App\Models\Member;
+use App\Models\Voucher;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
-use App\Models\Voucher;
-use App\Models\Member;
 
 class SyncFirstLoginAtJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
-        // Vouchers
-        $vouchers = Voucher::whereNull('first_login_at')->pluck('username', 'id');
-        foreach ($vouchers as $id => $username) {
-            $firstLogin = DB::table('radacct')
-                ->where('username', $username)
-                ->orderBy('acctstarttime', 'asc')
-                ->value('acctstarttime');
-            
-            if ($firstLogin) {
-                Voucher::where('id', $id)->update(['first_login_at' => $firstLogin]);
-            }
-        }
+        // Sync vouchers without first_login_at
+        Voucher::whereNull('first_login_at')->chunk(200, function ($vouchers) {
+            foreach ($vouchers as $voucher) {
+                $firstSession = DB::table('radacct')
+                    ->where('username', $voucher->username)
+                    ->orderBy('acctstarttime')
+                    ->value('acctstarttime');
 
-        // Members
-        $members = Member::whereNull('first_login_at')->pluck('username', 'id');
-        foreach ($members as $id => $username) {
-            $firstLogin = DB::table('radacct')
-                ->where('username', $username)
-                ->orderBy('acctstarttime', 'asc')
-                ->value('acctstarttime');
-            
-            if ($firstLogin) {
-                Member::where('id', $id)->update(['first_login_at' => $firstLogin]);
+                if ($firstSession) {
+                    $voucher->update(['first_login_at' => $firstSession]);
+                }
             }
-        }
+        });
+
+        // Sync members without first_login_at
+        Member::whereNull('first_login_at')->chunk(200, function ($members) {
+            foreach ($members as $member) {
+                $firstSession = DB::table('radacct')
+                    ->where('username', $member->username)
+                    ->orderBy('acctstarttime')
+                    ->value('acctstarttime');
+
+                if ($firstSession) {
+                    $member->update(['first_login_at' => $firstSession]);
+                }
+            }
+        });
     }
 }

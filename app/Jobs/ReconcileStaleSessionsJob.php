@@ -2,44 +2,28 @@
 
 namespace App\Jobs;
 
+use App\Models\Radacct;
+use App\Models\SystemSetting;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
 class ReconcileStaleSessionsJob implements ShouldQueue
 {
-    use Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function handle(): void
     {
-        // Ambil threshold dari settings (default 10 menit)
-        // Bisa dikonfigurasi super user dari halaman pengaturan nantinya
-        $thresholdMinutes = (int) config('radius.stale_threshold_minutes', 10);
+        $thresholdMinutes = SystemSetting::get('stale_threshold_minutes', 30);
 
-        $cutoff = now()->subMinutes($thresholdMinutes);
-
-        // Tandai sesi yang:
-        // 1. Masih "aktif" (acctstoptime IS NULL)
-        // 2. Tidak di-update melebihi threshold
-        // 3. Belum ditandai stale sebelumnya
-        $updated = DB::table('radacct')
-            ->whereNull('acctstoptime')
-            ->whereNull('stale_detected_at')
-            ->where(function ($q) use ($cutoff) {
-                $q->where('acctupdatetime', '<', $cutoff)
-                  ->orWhereNull('acctupdatetime'); // Tidak pernah ada update sama sekali
-            })
+        Radacct::whereNull('acctstoptime')
+            ->where(fn($q) => $q->where('is_stale', false)->orWhereNull('is_stale'))
+            ->where('acctupdatetime', '<', now()->subMinutes($thresholdMinutes))
             ->update([
                 'is_stale'          => true,
                 'stale_detected_at' => now(),
             ]);
-
-        if ($updated > 0) {
-            Log::info("ReconcileStaleSessionsJob: {$updated} sesi ditandai stale.", [
-                'threshold_minutes' => $thresholdMinutes,
-                'cutoff'            => $cutoff->toDateTimeString(),
-            ]);
-        }
     }
 }

@@ -52,10 +52,18 @@
             <x-nav-item route="members.index" icon="users">Daftar Member</x-nav-item>
             <x-nav-item route="billing.index" icon="receipt">Billing & Tagihan</x-nav-item>
 
+            <p class="section-divider">Monitoring</p>
+            <x-nav-item route="online.index" icon="activity">User Online</x-nav-item>
+
             @if($role === 'superuser')
+            <p class="section-divider">Laporan</p>
+            <x-nav-item route="reports.index" icon="bar-chart-2">Laporan Bulanan</x-nav-item>
+
             <p class="section-divider">Manajemen</p>
             <x-nav-item route="plans.index" icon="package">Paket Internet</x-nav-item>
             <x-nav-item route="routers.index" icon="server">Router / NAS</x-nav-item>
+            <x-nav-item route="operators.index" icon="user-check">Operator</x-nav-item>
+            <x-nav-item route="settings.index" icon="settings">Pengaturan Sistem</x-nav-item>
             @endif
         </nav>
 

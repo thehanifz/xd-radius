@@ -4,55 +4,47 @@ namespace App\Jobs;
 
 use App\Models\BillingInvoice;
 use App\Models\Member;
-use App\Services\BillingService;
+use App\Models\SystemSetting;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
 class GenerateOverdueInvoicesJob implements ShouldQueue
 {
-    use Queueable;
-
-    public function __construct(protected BillingService $billing) {}
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function handle(): void
     {
-        // Tandai invoice pending yang sudah melewati due_date → overdue
-        $markedOverdue = $this->billing->markOverdue();
+        $daysBefore = SystemSetting::get('invoice_days_before', 7);
 
-        // Generate invoice baru untuk member aktif yang akan jatuh tempo dalam 7 hari
-        // dan belum punya invoice pending/overdue untuk periode berikutnya
-        $targetDate = now()->addDays(7)->toDateString();
+        // Mark existing invoices as overdue
+        BillingInvoice::where('status', 'pending')
+            ->where('due_date', '<', now()->toDateString())
+            ->update(['status' => 'overdue']);
 
-        $members = Member::with('plan')
-            ->where('status', 'active')
+        // Create new invoices for active members whose due_date is approaching
+        Member::where('status', 'active')
             ->whereNotNull('expired_at')
-            ->whereDate('expired_at', '<=', $targetDate)
-            ->get();
+            ->get()
+            ->each(function ($member) use ($daysBefore) {
+                $period = $member->expired_at->format('Y-m');
 
-        $generated = 0;
+                $exists = BillingInvoice::where('member_id', $member->id)
+                    ->where('period_start', $member->expired_at->copy()->startOfMonth())
+                    ->exists();
 
-        foreach ($members as $member) {
-            // Cek apakah sudah ada invoice pending/overdue yang belum dibayar
-            $hasOpenInvoice = BillingInvoice::where('member_id', $member->id)
-                ->whereIn('status', ['pending', 'overdue'])
-                ->exists();
-
-            if ($hasOpenInvoice) continue;
-
-            try {
-                $this->billing->createInvoice($member);
-                $generated++;
-            } catch (\Throwable $e) {
-                Log::error("GenerateOverdueInvoicesJob: gagal buat invoice untuk member #{$member->id}", [
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        Log::info("GenerateOverdueInvoicesJob selesai.", [
-            'marked_overdue' => $markedOverdue,
-            'invoices_generated' => $generated,
-        ]);
+                if (! $exists && $member->expired_at->lte(now()->addDays($daysBefore))) {
+                    BillingInvoice::create([
+                        'member_id'    => $member->id,
+                        'period_start' => $member->expired_at->copy()->startOfMonth(),
+                        'period_end'   => $member->expired_at->copy()->endOfMonth(),
+                        'amount'       => $member->price_snapshot,
+                        'status'       => 'pending',
+                        'due_date'     => $member->expired_at->toDateString(),
+                    ]);
+                }
+            });
     }
 }
