@@ -99,15 +99,18 @@ php artisan migrate
 php artisan db:seed --class=SystemSettingSeeder
 ```
 
-### 5. Setup Sudoers untuk Auto-Reload FreeRADIUS
+### 5. Setup Sudoers untuk Auto-Restart FreeRADIUS
 
-Agar xd-radius dapat reload FreeRADIUS otomatis setelah perubahan router/NAS:
+Agar xd-radius dapat restart FreeRADIUS otomatis setelah perubahan router/NAS
+(diperlukan `restart` bukan `reload` agar SQL clients ter-load ulang via `generate_sql_clients`):
 
 ```bash
-echo "www-data ALL=(ALL) NOPASSWD: /bin/systemctl reload freeradius" \
-  | sudo tee /etc/sudoers.d/freeradius-reload
-chmod 440 /etc/sudoers.d/freeradius-reload
+echo "www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart freeradius" \
+  | sudo tee /etc/sudoers.d/freeradius-restart
+chmod 440 /etc/sudoers.d/freeradius-restart
 ```
+
+> ⚠️ Hapus file lama jika ada: `sudo rm -f /etc/sudoers.d/freeradius-reload`
 
 ### 6. Konfigurasi FreeRADIUS (baca NAS dari database)
 
@@ -196,7 +199,7 @@ Masuk ke **Router / NAS** (`/routers/create`) dan isi:
 
 Setelah simpan, xd-radius otomatis:
 1. Insert/update tabel `nas` di PostgreSQL
-2. Reload FreeRADIUS (tanpa memutus sesi aktif)
+2. Restart FreeRADIUS agar SQL clients ter-load ulang
 
 ### Langkah 4 — Konfigurasi MikroTik
 
