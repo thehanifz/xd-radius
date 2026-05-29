@@ -37,9 +37,9 @@ class RouterController extends Controller
 
         $router = Router::create($data);
 
-        // Sync ke tabel nas & reload FreeRADIUS
+        // Sync ke tabel nas & restart FreeRADIUS
         $router->syncToNas();
-        $this->reloadFreeRadius();
+        $this->restartFreeRadius();
 
         return redirect()
             ->route('routers.show', $router)
@@ -86,9 +86,9 @@ class RouterController extends Controller
             DB::table('nas')->where('nasname', $oldIp)->delete();
         }
 
-        // Sync ke tabel nas & reload FreeRADIUS
+        // Sync ke tabel nas & restart FreeRADIUS
         $router->syncToNas();
-        $this->reloadFreeRadius();
+        $this->restartFreeRadius();
 
         return redirect()
             ->route('routers.show', $router)
@@ -99,9 +99,9 @@ class RouterController extends Controller
     {
         $name = $router->name;
 
-        // Hapus dari tabel nas & reload FreeRADIUS
+        // Hapus dari tabel nas & restart FreeRADIUS
         $router->removeFromNas();
-        $this->reloadFreeRadius();
+        $this->restartFreeRadius();
 
         $router->delete();
 
@@ -119,20 +119,21 @@ class RouterController extends Controller
     }
 
     /**
-     * Graceful reload FreeRADIUS agar membaca ulang tabel nas
-     * tanpa memutus sesi aktif yang sedang berjalan.
+     * Restart FreeRADIUS agar membaca ulang tabel nas dari SQL (generate_sql_clients).
+     * reload (SIGHUP) tidak cukup karena tidak me-reload SQL clients.
      *
-     * Requires sudoers: www-data ALL=(ALL) NOPASSWD: /bin/systemctl reload freeradius
+     * Requires sudoers:
+     *   www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart freeradius
      */
-    private function reloadFreeRadius(): void
+    private function restartFreeRadius(): void
     {
         $output = [];
         $code   = 0;
 
-        exec('sudo /bin/systemctl reload freeradius 2>&1', $output, $code);
+        exec('sudo /bin/systemctl restart freeradius 2>&1', $output, $code);
 
         if ($code !== 0) {
-            Log::warning('FreeRADIUS reload gagal', [
+            Log::warning('FreeRADIUS restart gagal', [
                 'exit_code' => $code,
                 'output'    => implode('\n', $output),
             ]);
