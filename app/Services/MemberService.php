@@ -86,24 +86,9 @@ class MemberService
             $newStatus  = $prevStatus === 'active' ? 'isolated' : 'active';
 
             if ($newStatus === 'isolated') {
-                // Tambah Auth-Type := Reject ke radcheck
-                DB::table('radcheck')->updateOrInsert(
-                    [
-                        'username'  => $member->username,
-                        'attribute' => 'Auth-Type',
-                    ],
-                    [
-                        'op'    => ':=',
-                        'value' => 'Reject',
-                    ]
-                );
+                app(\App\Services\RadiusService::class)->isolateUser($member->username);
             } else {
-                // Hapus entry Reject dari radcheck
-                DB::table('radcheck')
-                    ->where('username', $member->username)
-                    ->where('attribute', 'Auth-Type')
-                    ->where('value', 'Reject')
-                    ->delete();
+                app(\App\Services\RadiusService::class)->activateUser($member->username);
             }
 
             $member->update(['status' => $newStatus]);

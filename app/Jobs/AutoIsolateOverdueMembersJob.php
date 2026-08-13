@@ -31,16 +31,7 @@ class AutoIsolateOverdueMembersJob implements ShouldQueue
             if (! $member || $member->status === 'isolated') continue;
 
             DB::transaction(function () use ($member) {
-                Radcheck::where('username', $member->username)
-                    ->where('attribute', 'Auth-Type')
-                    ->delete();
-
-                Radcheck::create([
-                    'username'  => $member->username,
-                    'attribute' => 'Auth-Type',
-                    'op'        => ':=',
-                    'value'     => 'Reject',
-                ]);
+                app(\App\Services\RadiusService::class)->isolateUser($member->username);
 
                 $member->update(['status' => 'isolated']);
 

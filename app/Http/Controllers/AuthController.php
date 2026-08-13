@@ -27,10 +27,20 @@ class AuthController extends Controller
             'password.required' => 'Password wajib diisi.',
         ]);
 
+        $throttleKey = mb_strtolower($request->input('email')) . '|' . $request->ip();
+
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'email' => "Terlalu banyak percobaan login. Silakan coba lagi dalam {$seconds} detik.",
+            ]);
+        }
+
         if (Auth::guard('app')->attempt(
             ['email' => $credentials['email'], 'password' => $credentials['password']],
             $request->boolean('remember')
         )) {
+            \Illuminate\Support\Facades\RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
             activity()
@@ -39,6 +49,8 @@ class AuthController extends Controller
 
             return redirect()->intended(route('dashboard'));
         }
+
+        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 60);
 
         return back()->withErrors([
             'email' => 'Email atau password salah.',

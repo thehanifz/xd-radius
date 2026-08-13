@@ -51,24 +51,38 @@ class RadiusService
     }
 
     /**
-     * Isolir user — tambah Auth-Type := Reject
+     * Isolir user — masukkan ke address list isolir
      */
     public function isolateUser(string $username): void
     {
-        Radcheck::firstOrCreate(
-            ['username' => $username, 'attribute' => 'Auth-Type'],
-            ['op' => ':=', 'value' => 'Reject']
+        // Hapus Auth-Type = Reject jika sebelumnya ada (agar user tetap dapat IP)
+        Radcheck::where('username', $username)
+            ->where('attribute', 'Auth-Type')
+            ->where('value', 'Reject')
+            ->delete();
+
+        // Tambahkan user ke Address List isolir di Mikrotik
+        Radreply::firstOrCreate(
+            ['username' => $username, 'attribute' => 'Mikrotik-Address-List'],
+            ['op' => '=', 'value' => 'isolir']
         );
     }
 
     /**
-     * Aktifkan user — hapus entry Reject
+     * Aktifkan user — hapus entry isolir
      */
     public function activateUser(string $username): void
     {
+        // Hapus atribut Reject jika ada
         Radcheck::where('username', $username)
             ->where('attribute', 'Auth-Type')
             ->where('value', 'Reject')
+            ->delete();
+
+        // Hapus Address List isolir
+        Radreply::where('username', $username)
+            ->where('attribute', 'Mikrotik-Address-List')
+            ->where('value', 'isolir')
             ->delete();
     }
 

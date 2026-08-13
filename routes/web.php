@@ -19,6 +19,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/setup',  [OnboardingController::class, 'show'])->name('onboarding.show');
 Route::post('/setup', [OnboardingController::class, 'store'])->name('onboarding.store');
 
+// ─── Isolir Page ─────────────────────────────────────────────────────────────
+Route::view('/isolir', 'isolir')->name('isolir');
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
     Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');

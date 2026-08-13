@@ -6,22 +6,26 @@ use App\Models\Router;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Gate;
 
 class RouterController extends Controller
 {
     public function index()
     {
+        Gate::authorize('superuser-only');
         $routers = Router::withoutTrashed()->latest()->paginate(20);
         return view('routers.index', compact('routers'));
     }
 
     public function create()
     {
+        Gate::authorize('superuser-only');
         return view('routers.create');
     }
 
     public function store(Request $request)
     {
+        Gate::authorize('superuser-only');
         $data = $request->validate([
             'name'          => ['required', 'string', 'max:100'],
             'ip_address'    => ['required', 'ip'],
@@ -48,16 +52,19 @@ class RouterController extends Controller
 
     public function show(Router $router)
     {
+        Gate::authorize('superuser-only');
         return view('routers.show', compact('router'));
     }
 
     public function edit(Router $router)
     {
+        Gate::authorize('superuser-only');
         return view('routers.edit', compact('router'));
     }
 
     public function update(Request $request, Router $router)
     {
+        Gate::authorize('superuser-only');
         $data = $request->validate([
             'name'          => ['required', 'string', 'max:100'],
             'ip_address'    => ['required', 'ip'],
@@ -97,6 +104,7 @@ class RouterController extends Controller
 
     public function destroy(Router $router)
     {
+        Gate::authorize('superuser-only');
         $name = $router->name;
 
         // Hapus dari tabel nas & restart FreeRADIUS
@@ -112,6 +120,7 @@ class RouterController extends Controller
 
     public function toggleActive(Router $router)
     {
+        Gate::authorize('superuser-only');
         $router->update(['is_active' => ! $router->is_active]);
         $label = $router->fresh()->status_label;
 
