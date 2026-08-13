@@ -185,10 +185,11 @@ Database harus memiliki unique/index untuk username, batch code, RADIUS group, N
 
 ## 9. Deployment dan Operasional PM2
 
-Produksi menggunakan **Nginx atau Caddy + PHP-FPM** untuk melayani HTTP. PM2 tidak menjalankan `php artisan serve` dalam produksi; PM2 hanya menjalankan proses Laravel jangka panjang berikut:
+Untuk deployment ini, **Cloudflare Tunnel** meneruskan HTTPS publik ke aplikasi Laravel yang berjalan pada `0.0.0.0:8000`. PM2 mengelola proses aplikasi, worker, dan scheduler. Akses langsung ke port tersebut perlu dibatasi oleh firewall bila hanya Cloudflare Tunnel yang diinginkan.
 
 | Proses PM2 | Perintah | Tanggung jawab |
 |---|---|---|
+| `xd-radius-app` | `php artisan serve --host=0.0.0.0 --port=8000` | Origin HTTP untuk Cloudflare Tunnel. |
 | `xd-radius-queue` | `php artisan queue:work --sleep=3 --tries=3 --timeout=60 --max-jobs=1000 --max-time=3600` | Menjalankan job sinkronisasi, billing, stale session, dan retry. |
 | `xd-radius-scheduler` | `php artisan schedule:work` | Memicu jadwal aplikasi tepat satu kali. |
 
@@ -196,6 +197,7 @@ Ketentuan operasional:
 
 - Scheduler hanya didefinisikan pada **satu lokasi** (`app/Console/Kernel.php` atau `routes/console.php`, pilih satu), agar job tidak berjalan ganda.
 - `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` HTTPS publik, `SESSION_SECURE_COOKIE=true`, dan konfigurasi database/queue production wajib ada di `.env` server; secret tidak disalin ke `ecosystem.config.cjs`.
+- Konfigurasi ingress cloudflared harus mengarah ke `http://127.0.0.1:8000` atau IP host yang dapat dijangkau cloudflared. Laravel mempercayai proxy agar URL HTTPS, cookie secure, dan IP client diterjemahkan dengan benar.
 - Worker dibatasi `max-jobs`, `max-time`, dan memori agar secara berkala dimulai ulang dengan kode baru dan tidak bocor memori.
 - Setiap deploy menjalankan: `composer install --no-dev --optimize-autoloader`, build asset, migration yang sudah dibackup dan diuji, `php artisan optimize`, lalu `php artisan queue:restart`.
 - PM2 harus disetel startup/persist (`pm2 startup`, `pm2 save`) dan log dipantau/dirotasi menggunakan `pm2-logrotate` atau logrotate sistem.

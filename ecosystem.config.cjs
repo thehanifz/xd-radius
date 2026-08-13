@@ -1,7 +1,23 @@
 module.exports = {
   apps: [
-    // HTTP production dilayani Nginx/Caddy + PHP-FPM, bukan `artisan serve`.
-    // PM2 hanya mengelola proses Laravel yang berjalan terus-menerus.
+    // Cloudflare Tunnel meneruskan trafik ke port aplikasi ini.
+    {
+      name: 'xd-radius-app',
+      script: 'php',
+      args: 'artisan serve --host=0.0.0.0 --port=8000',
+      cwd: '/root/main-app/xd-radius',
+      autorestart: true,
+      watch: false,
+      max_restarts: 10,
+      restart_delay: 3000,
+      kill_timeout: 30000,
+      max_memory_restart: '256M',
+      time: true,
+      env: {
+        APP_ENV: 'production',
+        APP_DEBUG: 'false',
+      },
+    },
 
     // ─── Queue Worker ─────────────────────────────────────────────
     {
