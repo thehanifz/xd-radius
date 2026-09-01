@@ -129,6 +129,9 @@ class MemberService
                 'op'        => ':=',
                 'value'     => $rateLimit,
             ],
+        ]);
+
+        DB::table('radcheck')->insert([
             [
                 'username'  => $u,
                 'attribute' => 'Simultaneous-Use',
@@ -161,10 +164,10 @@ class MemberService
             ->where('attribute', 'Mikrotik-Rate-Limit')
             ->update(['value' => $rateLimit]);
 
-        DB::table('radreply')
-            ->where('username', $u)
-            ->where('attribute', 'Simultaneous-Use')
-            ->update(['value' => (string) $member->simultaneous_use]);
+        DB::table('radcheck')->updateOrInsert(
+            ['username' => $u, 'attribute' => 'Simultaneous-Use'],
+            ['op' => ':=', 'value' => (string) $member->simultaneous_use]
+        );
 
         DB::table('radusergroup')
             ->where('username', $u)

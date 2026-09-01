@@ -23,6 +23,22 @@ class VoucherValidityAndQosTest extends TestCase
         $this->assertSame('2026-09-01 17:30:00', $expiry->format('Y-m-d H:i:s'));
     }
 
+    public function test_qos_defaults_priority_when_limit_at_is_configured(): void
+    {
+        $plan = new Plan([
+            'download_speed_kbps' => 10000,
+            'upload_speed_kbps' => 5000,
+            'qos_limit_at_down_kbps' => 2000,
+            'qos_limit_at_up_kbps' => 1000,
+            'qos_priority' => null,
+        ]);
+
+        $this->assertSame(
+            '5000k/10000k 8 1000k/2000k',
+            (new QosService())->rateLimit($plan)
+        );
+    }
+
     public function test_qos_builds_routeros_rate_limit_with_limit_at_and_burst(): void
     {
         $plan = new Plan([

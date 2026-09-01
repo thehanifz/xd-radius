@@ -41,14 +41,11 @@ class VoucherValidityService
                 'status'         => 'active',
             ]);
 
-            $remaining = max(0, $loginAt->diffInSeconds($expiredAt, false));
-
-            // First login receives the full session duration from provisioning.
-            // After the first accounting record is known, subsequent logins are
-            // constrained by the fixed expiry timestamp.
+            // Session-Timeout is calculated by FreeRADIUS on every Access-Request
+            // from the stored Expiration timestamp. Keeping a static Session-Timeout
+            // in radreply would become stale after logout/re-login.
             $radius = $this->radius ?? app(RadiusService::class);
             $radius->setExpiration($voucher->username, (string) $expiredAt->timestamp);
-            $radius->setSessionTimeout($voucher->username, $remaining);
             Radcheck::where('username', $voucher->username)
                 ->where('attribute', 'Auth-Type')
                 ->where('value', 'Reject')

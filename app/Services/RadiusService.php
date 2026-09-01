@@ -19,11 +19,31 @@ class RadiusService
         );
 
         Radreply::where('username', $username)
-            ->whereIn('attribute', ['Mikrotik-Rate-Limit', 'Session-Timeout', 'Expiration', 'Simultaneous-Use'])
+            ->whereIn('attribute', ['Mikrotik-Rate-Limit', 'Mikrotik-Total-Limit', 'Session-Timeout'])
+            ->delete();
+
+        Radcheck::where('username', $username)
+            ->where('attribute', 'Simultaneous-Use')
+            ->delete();
+
+        Radcheck::where('username', $username)
+            ->where('attribute', 'Expiration')
             ->delete();
 
         $this->upsertReply($username, 'Mikrotik-Rate-Limit', $this->qos->rateLimit($plan));
-        $this->upsertReply($username, 'Simultaneous-Use', '1');
+
+        if ($plan->data_quota_mb !== null) {
+            $this->upsertReply(
+                $username,
+                'Mikrotik-Total-Limit',
+                (string) ((int) $plan->data_quota_mb * 1024 * 1024)
+            );
+        }
+
+        Radcheck::updateOrCreate(
+            ['username' => $username, 'attribute' => 'Simultaneous-Use'],
+            ['op' => ':=', 'value' => '1']
+        );
 
         Radusergroup::updateOrCreate(
             ['username' => $username],

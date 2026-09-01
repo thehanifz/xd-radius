@@ -14,13 +14,23 @@ class QosService
      */
     public function rateLimit(Plan $plan): string
     {
+        $minimum = $this->pair($plan->qos_limit_at_up_kbps, $plan->qos_limit_at_down_kbps);
+        $priority = $plan->qos_priority;
+
+        // RouterOS uses positional fields. If a minimum rate is supplied but
+        // priority is omitted, use the RouterOS default instead of generating
+        // an invalid positional string with a missing field.
+        if ($minimum !== null && $priority === null) {
+            $priority = 8;
+        }
+
         $parts = [
             $this->pair($plan->upload_speed_kbps, $plan->download_speed_kbps, true),
             $this->pair($plan->qos_burst_limit_up_kbps, $plan->qos_burst_limit_down_kbps),
             $this->pair($plan->qos_burst_threshold_up_kbps, $plan->qos_burst_threshold_down_kbps),
             $this->pair($plan->qos_burst_time_up_sec, $plan->qos_burst_time_down_sec, false, 's'),
-            $plan->qos_priority,
-            $this->pair($plan->qos_limit_at_up_kbps, $plan->qos_limit_at_down_kbps),
+            $priority,
+            $minimum,
         ];
 
         while ($parts && end($parts) === null) {

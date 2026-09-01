@@ -169,7 +169,51 @@ WHERE username = '%{SQL-User-Name}'
   AND expired_at IS NOT NULL;
 ```
 
-The resulting value should be assigned to `reply:Session-Timeout` only when it is greater than zero. If the value is zero, authentication must be rejected. The existing `radacct` accounting remains the source for first-login reconciliation and usage reporting.
+The resulting value should be assigned to `reply:Session-Timeout` only when it is greater than zero. If the value is zero, authentication must be rejected. Do not store a fixed `Session-Timeout` in `radreply`: it becomes stale after logout/re-login. The existing `radacct` accounting remains the source for reporting and a reconciliation fallback.
+
+For exact first-login activation, place the activation UPDATE in the FreeRADIUS `post-auth` section (after successful authentication), not in `authorize`; otherwise a failed password attempt could consume the voucher. The application scheduler remains a fallback for sessions that were not captured by the normal accounting flow.
+
+## 8.1 Exact first-login activation in FreeRADIUS
+
+Untuk menghindari delay scheduler, voucher dapat diaktifkan tepat setelah autentikasi berhasil. Jangan melakukan UPDATE ini di `authorize`, karena password yang salah dapat mengaktifkan voucher.
+
+Di PostgreSQL, konsep query `post-auth`:
+
+```sql
+UPDATE vouchers
+SET first_login_at = COALESCE(first_login_at, NOW()),
+    activated_at   = COALESCE(activated_at, NOW()),
+    expired_at     = COALESCE(
+        expired_at,
+        NOW() + CASE
+            WHEN (SELECT duration_unit FROM plans WHERE plans.id = vouchers.plan_id) = 'minutes'
+                THEN make_interval(mins => (SELECT duration_value FROM plans WHERE plans.id = vouchers.plan_id))
+            WHEN (SELECT duration_unit FROM plans WHERE plans.id = vouchers.plan_id) = 'hours'
+                THEN make_interval(hours => (SELECT duration_value FROM plans WHERE plans.id = vouchers.plan_id))
+            ELSE make_interval(days => (SELECT duration_value FROM plans WHERE plans.id = vouchers.plan_id))
+        END
+    )
+WHERE username = '%{SQL-User-Name}'
+  AND first_login_at IS NULL
+  AND status = 'active';
+```
+
+Untuk Access-Accept berikutnya, gunakan query `authorize` untuk menghitung sisa waktu dari `expired_at` dan set `reply:Session-Timeout`. Dengan cara ini nilai timeout selalu mengikuti expiry aktual dan tidak tersangkut pada durasi awal voucher.
+
+Contoh query:
+
+```sql
+SELECT GREATEST(EXTRACT(EPOCH FROM (expired_at - NOW()))::integer, 0)
+FROM vouchers
+WHERE username = '%{SQL-User-Name}'
+  AND status = 'active'
+  AND first_login_at IS NOT NULL
+  AND expired_at IS NOT NULL;
+```
+
+Jika hasil `0`, reject authentication. Jika hasil positif, assign ke `reply:Session-Timeout`.
+
+> Implementasi query `post-auth` harus menggunakan modul SQL FreeRADIUS yang terhubung ke database aplikasi. Uji dulu dengan `freeradius -X` pada staging.
 
 ## 9. MikroTik QoS
 
@@ -178,6 +222,8 @@ The resulting value should be assigned to `reply:Session-Timeout` only when it i
 `rx/tx burst-rx/burst-tx threshold-rx/threshold-tx burst-time-rx/burst-time-tx priority rx-min/tx-min`
 
 In RouterOS, **rx = client upload** and **tx = client download**. The application therefore writes upload first and download second. `Limit At` is mapped to the final minimum-rate pair. Priority 1 is highest and 8 is lowest. RouterOS also requires `limit-at` not to exceed `max-limit`; burst threshold should be between `limit-at` and `max-limit` for the intended burst behavior.
+
+`Mikrotik-Total-Limit` is used when `data_quota_mb` is set; the value is sent in bytes.
 
 `qos_queue_type` is currently stored as profile metadata. Standard HotSpot `Mikrotik-Rate-Limit` does not carry a queue-type field, so the application does **not** pretend to apply it through RADIUS. Queue-type control can be handled later through a dedicated RouterOS API/queue strategy if required. This avoids silently writing an attribute that RouterOS will ignore.
 
