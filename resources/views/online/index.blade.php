@@ -61,7 +61,8 @@
 {{-- Table --}}
 <div class="card">
     <div class="overflow-x-auto">
-        <table class="data-table">
+        <div class="table-scroll table-compact">
+<table class="data-table">
             <thead>
                 <tr>
                     <th>Username</th>
@@ -116,6 +117,7 @@
             @endforelse
             </tbody>
         </table>
+</div>
     </div>
     @if($sessions->hasPages())
     <div class="p-4 border-t border-slate-100">{{ $sessions->links() }}</div>

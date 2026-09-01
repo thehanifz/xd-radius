@@ -107,7 +107,8 @@
             </div>
         @else
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <div class="table-scroll">
+<table class="w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Periode</th>
@@ -148,6 +149,7 @@
                         @endforeach
                     </tbody>
                 </table>
+</div>
             </div>
         @endif
     </div>
@@ -163,7 +165,8 @@
             </div>
         @else
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <div class="table-scroll">
+<table class="w-full text-sm">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
                         <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Login</th>
@@ -193,6 +196,7 @@
                     @endforeach
                 </tbody>
             </table>
+</div>
         </div>
         @endif
     </div>

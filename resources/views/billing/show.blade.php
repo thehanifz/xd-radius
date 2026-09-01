@@ -65,7 +65,8 @@
             <p class="text-slate-400 text-sm">Belum ada pembayaran</p>
         </div>
         @else
-        <table class="w-full text-sm">
+        <div class="table-scroll">
+<table class="w-full text-sm">
             <thead class="bg-slate-50 border-b border-slate-200">
                 <tr>
                     <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Tanggal</th>
@@ -87,6 +88,7 @@
                 @endforeach
             </tbody>
         </table>
+</div>
         @endif
     </div>
 

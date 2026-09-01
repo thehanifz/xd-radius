@@ -54,7 +54,8 @@
     <div class="card">
         <div class="card-header"><h2 class="card-title">Riwayat Session</h2><span class="text-xs text-slate-400">Maks. 30 terakhir</span></div>
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <div class="table-scroll table-compact">
+<table class="data-table">
                 <thead><tr><th>Start</th><th>Stop</th><th>Durasi</th><th>IP</th><th>Upload</th><th>Download</th><th>Status</th></tr></thead>
                 <tbody>
                 @foreach($history as $item)
@@ -70,6 +71,7 @@
                 @endforeach
                 </tbody>
             </table>
+</div>
         </div>
     </div>
 </div>

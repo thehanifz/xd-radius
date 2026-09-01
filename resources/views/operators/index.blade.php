@@ -18,7 +18,8 @@
     </div>
 
     <div class="overflow-x-auto">
-        <table class="data-table">
+        <div class="table-scroll table-compact">
+<table class="data-table">
             <thead>
                 <tr>
                     <th>Nama</th>
@@ -80,6 +81,7 @@
             @endforelse
             </tbody>
         </table>
+</div>
     </div>
 
     @if($operators->hasPages())

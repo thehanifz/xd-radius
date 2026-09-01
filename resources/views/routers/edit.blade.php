@@ -19,7 +19,7 @@
                     @error('name')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="form-label">IP Address <span class="text-red-500">*</span></label>
                         <input type="text" name="ip_address" value="{{ old('ip_address', $router->ip_address) }}"
@@ -38,7 +38,7 @@
                 {{-- RouterOS API --}}
                 <div class="rounded-lg border border-slate-200 p-4 space-y-4">
                     <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Kredensial RouterOS API</p>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Username API <span class="text-red-500">*</span></label>
                             <input type="text" name="api_username" value="{{ old('api_username', $router->api_username) }}"

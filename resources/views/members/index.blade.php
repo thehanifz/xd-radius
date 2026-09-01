@@ -49,7 +49,8 @@
                 <a href="{{ route('members.create') }}" class="btn-primary">Tambah Member</a>
             </div>
         @else
-            <table class="w-full text-sm">
+            <div class="table-scroll">
+<table class="w-full text-sm">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
                         <th class="text-left px-4 py-3 font-medium text-slate-600">USERNAME</th>
@@ -142,6 +143,7 @@
                     @endforeach
                 </tbody>
             </table>
+</div>
             @if($members->hasPages())
             <div class="px-4 py-3 border-t border-slate-200">
                 {{ $members->links() }}

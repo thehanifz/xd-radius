@@ -25,7 +25,8 @@
             </div>
         @else
             <div class="hidden md:block overflow-x-auto">
-            <table class="w-full text-sm">
+            <div class="table-scroll">
+<table class="w-full text-sm">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
                         <th class="text-left px-4 py-3 font-medium text-slate-600">NAMA</th>
@@ -103,6 +104,7 @@
                     @endforeach
                 </tbody>
             </table>
+</div>
             </div>
 
             <div class="md:hidden divide-y divide-slate-100">

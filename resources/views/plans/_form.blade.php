@@ -18,7 +18,7 @@
 </div>
 
 {{-- Kecepatan --}}
-<div class="grid grid-cols-2 gap-4">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <div>
         <label class="form-label">Download (Kbps) <span class="text-red-500">*</span></label>
         <input type="number" name="download_speed_kbps" min="1"
@@ -39,7 +39,7 @@
 </div>
 
 {{-- Durasi & Harga --}}
-<div class="grid grid-cols-3 gap-4">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
     <div>
         <label class="form-label">Durasi <span class="text-red-500">*</span></label>
         <input type="number" name="duration_value" min="1"

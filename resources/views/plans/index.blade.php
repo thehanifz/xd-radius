@@ -34,15 +34,15 @@
             <form method="GET" class="flex flex-wrap gap-3 items-center">
                 <input type="text" name="search" value="{{ request('search') }}"
                     placeholder="Cari nama paket atau group..."
-                    class="form-input w-64">
+                    class="form-input w-full sm:w-64">
 
-                <select name="type" class="form-input w-40">
+                <select name="type" class="form-input w-full sm:w-40">
                     <option value="">Semua Tipe</option>
                     <option value="voucher" @selected(request('type') === 'voucher')>Voucher</option>
                     <option value="member"  @selected(request('type') === 'member')>Member</option>
                 </select>
 
-                <select name="status" class="form-input w-40">
+                <select name="status" class="form-input w-full sm:w-40">
                     <option value="">Semua Status</option>
                     <option value="active"   @selected(request('status') === 'active')>Aktif</option>
                     <option value="inactive" @selected(request('status') === 'inactive')>Nonaktif</option>
@@ -67,7 +67,8 @@
         </div>
         @else
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <div class="table-scroll">
+<table class="w-full text-sm">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nama Paket</th>
@@ -132,6 +133,7 @@
                     @endforeach
                 </tbody>
             </table>
+</div>
         </div>
 
         @if($plans->hasPages())

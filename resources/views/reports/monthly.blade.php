@@ -103,7 +103,8 @@
         <h2 class="card-title">Voucher ({{ $vouchers->count() }})</h2>
     </div>
     <div class="overflow-x-auto">
-        <table class="data-table">
+        <div class="table-scroll table-compact">
+<table class="data-table">
             <thead><tr>
                 <th>Batch</th>
                 <th>Username</th>
@@ -131,6 +132,7 @@
             @endforeach
             </tbody>
         </table>
+</div>
     </div>
 </div>
 @endif

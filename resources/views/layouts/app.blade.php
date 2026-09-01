@@ -121,7 +121,7 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 lg:pb-6">
+        <main class="flex-1 overflow-y-auto p-3 sm:p-6 pb-24 lg:pb-6">
             @if(session('success'))
             <div class="flash-success mb-5 animate-slide-up">
                 <svg class="flex-shrink-0 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -153,6 +153,25 @@
         </main>
     </div>
 </div>
+
+{{-- MOBILE BOTTOM NAVIGATION --}}
+<nav class="mobile-bottom-nav lg:hidden" aria-label="Navigasi utama">
+    <a href="{{ route('dashboard') }}" class="mobile-nav-item {{ request()->routeIs('dashboard') ? 'is-active' : '' }}">
+        <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z"/></svg><span>Home</span>
+    </a>
+    <a href="{{ route('vouchers.index') }}" class="mobile-nav-item {{ request()->routeIs('vouchers.*') ? 'is-active' : '' }}">
+        <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7Z"/><path d="M12 7v10" stroke-dasharray="2 2"/></svg><span>Voucher</span>
+    </a>
+    <a href="{{ route('online.index') }}" class="mobile-nav-item {{ request()->routeIs('online.*') ? 'is-active' : '' }}">
+        <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg><span>Online</span>
+    </a>
+    <a href="{{ route('plans.index') }}" class="mobile-nav-item {{ request()->routeIs('plans.*') ? 'is-active' : '' }}">
+        <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><span>Paket</span>
+    </a>
+    <button type="button" class="mobile-nav-item" onclick="toggleSidebar()" aria-label="Buka menu">
+        <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Menu</span>
+    </button>
+</nav>
 
 <script>
 function toggleSidebar() {

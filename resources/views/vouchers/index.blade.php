@@ -35,9 +35,9 @@
             <form method="GET" class="flex flex-wrap gap-3 items-center">
                 <input type="text" name="search" value="{{ request('search') }}"
                     placeholder="Cari username..."
-                    class="form-input w-48">
+                    class="form-input w-full sm:w-48">
 
-                <select name="batch_id" id="batch-select" class="form-input w-72"
+                <select name="batch_id" id="batch-select" class="form-input w-full sm:w-72"
                     onchange="updateBatchButtons(this.value, this.options[this.selectedIndex].text)">
                     <option value="">Semua Batch</option>
                     @foreach($batches as $b)
@@ -47,7 +47,7 @@
                     @endforeach
                 </select>
 
-                <select name="status" class="form-input w-40">
+                <select name="status" class="form-input w-full sm:w-40">
                     <option value="">Semua Status</option>
                     <option value="active"   {{ request('status') === 'active'   ? 'selected' : '' }}>Tersedia / Aktif</option>
                     <option value="used"     {{ request('status') === 'used'     ? 'selected' : '' }}>Digunakan</option>
@@ -175,7 +175,7 @@
         </div>
         @else
         <form id="voucher-selection-form">
-        <div class="overflow-x-auto">
+        <div class="table-scroll">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>

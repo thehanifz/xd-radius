@@ -75,7 +75,7 @@
                     <div class="card-header"><span class="card-title">Format Voucher</span></div>
                     <div class="card-body space-y-4">
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="form-label">Prefix <span class="text-slate-400 font-normal">(opsional)</span></label>
                                 <input type="text" name="prefix" x-model="prefix"

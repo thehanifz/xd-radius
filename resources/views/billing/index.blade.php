@@ -9,7 +9,7 @@
 <div class="space-y-5">
 
     {{-- Stats --}}
-    <div class="grid grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         @foreach([
             ['label'=>'Menunggu','value'=>$stats['pending'],'color'=>'text-amber-600','bg'=>'bg-amber-50'],
             ['label'=>'Jatuh Tempo','value'=>$stats['overdue'],'color'=>'text-red-600','bg'=>'bg-red-50'],
@@ -30,13 +30,13 @@
     <div class="card">
         <div class="card-body py-3">
             <form method="GET" class="flex flex-wrap gap-3 items-center">
-                <select name="member_id" class="form-input w-48">
+                <select name="member_id" class="form-input w-full sm:w-48">
                     <option value="">Semua Member</option>
                     @foreach($members as $m)
                         <option value="{{ $m->id }}" @selected(request('member_id') == $m->id)>{{ $m->username }}</option>
                     @endforeach
                 </select>
-                <select name="status" class="form-input w-40">
+                <select name="status" class="form-input w-full sm:w-40">
                     <option value="">Semua Status</option>
                     <option value="pending" @selected(request('status')==='pending')>Menunggu</option>
                     <option value="paid" @selected(request('status')==='paid')>Lunas</option>
@@ -61,7 +61,8 @@
         </div>
         @else
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <div class="table-scroll">
+<table class="w-full text-sm">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Member</th>
@@ -108,6 +109,7 @@
                     @endforeach
                 </tbody>
             </table>
+</div>
         </div>
         @if($invoices->hasPages())
         <div class="px-5 py-3 border-t border-slate-100">{{ $invoices->links() }}</div>
