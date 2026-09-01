@@ -42,7 +42,7 @@
                                 @foreach ($plans as $plan)
                                     <option value="{{ $plan->id }}"
                                         data-speed="{{ $plan->download_label }} / {{ $plan->upload_label }}"
-                                        data-duration="{{ $plan->duration_days }} hari"
+                                        data-duration="{{ $plan->duration_label }}"
                                         data-price="{{ $plan->price_label }}"
                                         {{ old('plan_id') == $plan->id ? 'selected' : '' }}>
                                         {{ $plan->name }}

@@ -17,12 +17,14 @@ class Voucher extends Model
         'price_snapshot',
         'status',
         'first_login_at',
+        'activated_at',
         'expired_at',
         'is_printed',
     ];
 
     protected $casts = [
         'first_login_at'  => 'datetime',
+        'activated_at'    => 'datetime',
         'expired_at'      => 'datetime',
         'is_printed'      => 'boolean',
         'price_snapshot'  => 'integer',
@@ -67,6 +69,12 @@ class Voucher extends Model
     public function getPriceLabelAttribute(): string
     {
         return 'Rp ' . number_format($this->price_snapshot, 0, ',', '.');
+    }
+
+    public function getRemainingSecondsAttribute(): ?int
+    {
+        if (!$this->expired_at) return null;
+        return max(0, now()->diffInSeconds($this->expired_at, false));
     }
 
     public function scopeActive($query)

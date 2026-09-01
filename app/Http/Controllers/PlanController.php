@@ -55,14 +55,26 @@ class PlanController extends Controller
             'price'               => ['required', 'integer', 'min:0'],
             'download_speed_kbps' => ['required', 'integer', 'min:1'],
             'upload_speed_kbps'   => ['required', 'integer', 'min:1'],
-            'duration_days'       => ['required', 'integer', 'min:1'],
+            'duration_value'      => ['required', 'integer', 'min:1'],
+            'duration_unit'       => ['required', Rule::in(['minutes', 'hours', 'days'])],
             'data_quota_mb'       => ['nullable', 'integer', 'min:1'],
+            'qos_limit_at_down_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_limit_at_up_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_limit_down_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_limit_up_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_threshold_down_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_threshold_up_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_time_down_sec' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_time_up_sec' => ['nullable', 'integer', 'min:1'],
+            'qos_priority' => ['nullable', 'integer', 'min:1', 'max:8'],
+            'qos_queue_type' => ['nullable', 'string', 'max:100'],
             'radius_group_name'   => ['required', 'string', 'max:100', 'unique:plans,radius_group_name'],
             'description'         => ['nullable', 'string', 'max:500'],
             'is_active'           => ['boolean'],
         ], $this->messages());
 
         $data['is_active'] = $request->boolean('is_active', true);
+        $data['duration_days'] = $data['duration_unit'] === 'days' ? $data['duration_value'] : max(1, (int) ceil(($data['duration_unit'] === 'hours' ? $data['duration_value'] / 24 : $data['duration_value'] / 1440)));
 
         Plan::create($data);
 
@@ -83,14 +95,26 @@ class PlanController extends Controller
             'price'               => ['required', 'integer', 'min:0'],
             'download_speed_kbps' => ['required', 'integer', 'min:1'],
             'upload_speed_kbps'   => ['required', 'integer', 'min:1'],
-            'duration_days'       => ['required', 'integer', 'min:1'],
+            'duration_value'      => ['required', 'integer', 'min:1'],
+            'duration_unit'       => ['required', Rule::in(['minutes', 'hours', 'days'])],
             'data_quota_mb'       => ['nullable', 'integer', 'min:1'],
+            'qos_limit_at_down_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_limit_at_up_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_limit_down_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_limit_up_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_threshold_down_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_threshold_up_kbps' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_time_down_sec' => ['nullable', 'integer', 'min:1'],
+            'qos_burst_time_up_sec' => ['nullable', 'integer', 'min:1'],
+            'qos_priority' => ['nullable', 'integer', 'min:1', 'max:8'],
+            'qos_queue_type' => ['nullable', 'string', 'max:100'],
             'radius_group_name'   => ['required', 'string', 'max:100', Rule::unique('plans', 'radius_group_name')->ignore($plan->id)],
             'description'         => ['nullable', 'string', 'max:500'],
             'is_active'           => ['boolean'],
         ], $this->messages());
 
         $data['is_active'] = $request->boolean('is_active', true);
+        $data['duration_days'] = $data['duration_unit'] === 'days' ? $data['duration_value'] : max(1, (int) ceil(($data['duration_unit'] === 'hours' ? $data['duration_value'] / 24 : $data['duration_value'] / 1440)));
 
         $plan->update($data);
 
@@ -123,7 +147,7 @@ class PlanController extends Controller
             'price.required'               => 'Harga wajib diisi.',
             'download_speed_kbps.required' => 'Kecepatan download wajib diisi.',
             'upload_speed_kbps.required'   => 'Kecepatan upload wajib diisi.',
-            'duration_days.required'       => 'Durasi wajib diisi.',
+            'duration_value.required'      => 'Durasi wajib diisi.',
             'radius_group_name.required'   => 'Nama group RADIUS wajib diisi.',
             'radius_group_name.unique'     => 'Nama group RADIUS sudah digunakan paket lain.',
         ];

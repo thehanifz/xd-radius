@@ -100,7 +100,7 @@
                             <p class="text-slate-700 font-medium tabular-nums">↓ {{ $plan->download_label }}</p>
                             <p class="text-slate-400 text-xs tabular-nums">↑ {{ $plan->upload_label }}</p>
                         </td>
-                        <td class="px-5 py-3.5 text-slate-600 tabular-nums">{{ $plan->duration_days }} hari</td>
+                        <td class="px-5 py-3.5 text-slate-600 tabular-nums">{{ $plan->duration_label }}</td>
                         <td class="px-5 py-3.5">
                             <span class="font-semibold text-slate-800 tabular-nums">{{ $plan->price_label }}</span>
                         </td>

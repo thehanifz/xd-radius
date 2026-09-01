@@ -15,7 +15,7 @@ Artisan::command('inspire', function () {
 // ─── Scheduler Jobs ──────────────────────────────────────────────────────────
 
 // Sync first_login_at dari radacct ke vouchers/members — setiap jam
-Schedule::job(new SyncFirstLoginAtJob)->hourly()->name('sync-first-login');
+Schedule::job(new SyncFirstLoginAtJob)->everyMinute()->name('sync-first-login');
 
 // Rekonsiliasi sesi stale di radacct — setiap 15 menit
 Schedule::job(new ReconcileStaleSessionsJob)->everyFifteenMinutes()->name('reconcile-stale-sessions');

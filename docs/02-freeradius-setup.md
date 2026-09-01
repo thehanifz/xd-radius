@@ -154,3 +154,36 @@ Dan aktifkan Interim-Update accounting (rekomendasi: setiap 1–5 menit):
 | `fe_sendauth: no password supplied` | psql CLI tidak mendapat password | Gunakan `PGPASSWORD='...' psql ...` |
 | `Access-Reject` | User tidak ada di `radcheck` | Insert user ke tabel `radcheck` terlebih dahulu |
 | FreeRADIUS hang di debug mode | Normal behavior (daemon) | Gunakan `timeout 10 freeradius -X` |
+
+## 8. Voucher validity & dynamic Session-Timeout
+
+Voucher validity is anchored to the first successful login. The Laravel application stores `first_login_at` and `expired_at`. For strict enforcement, the FreeRADIUS `authorize` section should calculate the remaining seconds from PostgreSQL and set `Session-Timeout` on every login.
+
+Conceptual SQL used by the RADIUS authorize logic:
+
+```sql
+SELECT GREATEST(EXTRACT(EPOCH FROM (expired_at - NOW()))::integer, 0)
+FROM vouchers
+WHERE username = '%{SQL-User-Name}'
+  AND status = 'active'
+  AND expired_at IS NOT NULL;
+```
+
+The resulting value should be assigned to `reply:Session-Timeout` only when it is greater than zero. If the value is zero, authentication must be rejected. The existing `radacct` accounting remains the source for first-login reconciliation and usage reporting.
+
+## 9. MikroTik QoS
+
+`Mikrotik-Rate-Limit` is generated centrally by Laravel from the plan QoS fields. The order follows RouterOS RADIUS rate-limit syntax:
+
+`rx/tx burst-rx/burst-tx threshold-rx/threshold-tx burst-time-rx/burst-time-tx priority rx-min/tx-min`
+
+In RouterOS, **rx = client upload** and **tx = client download**. The application therefore writes upload first and download second so the resulting HotSpot queue matches the intended directions. `Limit At` is mapped to the final minimum-rate pair. Keep RouterOS and FreeRADIUS versions consistent and verify the resulting dynamic queue on a test subscriber before production rollout.
+
+Recommended test profile:
+
+- Max: 10M / 5M
+- Limit At: 2M / 1M
+- Burst Limit: 20M / 10M
+- Burst Threshold: 5M / 2M
+- Burst Time: 10s / 10s
+- Priority: 8

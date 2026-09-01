@@ -39,14 +39,23 @@
 </div>
 
 {{-- Durasi & Harga --}}
-<div class="grid grid-cols-2 gap-4">
+<div class="grid grid-cols-3 gap-4">
     <div>
-        <label class="form-label">Durasi (hari) <span class="text-red-500">*</span></label>
-        <input type="number" name="duration_days" min="1"
-            value="{{ old('duration_days', $plan->duration_days ?? '') }}"
-            placeholder="cth: 30"
-            class="form-input @error('duration_days') border-red-400 @enderror">
-        @error('duration_days') <p class="form-error">{{ $message }}</p> @enderror
+        <label class="form-label">Durasi <span class="text-red-500">*</span></label>
+        <input type="number" name="duration_value" min="1"
+            value="{{ old('duration_value', $plan->duration_value ?? $plan->duration_days ?? '') }}"
+            placeholder="cth: 3"
+            class="form-input @error('duration_value') border-red-400 @enderror">
+        @error('duration_value') <p class="form-error">{{ $message }}</p> @enderror
+    </div>
+    <div>
+        <label class="form-label">Satuan <span class="text-red-500">*</span></label>
+        <select name="duration_unit" class="form-input @error('duration_unit') border-red-400 @enderror">
+            @foreach(['minutes'=>'Menit','hours'=>'Jam','days'=>'Hari'] as $value => $label)
+                <option value="{{ $value }}" @selected(old('duration_unit', $plan->duration_unit ?? 'days') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+        @error('duration_unit') <p class="form-error">{{ $message }}</p> @enderror
     </div>
     <div>
         <label class="form-label">Harga (Rp) <span class="text-red-500">*</span></label>
@@ -66,6 +75,42 @@
         placeholder="cth: 10240 = 10 GB, kosongkan jika unlimited"
         class="form-input @error('data_quota_mb') border-red-400 @enderror">
     @error('data_quota_mb') <p class="form-error">{{ $message }}</p> @enderror
+</div>
+
+{{-- QoS RouterOS --}}
+<div class="border-t border-slate-200 pt-5 mt-2">
+    <div class="mb-3">
+        <h3 class="font-semibold text-slate-800">QoS / MikroTik Rate Limit</h3>
+        <p class="text-xs text-slate-400 mt-1">Kosongkan parameter opsional jika tidak digunakan. Max Limit memakai kecepatan utama di atas.</p>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        @foreach([
+            'qos_limit_at_down_kbps' => 'Limit At ↓ (Kbps)',
+            'qos_limit_at_up_kbps' => 'Limit At ↑ (Kbps)',
+            'qos_burst_limit_down_kbps' => 'Burst Limit ↓ (Kbps)',
+            'qos_burst_limit_up_kbps' => 'Burst Limit ↑ (Kbps)',
+            'qos_burst_threshold_down_kbps' => 'Burst Threshold ↓ (Kbps)',
+            'qos_burst_threshold_up_kbps' => 'Burst Threshold ↑ (Kbps)',
+            'qos_burst_time_down_sec' => 'Burst Time ↓ (detik)',
+            'qos_burst_time_up_sec' => 'Burst Time ↑ (detik)',
+        ] as $field => $label)
+        <div>
+            <label class="form-label">{{ $label }}</label>
+            <input type="number" name="{{ $field }}" min="1" value="{{ old($field, $plan->{$field} ?? '') }}" class="form-input">
+        </div>
+        @endforeach
+        <div>
+            <label class="form-label">Priority</label>
+            <select name="qos_priority" class="form-input">
+                <option value="">Default</option>
+                @for($i=1;$i<=8;$i++)<option value="{{ $i }}" @selected((string)old('qos_priority', $plan->qos_priority ?? '') === (string)$i)>{{ $i }}</option>@endfor
+            </select>
+        </div>
+        <div>
+            <label class="form-label">Queue Type</label>
+            <input type="text" name="qos_queue_type" value="{{ old('qos_queue_type', $plan->qos_queue_type ?? '') }}" placeholder="default" class="form-input">
+        </div>
+    </div>
 </div>
 
 {{-- RADIUS Group --}}

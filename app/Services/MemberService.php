@@ -6,6 +6,7 @@ use App\Models\Member;
 use App\Models\Plan;
 use App\Models\ServiceActionLog;
 use Illuminate\Support\Facades\DB;
+use App\Services\QosService;
 
 class MemberService
 {
@@ -112,7 +113,7 @@ class MemberService
     private function syncToRadius(Member $member, Plan $plan, string $password): void
     {
         $u         = $member->username;
-        $rateLimit = "{$plan->download_speed_kbps}k/{$plan->upload_speed_kbps}k";
+        $rateLimit = app(QosService::class)->rateLimit($plan);
 
         DB::table('radcheck')->insert([
             'username'  => $u,
@@ -146,7 +147,7 @@ class MemberService
     private function updateRadius(Member $member, Plan $plan, ?string $newPassword): void
     {
         $u         = $member->username;
-        $rateLimit = "{$plan->download_speed_kbps}k/{$plan->upload_speed_kbps}k";
+        $rateLimit = app(QosService::class)->rateLimit($plan);
 
         if ($newPassword !== null) {
             DB::table('radcheck')

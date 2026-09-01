@@ -161,7 +161,7 @@ body {
             @if($v->plan)
             <div class="plan-desc">
                 {{ $v->plan->speed_label ?? '' }}
-                @if($v->plan->duration_days) · {{ $v->plan->duration_days }} hari @endif
+                @if($v->plan->duration_days) · {{ $v->plan->duration_label }} @endif
             </div>
             @endif
             <div class="divider"></div>

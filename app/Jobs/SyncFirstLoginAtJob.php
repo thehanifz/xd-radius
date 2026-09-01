@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Member;
 use App\Models\Voucher;
+use App\Services\VoucherValidityService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -15,27 +16,27 @@ class SyncFirstLoginAtJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function handle(): void
+    public function handle(VoucherValidityService $validity): void
     {
-        // Sync vouchers without first_login_at
-        Voucher::whereNull('first_login_at')->chunk(200, function ($vouchers) {
+        Voucher::with('plan')->whereNull('first_login_at')->chunkById(200, function ($vouchers) use ($validity) {
             foreach ($vouchers as $voucher) {
                 $firstSession = DB::table('radacct')
                     ->where('username', $voucher->username)
+                    ->whereNotNull('acctstarttime')
                     ->orderBy('acctstarttime')
                     ->value('acctstarttime');
 
                 if ($firstSession) {
-                    $voucher->update(['first_login_at' => $firstSession]);
+                    $validity->activateFromFirstLogin($voucher, \Carbon\Carbon::parse($firstSession));
                 }
             }
         });
 
-        // Sync members without first_login_at
-        Member::whereNull('first_login_at')->chunk(200, function ($members) {
+        Member::whereNull('first_login_at')->chunkById(200, function ($members) {
             foreach ($members as $member) {
                 $firstSession = DB::table('radacct')
                     ->where('username', $member->username)
+                    ->whereNotNull('acctstarttime')
                     ->orderBy('acctstarttime')
                     ->value('acctstarttime');
 
@@ -44,5 +45,7 @@ class SyncFirstLoginAtJob implements ShouldQueue
                 }
             }
         });
+
+        $validity->markExpired();
     }
 }

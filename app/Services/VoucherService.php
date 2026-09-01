@@ -7,9 +7,11 @@ use App\Models\Voucher;
 use App\Models\VoucherBatch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Services\RadiusService;
 
 class VoucherService
 {
+    public function __construct(protected RadiusService $radius) {}
     /**
      * Generate batch voucher baru.
      * Dipanggil dari VoucherController::generate()
@@ -68,36 +70,11 @@ class VoucherService
 
             Voucher::insert($vouchers);
 
-            // Sync ke FreeRADIUS tables
-            $rateLimit     = "{$plan->download_speed_kbps}k/{$plan->upload_speed_kbps}k";
-            $radchecks     = [];
-            $radreplies    = [];
-            $radusergroups = [];
-
+            // Sync ke FreeRADIUS tables melalui service terpusat agar QoS
+            // selalu menggunakan format RouterOS yang sama untuk voucher/member.
             foreach ($vouchers as $v) {
-                $u = $v['username'];
-                $radchecks[]     = [
-                    'username'  => $u,
-                    'attribute' => 'Cleartext-Password',
-                    'op'        => ':=',
-                    'value'     => $u, // username = password untuk voucher
-                ];
-                $radreplies[]    = [
-                    'username'  => $u,
-                    'attribute' => 'Mikrotik-Rate-Limit',
-                    'op'        => ':=',
-                    'value'     => $rateLimit,
-                ];
-                $radusergroups[] = [
-                    'username'  => $u,
-                    'groupname' => $plan->radius_group_name,
-                    'priority'  => 1,
-                ];
+                $this->radius->provisionUser($v['username'], $v['password_plain'], $plan);
             }
-
-            DB::table('radcheck')->insert($radchecks);
-            DB::table('radreply')->insert($radreplies);
-            DB::table('radusergroup')->insert($radusergroups);
 
             return $batch->load('plan', 'generatedBy', 'vouchers');
         });
