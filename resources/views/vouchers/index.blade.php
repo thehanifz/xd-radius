@@ -10,6 +10,24 @@
 
 @section('content')
 <div class="space-y-5">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+    @php
+        $voucherKpis = [
+            ['label' => 'Tersedia', 'value' => $voucherStats['available']],
+            ['label' => 'Digunakan', 'value' => $voucherStats['used']],
+            ['label' => 'Expired', 'value' => $voucherStats['expired']],
+            ['label' => 'Isolir', 'value' => $voucherStats['isolated']],
+            ['label' => 'Total', 'value' => $voucherStats['total']],
+        ];
+    @endphp
+    @foreach($voucherKpis as $kpi)
+    <div class="card px-4 py-3">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ $kpi['label'] }}</p>
+        <p class="text-xl font-bold text-slate-800 mt-1 tabular-nums">{{ number_format($kpi['value']) }}</p>
+    </div>
+    @endforeach
+</div>
+
 
     {{-- Filter --}}
     <div class="card">
@@ -123,6 +141,18 @@
     </div>
     @endif
 
+    {{-- Bulk actions --}}
+    <div id="voucher-bulk-bar" class="hidden card border-indigo-200 bg-indigo-50/70 px-4 py-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="text-sm text-indigo-900"><span id="selected-count" class="font-bold">0</span> voucher dipilih</div>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" data-print-type="a4" class="bulk-print-btn btn-sm-secondary">Print A4</button>
+                <button type="button" data-print-type="thermal" class="bulk-print-btn btn-primary">Print Thermal</button>
+                <button type="button" id="clear-selection" class="text-xs font-semibold text-slate-500 hover:text-slate-800 px-2 py-1.5">Batal</button>
+            </div>
+        </div>
+    </div>
+
     {{-- Tabel Voucher --}}
     <div class="card overflow-hidden">
         <div class="card-header flex items-center justify-between">
@@ -144,10 +174,14 @@
             <a href="{{ route('vouchers.create') }}" class="btn-primary">Generate Sekarang</a>
         </div>
         @else
+        <form id="voucher-selection-form">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
+                        <th class="w-10 px-5 py-3">
+                            <input type="checkbox" id="select-all-vouchers" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" aria-label="Pilih semua voucher di halaman">
+                        </th>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Username / Password</th>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Batch</th>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Paket</th>
@@ -161,6 +195,9 @@
                 <tbody class="divide-y divide-slate-100">
                     @foreach($vouchers as $voucher)
                     <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-5 py-3.5">
+                            <input type="checkbox" name="ids[]" value="{{ $voucher->id }}" class="voucher-checkbox rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" aria-label="Pilih {{ $voucher->username }}">
+                        </td>
                         <td class="px-5 py-3.5">
                             <div class="flex items-center gap-2">
                                 <span class="font-mono font-semibold text-slate-800">{{ $voucher->username }}</span>
@@ -177,7 +214,7 @@
                             {{ $voucher->first_login_at?->format('d M Y H:i') ?? '-' }}
                         </td>
                         <td class="px-5 py-3.5 text-slate-500 text-xs">
-                            {{ $voucher->expired_at?->format('d M Y') ?? '-' }}
+                            {{ $voucher->expired_at?->format('d M Y H:i') ?? '-' }}
                         </td>
                         <td class="px-5 py-3.5">
                             @php
@@ -211,6 +248,7 @@
             {{ $vouchers->links() }}
         </div>
         @endif
+        </form>
         @endif
     </div>
 
@@ -245,6 +283,43 @@ document.addEventListener('DOMContentLoaded', function () {
         updateBatchButtons(sel.value, sel.options[sel.selectedIndex].text);
     }
 });
+
+const bulkBar = document.getElementById('voucher-bulk-bar');
+const selectedCount = document.getElementById('selected-count');
+const selectAll = document.getElementById('select-all-vouchers');
+const voucherCheckboxes = () => Array.from(document.querySelectorAll('.voucher-checkbox'));
+
+function refreshSelection() {
+    const selected = voucherCheckboxes().filter(cb => cb.checked);
+    bulkBar?.classList.toggle('hidden', selected.length === 0);
+    if (selectedCount) selectedCount.textContent = selected.length;
+    if (selectAll) {
+        selectAll.checked = selected.length > 0 && selected.length === voucherCheckboxes().length;
+        selectAll.indeterminate = selected.length > 0 && selected.length < voucherCheckboxes().length;
+    }
+}
+
+selectAll?.addEventListener('change', function () {
+    voucherCheckboxes().forEach(cb => cb.checked = this.checked);
+    refreshSelection();
+});
+
+voucherCheckboxes().forEach(cb => cb.addEventListener('change', refreshSelection));
+
+document.querySelectorAll('.bulk-print-btn').forEach(btn => btn.addEventListener('click', function () {
+    const selected = voucherCheckboxes().filter(cb => cb.checked);
+    if (!selected.length) return;
+    const params = new URLSearchParams();
+    selected.forEach(cb => params.append('ids[]', cb.value));
+    params.set('type', this.dataset.printType);
+    window.open('{{ route('vouchers.print-selected') }}?' + params.toString(), '_blank', 'noopener');
+}));
+
+document.getElementById('clear-selection')?.addEventListener('click', function () {
+    voucherCheckboxes().forEach(cb => cb.checked = false);
+    refreshSelection();
+});
+
 </script>
 @endpush
 @endsection

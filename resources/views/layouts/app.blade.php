@@ -101,7 +101,7 @@
     {{-- MAIN --}}
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        <header class="flex items-center justify-between px-6 h-16 bg-white/80 backdrop-blur-md border-b border-slate-100 flex-shrink-0 sticky top-0 z-20"
+        <header class="flex items-center justify-between gap-3 px-4 sm:px-6 h-16 bg-white/80 backdrop-blur-md border-b border-slate-100 flex-shrink-0 sticky top-0 z-20"
                 style="box-shadow: 0 1px 0 rgba(0,0,0,0.04);">
             <div class="flex items-center gap-4">
                 <button id="hamburger-btn" onclick="toggleSidebar()"
@@ -116,12 +116,12 @@
                     <h1 class="text-sm font-bold text-slate-800 tracking-tight">@yield('title', 'Dashboard')</h1>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-x-auto">
                 @yield('topbar-actions')
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-6">
+        <main class="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 lg:pb-6">
             @if(session('success'))
             <div class="flash-success mb-5 animate-slide-up">
                 <svg class="flex-shrink-0 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">

@@ -90,7 +90,13 @@
         ],
     ];
     @endphp
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+<div class="stat-card"><p class="stat-label">Session Hari Ini</p><p class="stat-value">{{ number_format($stats['session_today']) }}</p></div>
+<div class="stat-card"><p class="stat-label">Online Sekarang</p><p class="stat-value text-green-600">{{ number_format($stats['session_online']) }}</p></div>
+<div class="stat-card"><p class="stat-label">Upload Hari Ini</p><p class="stat-value text-sm lg:text-xl">{{ \App\Models\Radacct::formatBytes($stats['traffic_upload_today']) }}</p></div>
+<div class="stat-card"><p class="stat-label">Download Hari Ini</p><p class="stat-value text-sm lg:text-xl">{{ \App\Models\Radacct::formatBytes($stats['traffic_download_today']) }}</p></div>
+</div>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         @foreach($kpis as $k)
         <div class="rounded-2xl p-5 relative overflow-hidden hover:-translate-y-0.5 transition-all duration-200"
              style="background:{{ $k['bg'] }};box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -109,6 +115,21 @@
             <p class="text-xs font-semibold text-slate-500 mt-0.5">{{ $k['label'] }}</p>
         </div>
         @endforeach
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <a href="{{ route('vouchers.index', ['status' => 'active']) }}" class="rounded-xl bg-white border border-slate-100 px-4 py-3 hover:border-indigo-200 hover:shadow-sm transition-all">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tersedia</p>
+            <p class="text-lg font-bold text-blue-600 mt-0.5">{{ number_format($stats['voucher_available']) }}</p>
+        </a>
+        <a href="{{ route('vouchers.index', ['status' => 'expired']) }}" class="rounded-xl bg-white border border-slate-100 px-4 py-3 hover:border-slate-200 hover:shadow-sm transition-all">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Expired</p>
+            <p class="text-lg font-bold text-slate-500 mt-0.5">{{ number_format($stats['voucher_expired']) }}</p>
+        </a>
+        <a href="{{ route('vouchers.index', ['status' => 'active']) }}" class="rounded-xl bg-white border border-slate-100 px-4 py-3 hover:border-indigo-200 hover:shadow-sm transition-all col-span-2 sm:col-span-1">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Voucher Terpakai</p>
+            <p class="text-lg font-bold text-indigo-600 mt-0.5">{{ number_format($stats['voucher_used']) }}</p>
+        </a>
     </div>
 
     {{-- KPI row 2: billing --}}

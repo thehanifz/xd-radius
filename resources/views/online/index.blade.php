@@ -26,6 +26,14 @@
         <p class="stat-label">Diduga Putus</p>
         <p class="stat-value text-slate-400">{{ $totalStale }}</p>
     </div>
+    <div class="stat-card">
+        <p class="stat-label">Upload Aktif</p>
+        <p class="stat-value text-sm lg:text-xl">{{ \App\Models\Radacct::formatBytes($totalUpload) }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Download Aktif</p>
+        <p class="stat-value text-sm lg:text-xl">{{ \App\Models\Radacct::formatBytes($totalDownload) }}</p>
+    </div>
 </div>
 
 {{-- Filter --}}
@@ -71,7 +79,7 @@
             @forelse($sessions as $s)
             @php
                 $isStale    = $s->is_stale;
-                $isVoucher  = \App\Models\Voucher::where('username', $s->username)->exists();
+                $isVoucher  = isset($voucherUsers[$s->username]);
                 $type       = $isVoucher ? 'Voucher' : 'Member';
                 $uploadMB   = round(($s->acctoutputoctets ?? 0) / 1048576, 2);
                 $downloadMB = round(($s->acctinputoctets ?? 0) / 1048576, 2);
@@ -83,7 +91,7 @@
                 <td class="text-slate-500 text-sm font-mono">{{ $s->framedipaddress ?? '-' }}</td>
                 <td class="text-slate-500 text-sm">{{ $s->acctstarttime?->format('d/m H:i') ?? '-' }}</td>
                 <td class="text-slate-500 text-sm">{{ $s->duration }}</td>
-                <td class="text-slate-500 text-xs">{{ $uploadMB }}/{{ $downloadMB }} MB</td>
+                <td class="text-slate-500 text-xs whitespace-nowrap">↑ {{ $s->upload_label }} / ↓ {{ $s->download_label }}</td>
                 <td>
                     @if($isStale)
                         <span class="badge-isolated text-xs">Diduga Putus</span>
@@ -91,9 +99,10 @@
                         <span class="badge-active text-xs">Online</span>
                     @endif
                 </td>
-                <td class="text-right">
+                <td class="text-right whitespace-nowrap">
+                    <a href="{{ route('online.show', $s) }}" class="btn-sm-secondary mr-1">Detail</a>
                     <button disabled
-                        title="Disconnect tersedia di Tahap 2"
+                        title="Disconnect akan tersedia setelah integrasi RouterOS"
                         class="btn-sm-danger opacity-40 cursor-not-allowed">
                         Disconnect
                     </button>

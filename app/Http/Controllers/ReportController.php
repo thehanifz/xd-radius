@@ -6,6 +6,7 @@ use App\Models\Member;
 use App\Models\Plan;
 use App\Models\Voucher;
 use App\Models\VoucherBatch;
+use App\Models\Radacct;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -63,6 +64,22 @@ class ReportController extends Controller
             $members = $mq->get();
         }
 
+        // ── Accounting ────────────────────────────────────────────────────────
+        $accounting = Radacct::whereBetween('acctstarttime', [$start, $end]);
+        if ($type !== 'all') {
+            if ($type === 'voucher') {
+                $accounting->whereExists(fn($q) => $q->from('vouchers')->whereColumn('vouchers.username', 'radacct.username'));
+            } elseif ($type === 'member') {
+                $accounting->whereExists(fn($q) => $q->from('members')->whereColumn('members.username', 'radacct.username'));
+            }
+        }
+        $accountingSummary = [
+            'sessions' => (clone $accounting)->count(),
+            'duration' => (int) (clone $accounting)->sum('acctsessiontime'),
+            'upload' => (int) (clone $accounting)->sum('acctoutputoctets'),
+            'download' => (int) (clone $accounting)->sum('acctinputoctets'),
+        ];
+
         // ── Summary ───────────────────────────────────────────────────────────
         $summary = [
             'total_voucher_active'  => $vouchers->where('status', 'active')->count(),
@@ -73,7 +90,7 @@ class ReportController extends Controller
 
         return view('reports.monthly', compact(
             'vouchers', 'members', 'summary', 'plans', 'operators',
-            'month', 'year', 'type', 'planId', 'operatorId', 'start', 'end'
+            'month', 'year', 'type', 'planId', 'operatorId', 'start', 'end', 'accountingSummary'
         ));
     }
 

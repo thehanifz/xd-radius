@@ -36,9 +36,18 @@ class VoucherController extends Controller
 
         $vouchers = $query->orderByDesc('created_at')->paginate(50)->withQueryString();
         $plans    = Plan::active()->orderBy('name')->get();
-        $batches  = VoucherBatch::with('plan')->orderByDesc('generated_at')->get();
+        $batches  = VoucherBatch::with('plan')->withCount('vouchers')->orderByDesc('generated_at')->get();
 
-        return view('vouchers.index', compact('vouchers', 'plans', 'batches'));
+        $statsBase = Voucher::query();
+        $voucherStats = [
+            'total'     => (clone $statsBase)->count(),
+            'available' => (clone $statsBase)->available()->count(),
+            'used'      => (clone $statsBase)->used()->count(),
+            'expired'   => (clone $statsBase)->where('status', 'expired')->count(),
+            'isolated'  => (clone $statsBase)->where('status', 'isolated')->count(),
+        ];
+
+        return view('vouchers.index', compact('vouchers', 'plans', 'batches', 'voucherStats'));
     }
 
     /**
@@ -107,6 +116,41 @@ class VoucherController extends Controller
         $view = $type === 'thermal' ? 'vouchers.print-thermal' : 'vouchers.print';
 
         return view($view, compact('vouchers', 'batch', 'batchCode', 'voucherBatch'));
+    }
+
+
+    /**
+     * Print voucher yang dipilih dari daftar, tanpa harus mencetak seluruh batch.
+     */
+    public function printSelected(Request $request)
+    {
+        $ids = collect($request->input('ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->take(100)
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return redirect()->route('vouchers.index')->with('warning', 'Pilih minimal satu voucher untuk dicetak.');
+        }
+
+        $vouchers = Voucher::with(['plan', 'batch'])
+            ->whereIn('id', $ids)
+            ->orderBy('id')
+            ->get();
+
+        if ($vouchers->isEmpty()) {
+            return redirect()->route('vouchers.index')->with('warning', 'Voucher yang dipilih tidak ditemukan.');
+        }
+
+        $type = $request->string('type')->toString() === 'thermal' ? 'thermal' : 'a4';
+        $batchLabel = $vouchers->pluck('batch.batch_code')->filter()->unique()->implode(', ');
+        $batchCode = $batchLabel ?: 'Selected';
+        $voucherBatch = $vouchers->first()->batch;
+        $view = $type === 'thermal' ? 'vouchers.print-thermal' : 'vouchers.print';
+
+        return view($view, compact('vouchers', 'batchCode', 'voucherBatch'));
     }
 
     /**

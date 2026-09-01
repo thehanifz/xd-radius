@@ -84,6 +84,23 @@
                 <path d="M12 16H8"/>
             @break
 
+            @case('activity')
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            @break
+
+            @case('server')
+                <rect x="3" y="3" width="18" height="6" rx="1"/>
+                <rect x="3" y="15" width="18" height="6" rx="1"/>
+                <line x1="7" y1="6" x2="7.01" y2="6"/>
+                <line x1="7" y1="18" x2="7.01" y2="18"/>
+            @break
+
+            @case('user-check')
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <polyline points="16 11 18 13 22 9"/>
+            @break
+
             @case('wifi')
                 <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
                 <path d="M1.42 9a16 16 0 0 1 21.16 0"/>

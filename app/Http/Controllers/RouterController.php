@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
+use App\Services\RouterConnectionService;
 
 class RouterController extends Controller
 {
@@ -54,6 +55,19 @@ class RouterController extends Controller
     {
         Gate::authorize('superuser-only');
         return view('routers.show', compact('router'));
+    }
+
+    public function testConnection(Router $router, RouterConnectionService $connectionService)
+    {
+        Gate::authorize('superuser-only');
+
+        $result = $connectionService->test($router);
+
+        if (! $result['ok']) {
+            return back()->with('error', "Koneksi ke {$router->name} gagal: {$result['message']}");
+        }
+
+        return back()->with('success', "Koneksi {$router->name} berhasil. RouterOS {$result['version']}");
     }
 
     public function edit(Router $router)

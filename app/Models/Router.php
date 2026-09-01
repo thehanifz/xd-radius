@@ -26,6 +26,8 @@ class Router extends Model
         'last_connection_status',
         'last_connected_at',
         'last_connection_message',
+        'routeros_version',
+        'last_connection_error',
     ];
 
     protected $casts = [
@@ -96,6 +98,38 @@ class Router extends Model
             'error' => 'Gagal',
             default => 'Belum diuji',
         };
+    }
+
+    public function getConnectionResourceAttribute(): array
+    {
+        $value = $this->last_connection_message;
+        if (! is_string($value) || $value === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    public function getConnectionCpuLoadAttribute(): ?int
+    {
+        return isset($this->connection_resource['cpu_load']) ? (int) $this->connection_resource['cpu_load'] : null;
+    }
+
+    public function getConnectionUptimeAttribute(): ?string
+    {
+        return $this->connection_resource['uptime'] ?? null;
+    }
+
+    public function getConnectionMemoryLabelAttribute(): ?string
+    {
+        $free = $this->connection_resource['free_memory'] ?? null;
+        $total = $this->connection_resource['total_memory'] ?? null;
+        if (! $free || ! $total) {
+            return null;
+        }
+
+        return number_format($free / 1048576, 0) . ' / ' . number_format($total / 1048576, 0) . ' MB';
     }
 
     public function getConnectionStatusColorAttribute(): string

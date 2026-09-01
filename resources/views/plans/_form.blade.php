@@ -78,12 +78,13 @@
 </div>
 
 {{-- QoS RouterOS --}}
-<div class="border-t border-slate-200 pt-5 mt-2">
-    <div class="mb-3">
-        <h3 class="font-semibold text-slate-800">QoS / MikroTik Rate Limit</h3>
-        <p class="text-xs text-slate-400 mt-1">Max Limit memakai kecepatan utama. Limit At, Burst, Threshold, Burst Time, dan Priority dikirim melalui Mikrotik-Rate-Limit. RouterOS menggunakan rx=upload dan tx=download.</p>
+<div class="border-t border-slate-200 pt-5 mt-2" x-data="{ qosOpen: true }">
+    <div class="mb-3 flex items-start justify-between gap-4">
+        <div><h3 class="font-semibold text-slate-800">QoS / MikroTik Rate Limit</h3>
+        <p class="text-xs text-slate-400 mt-1">Max Limit memakai kecepatan utama. Limit At, Burst, Threshold, Burst Time, dan Priority dikirim melalui Mikrotik-Rate-Limit. RouterOS menggunakan rx=upload dan tx=download.</p></div>
+        <button type="button" @click="qosOpen = !qosOpen" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800" x-text="qosOpen ? 'Ciutkan' : 'Buka'"></button>
     </div>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div x-show="qosOpen" x-transition class="grid grid-cols-2 md:grid-cols-4 gap-4">
         @foreach([
             'qos_limit_at_down_kbps' => 'Limit At ↓ (Kbps)',
             'qos_limit_at_up_kbps' => 'Limit At ↑ (Kbps)',
@@ -111,6 +112,11 @@
             <input type="text" name="qos_queue_type" value="{{ old('qos_queue_type', $plan->qos_queue_type ?? '') }}" placeholder="default" class="form-input">
             <p class="text-[11px] text-slate-400 mt-1">Untuk HotSpot RADIUS standar, queue type tidak masuk format Mikrotik-Rate-Limit.</p>
         </div>
+    </div>
+    <div x-show="qosOpen" class="mt-4 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-xs text-slate-500">
+        <div class="font-semibold text-slate-700 mb-1">Contoh profile</div>
+        <div class="font-mono">10M/5M 20M/10M 5M/2M 10/10 8 2M/1M</div>
+        <p class="mt-1">Urutan mengikuti parameter RouterOS. Queue Type disimpan sebagai metadata dan tidak dimasukkan ke string rate-limit.</p>
     </div>
 </div>
 

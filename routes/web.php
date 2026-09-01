@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/vouchers/generate',              [VoucherController::class, 'generate'])->name('vouchers.generate');
     Route::get('/vouchers/preview-format',         [VoucherController::class, 'previewFormat'])->name('vouchers.preview-format');
     Route::get('/vouchers/batch/{batch}/print',    [VoucherController::class, 'print'])->name('vouchers.print');
+    Route::get('/vouchers/print-selected',          [VoucherController::class, 'printSelected'])->name('vouchers.print-selected');
     Route::get('/vouchers/{voucher}',              [VoucherController::class, 'show'])->name('vouchers.show');
 
     // ─── Members ─────────────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ Route::middleware('auth')->group(function () {
 
     // ─── Online Sessions ─────────────────────────────────────────────────────
     Route::get('/online', [OnlineSessionController::class, 'index'])->name('online.index');
+    Route::get('/online/{session}', [OnlineSessionController::class, 'show'])->whereNumber('session')->name('online.show');
 
     // ─── Reports (superuser only) ─────────────────────────────────────────────
     Route::get('/reports/monthly',     [ReportController::class, 'index'])->name('reports.index');
@@ -75,6 +77,7 @@ Route::middleware('auth')->group(function () {
 
     // ─── Routers / NAS ───────────────────────────────────────────────────────
     Route::resource('routers', RouterController::class);
+    Route::post('/routers/{router}/test-connection', [RouterController::class, 'testConnection'])->name('routers.test-connection');
     Route::patch('/routers/{router}/toggle', [RouterController::class, 'toggleActive'])->name('routers.toggle');
 
     // ─── Operators (superuser only) ──────────────────────────────────────────

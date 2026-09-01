@@ -88,6 +88,14 @@
     </div>
 </div>
 
+{{-- Accounting Summary --}}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="stat-card"><p class="stat-label">Session</p><p class="stat-value">{{ number_format($accountingSummary['sessions']) }}</p></div>
+    <div class="stat-card"><p class="stat-label">Durasi</p><p class="stat-value text-sm lg:text-xl">{{ \App\Models\Radacct::formatDuration($accountingSummary['duration']) }}</p></div>
+    <div class="stat-card"><p class="stat-label">Upload</p><p class="stat-value text-sm lg:text-xl">{{ \App\Models\Radacct::formatBytes($accountingSummary['upload']) }}</p></div>
+    <div class="stat-card"><p class="stat-label">Download</p><p class="stat-value text-sm lg:text-xl">{{ \App\Models\Radacct::formatBytes($accountingSummary['download']) }}</p></div>
+</div>
+
 {{-- Voucher Table --}}
 @if($vouchers->isNotEmpty())
 <div class="card mb-6">

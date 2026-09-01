@@ -24,6 +24,7 @@
                 <a href="{{ route('routers.create') }}" class="btn-primary">Tambah Router</a>
             </div>
         @else
+            <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
@@ -102,6 +103,29 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
+
+            <div class="md:hidden divide-y divide-slate-100">
+                @foreach ($routers as $router)
+                <a href="{{ route('routers.show', $router) }}" class="block p-4 hover:bg-slate-50 active:bg-slate-100 transition-colors">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="font-semibold text-slate-800 truncate">{{ $router->name }}</p>
+                            <p class="font-mono text-xs text-slate-500 mt-1">{{ $router->ip_address }}:{{ $router->api_port }}</p>
+                            @if($router->location)
+                                <p class="text-xs text-slate-400 mt-1 truncate">{{ $router->location }}</p>
+                            @endif
+                        </div>
+                        <span class="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium {{ $router->is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' }}">{{ $router->status_label }}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 mt-3">
+                        <span class="text-xs {{ $router->last_connection_status === 'ok' ? 'text-green-600' : ($router->last_connection_status === 'error' ? 'text-red-600' : 'text-slate-400') }}">{{ $router->connection_status_label }}</span>
+                        <span class="text-xs font-semibold text-blue-600">Detail →</span>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+
             @if($routers->hasPages())
             <div class="px-4 py-3 border-t border-slate-200">
                 {{ $routers->links() }}

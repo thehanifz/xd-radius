@@ -9,6 +9,7 @@ use App\Models\Voucher;
 use App\Models\VoucherBatch;
 use App\Services\BillingService;
 use Illuminate\Support\Facades\DB;
+use App\Models\Radacct;
 
 class DashboardController extends Controller
 {
@@ -19,11 +20,21 @@ class DashboardController extends Controller
         // Mark overdue dulu
         $this->billing->markOverdue();
 
+        $todayStart = now()->startOfDay();
+        $todayEnd = now()->endOfDay();
+        $todaySessions = Radacct::whereBetween('acctstarttime', [$todayStart, $todayEnd]);
+
         $stats = [
-            'voucher_active'   => Voucher::where('status', 'active')->count(),
+            'voucher_active'   => Voucher::used()->where('expired_at', '>', now())->count(),
+            'voucher_available'=> Voucher::available()->count(),
+            'voucher_used'     => Voucher::used()->count(),
+            'voucher_expired'  => Voucher::where('status', 'expired')->count(),
             'member_active'    => Member::where('status', 'active')->count(),
             'member_isolated'  => Member::where('status', 'isolated')->count(),
-            'session_online'   => DB::table('radacct')->whereNull('acctstoptime')->count(),
+            'session_online'   => Radacct::active()->count(),
+            'session_today'    => (clone $todaySessions)->count(),
+            'traffic_upload_today' => (int) (clone $todaySessions)->sum('acctoutputoctets'),
+            'traffic_download_today' => (int) (clone $todaySessions)->sum('acctinputoctets'),
             'plan_active'      => Plan::where('is_active', true)->count(),
             'invoice_overdue'  => BillingInvoice::where('status', 'overdue')->count(),
             'invoice_pending'  => BillingInvoice::where('status', 'pending')->count(),

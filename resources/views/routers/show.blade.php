@@ -2,6 +2,13 @@
 @section('title', $router->name)
 
 @section('topbar-actions')
+    <form method="POST" action="{{ route('routers.test-connection', $router) }}" class="inline">
+        @csrf
+        <button type="submit" class="btn-secondary" title="Uji koneksi RouterOS API">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span class="hidden sm:inline">Test Koneksi</span><span class="sm:hidden">Test</span>
+        </button>
+    </form>
     <a href="{{ route('routers.edit', $router) }}" class="btn-secondary">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         Edit
@@ -17,7 +24,17 @@
 @endsection
 
 @section('content')
-<div class="max-w-2xl space-y-5">
+<div class="max-w-4xl space-y-5">
+
+    {{-- Ringkasan resource --}}
+    @if($router->last_connection_status === 'ok')
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="card p-4"><p class="stat-label">RouterOS</p><p class="font-semibold text-slate-800 mt-1">{{ $router->routeros_version ?? '-' }}</p></div>
+        <div class="card p-4"><p class="stat-label">CPU</p><p class="font-semibold text-slate-800 mt-1">{{ $router->connection_cpu_load ?? '-' }}{{ $router->connection_cpu_load !== null ? '%' : '' }}</p></div>
+        <div class="card p-4"><p class="stat-label">Memory</p><p class="font-semibold text-slate-800 mt-1">{{ $router->connection_memory_label ?? '-' }}</p></div>
+        <div class="card p-4"><p class="stat-label">Uptime</p><p class="font-semibold text-slate-800 mt-1">{{ $router->connection_uptime ?? '-' }}</p></div>
+    </div>
+    @endif
 
     {{-- Info Utama --}}
     <div class="card">

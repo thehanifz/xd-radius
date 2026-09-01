@@ -46,9 +46,68 @@ class Radacct extends Model
     {
         $start = $this->acctstarttime;
         if (! $start) return '-';
-        $diff = now()->diff($start);
-        if ($diff->days > 0) return $diff->days . 'h ' . $diff->h . 'm';
-        if ($diff->h > 0)    return $diff->h . 'j ' . $diff->i . 'm';
-        return $diff->i . 'm ' . $diff->s . 'd';
+
+        $end = $this->acctstoptime ?: now();
+        $seconds = max(0, $start->diffInSeconds($end));
+
+        $days = intdiv($seconds, 86400);
+        $hours = intdiv($seconds % 86400, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+        $secs = $seconds % 60;
+
+        if ($days > 0) return $days . 'h ' . $hours . 'j';
+        if ($hours > 0) return $hours . 'j ' . $minutes . 'm';
+        if ($minutes > 0) return $minutes . 'm ' . $secs . 'd';
+        return $secs . 'd';
+    }
+
+    public function getUploadBytesAttribute(): int
+    {
+        return (int) ($this->acctoutputoctets ?? 0);
+    }
+
+    public function getDownloadBytesAttribute(): int
+    {
+        return (int) ($this->acctinputoctets ?? 0);
+    }
+
+    public function getTotalBytesAttribute(): int
+    {
+        return $this->upload_bytes + $this->download_bytes;
+    }
+
+    public function getUploadLabelAttribute(): string
+    {
+        return self::formatBytes($this->upload_bytes);
+    }
+
+    public function getDownloadLabelAttribute(): string
+    {
+        return self::formatBytes($this->download_bytes);
+    }
+
+    public function getTotalTrafficLabelAttribute(): string
+    {
+        return self::formatBytes($this->total_bytes);
+    }
+
+    public static function formatDuration(int|float|null $seconds): string
+    {
+        $seconds = max(0, (int) ($seconds ?? 0));
+        $days = intdiv($seconds, 86400);
+        $hours = intdiv($seconds % 86400, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+
+        if ($days > 0) return $days . 'h ' . $hours . 'j';
+        if ($hours > 0) return $hours . 'j ' . $minutes . 'm';
+        return $minutes . 'm';
+    }
+
+    public static function formatBytes(int|float $bytes): string
+    {
+        if ($bytes <= 0) return '0 B';
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $i = min((int) floor(log($bytes, 1024)), count($units) - 1);
+        return round($bytes / (1024 ** $i), $i === 0 ? 0 : 2) . ' ' . $units[$i];
     }
 }
