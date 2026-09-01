@@ -54,7 +54,7 @@
         <option value="active" @selected(request('filter')==='active')>Aktif Saja</option>
         <option value="stale" @selected(request('filter')==='stale')>Diduga Putus</option>
     </select>
-    <button type="submit" class="btn-primary-sm">Filter</button>
+    <button type="submit" class="btn-sm-primary">Filter</button>
     <a href="{{ route('online.index') }}" class="btn-sm-secondary">Reset</a>
 </form>
 

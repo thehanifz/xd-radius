@@ -103,7 +103,7 @@
 
         <header class="flex items-center justify-between gap-3 px-4 sm:px-6 h-16 bg-white/80 backdrop-blur-md border-b border-slate-100 flex-shrink-0 sticky top-0 z-20"
                 style="box-shadow: 0 1px 0 rgba(0,0,0,0.04);">
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                 <button id="hamburger-btn" onclick="toggleSidebar()"
                     class="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -112,16 +112,16 @@
                         <line x1="3" y1="18" x2="21" y2="18"/>
                     </svg>
                 </button>
-                <div>
-                    <h1 class="text-sm font-bold text-slate-800 tracking-tight">@yield('title', 'Dashboard')</h1>
+                <div class="min-w-0">
+                    <h1 class="text-sm font-bold text-slate-800 tracking-tight truncate">@yield('title', 'Dashboard')</h1>
                 </div>
             </div>
-            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-x-auto">
+            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 max-w-[52vw] sm:max-w-none overflow-x-auto scrollbar-hide">
                 @yield('topbar-actions')
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-3 sm:p-6 pb-24 lg:pb-6">
+        <main class="flex-1 overflow-y-auto p-3 sm:p-6 pb-24 lg:pb-6 overscroll-contain">
             @if(session('success'))
             <div class="flash-success mb-5 animate-slide-up">
                 <svg class="flex-shrink-0 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">

@@ -63,7 +63,7 @@
                 </select>
             </div>
             @endif
-            <button type="submit" class="btn-primary-sm">Tampilkan</button>
+            <button type="submit" class="btn-sm-primary">Tampilkan</button>
         </form>
     </div>
 </div>
