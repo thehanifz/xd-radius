@@ -73,6 +73,8 @@ class PlanController extends Controller
             'is_active'           => ['boolean'],
         ], $this->messages());
 
+        $this->validateQosConsistency($data);
+
         $data['is_active'] = $request->boolean('is_active', true);
         $data['duration_days'] = $data['duration_unit'] === 'days' ? $data['duration_value'] : max(1, (int) ceil(($data['duration_unit'] === 'hours' ? $data['duration_value'] / 24 : $data['duration_value'] / 1440)));
 
@@ -113,6 +115,8 @@ class PlanController extends Controller
             'is_active'           => ['boolean'],
         ], $this->messages());
 
+        $this->validateQosConsistency($data);
+
         $data['is_active'] = $request->boolean('is_active', true);
         $data['duration_days'] = $data['duration_unit'] === 'days' ? $data['duration_value'] : max(1, (int) ceil(($data['duration_unit'] === 'hours' ? $data['duration_value'] / 24 : $data['duration_value'] / 1440)));
 
@@ -137,6 +141,47 @@ class PlanController extends Controller
         $status = $plan->is_active ? 'diaktifkan' : 'dinonaktifkan';
 
         return back()->with('success', "Paket '{$plan->name}' berhasil {$status}.");
+    }
+
+    private function validateQosConsistency(array $data): void
+    {
+        $pairs = [
+            ['qos_limit_at_down_kbps', 'download_speed_kbps', 'Limit At download tidak boleh melebihi Max Limit download.'],
+            ['qos_limit_at_up_kbps', 'upload_speed_kbps', 'Limit At upload tidak boleh melebihi Max Limit upload.'],
+            ['qos_burst_threshold_down_kbps', 'qos_burst_limit_down_kbps', 'Burst Threshold download tidak boleh melebihi Burst Limit download.'],
+            ['qos_burst_threshold_up_kbps', 'qos_burst_limit_up_kbps', 'Burst Threshold upload tidak boleh melebihi Burst Limit upload.'],
+            ['qos_burst_limit_down_kbps', 'download_speed_kbps', 'Burst Limit download tidak boleh lebih kecil dari Max Limit download.'],
+            ['qos_burst_limit_up_kbps', 'upload_speed_kbps', 'Burst Limit upload tidak boleh lebih kecil dari Max Limit upload.'],
+            ['qos_burst_threshold_down_kbps', 'download_speed_kbps', 'Burst Threshold download tidak boleh melebihi Max Limit download.'],
+            ['qos_burst_threshold_up_kbps', 'upload_speed_kbps', 'Burst Threshold upload tidak boleh melebihi Max Limit upload.'],
+        ];
+
+        foreach ($pairs as [$left, $right, $message]) {
+            if ($data[$left] !== null && $data[$right] !== null) {
+                $mustBeLessOrEqual = str_contains($left, 'limit_at') || str_contains($left, 'threshold');
+                $invalid = $mustBeLessOrEqual
+                    ? (int) $data[$left] > (int) $data[$right]
+                    : (int) $data[$left] < (int) $data[$right];
+
+                if ($invalid) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([$left => $message]);
+                }
+            }
+        }
+
+        if ($data['qos_burst_threshold_down_kbps'] !== null && $data['qos_limit_at_down_kbps'] !== null
+            && $data['qos_burst_threshold_down_kbps'] < $data['qos_limit_at_down_kbps']) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'qos_burst_threshold_down_kbps' => 'Burst Threshold download sebaiknya >= Limit At download untuk perilaku burst yang valid.',
+            ]);
+        }
+
+        if ($data['qos_burst_threshold_up_kbps'] !== null && $data['qos_limit_at_up_kbps'] !== null
+            && $data['qos_burst_threshold_up_kbps'] < $data['qos_limit_at_up_kbps']) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'qos_burst_threshold_up_kbps' => 'Burst Threshold upload sebaiknya >= Limit At upload untuk perilaku burst yang valid.',
+            ]);
+        }
     }
 
     private function messages(): array

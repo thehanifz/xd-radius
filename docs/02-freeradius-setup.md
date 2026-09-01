@@ -173,11 +173,13 @@ The resulting value should be assigned to `reply:Session-Timeout` only when it i
 
 ## 9. MikroTik QoS
 
-`Mikrotik-Rate-Limit` is generated centrally by Laravel from the plan QoS fields. The order follows RouterOS RADIUS rate-limit syntax:
+`Mikrotik-Rate-Limit` is generated centrally by Laravel from the plan QoS fields. RouterOS documents the format as:
 
 `rx/tx burst-rx/burst-tx threshold-rx/threshold-tx burst-time-rx/burst-time-tx priority rx-min/tx-min`
 
-In RouterOS, **rx = client upload** and **tx = client download**. The application therefore writes upload first and download second so the resulting HotSpot queue matches the intended directions. `Limit At` is mapped to the final minimum-rate pair. Keep RouterOS and FreeRADIUS versions consistent and verify the resulting dynamic queue on a test subscriber before production rollout.
+In RouterOS, **rx = client upload** and **tx = client download**. The application therefore writes upload first and download second. `Limit At` is mapped to the final minimum-rate pair. Priority 1 is highest and 8 is lowest. RouterOS also requires `limit-at` not to exceed `max-limit`; burst threshold should be between `limit-at` and `max-limit` for the intended burst behavior.
+
+`qos_queue_type` is currently stored as profile metadata. Standard HotSpot `Mikrotik-Rate-Limit` does not carry a queue-type field, so the application does **not** pretend to apply it through RADIUS. Queue-type control can be handled later through a dedicated RouterOS API/queue strategy if required. This avoids silently writing an attribute that RouterOS will ignore.
 
 Recommended test profile:
 

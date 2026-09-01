@@ -13,20 +13,38 @@ class RadiusService
 
     public function provisionUser(string $username, string $password, Plan $plan): void
     {
-        Radcheck::create([
-            'username'  => $username,
-            'attribute' => 'Cleartext-Password',
-            'op'        => ':=',
-            'value'     => $password,
-        ]);
+        Radcheck::updateOrCreate(
+            ['username' => $username, 'attribute' => 'Cleartext-Password'],
+            ['op' => ':=', 'value' => $password]
+        );
+
+        Radreply::where('username', $username)
+            ->whereIn('attribute', ['Mikrotik-Rate-Limit', 'Session-Timeout', 'Expiration', 'Simultaneous-Use'])
+            ->delete();
 
         $this->upsertReply($username, 'Mikrotik-Rate-Limit', $this->qos->rateLimit($plan));
+        $this->upsertReply($username, 'Simultaneous-Use', '1');
 
-        Radusergroup::create([
-            'username'  => $username,
-            'groupname' => $plan->radius_group_name,
-            'priority'  => 1,
-        ]);
+        Radusergroup::updateOrCreate(
+            ['username' => $username],
+            ['groupname' => $plan->radius_group_name, 'priority' => 1]
+        );
+    }
+
+    public function setSessionTimeout(string $username, int $seconds): void
+    {
+        Radreply::updateOrCreate(
+            ['username' => $username, 'attribute' => 'Session-Timeout'],
+            ['op' => ':=', 'value' => (string) max(0, $seconds)]
+        );
+    }
+
+    public function setExpiration(string $username, string $expiration): void
+    {
+        Radcheck::updateOrCreate(
+            ['username' => $username, 'attribute' => 'Expiration'],
+            ['op' => ':=', 'value' => $expiration]
+        );
     }
 
     public function deprovisionUser(string $username): void

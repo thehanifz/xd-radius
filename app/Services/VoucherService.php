@@ -74,6 +74,7 @@ class VoucherService
             // selalu menggunakan format RouterOS yang sama untuk voucher/member.
             foreach ($vouchers as $v) {
                 $this->radius->provisionUser($v['username'], $v['password_plain'], $plan);
+                $this->radius->setSessionTimeout($v['username'], $this->durationSeconds($plan));
             }
 
             return $batch->load('plan', 'generatedBy', 'vouchers');
@@ -128,6 +129,16 @@ class VoucherService
         } while (VoucherBatch::where('batch_code', $code)->exists());
 
         return $code;
+    }
+
+    private function durationSeconds(Plan $plan): int
+    {
+        return match ($plan->duration_unit) {
+            'minutes' => $plan->duration_value * 60,
+            'hours'   => $plan->duration_value * 3600,
+            'days'    => $plan->duration_value * 86400,
+            default   => throw new \InvalidArgumentException('Unit durasi voucher tidak valid.'),
+        };
     }
 
     /**

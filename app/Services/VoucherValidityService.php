@@ -7,9 +7,12 @@ use App\Models\Voucher;
 use App\Models\Radcheck;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
+use App\Services\RadiusService;
 
 class VoucherValidityService
 {
+    public function __construct(protected ?RadiusService $radius = null) {}
+
     public function expiryAt(Plan $plan, CarbonInterface $start): CarbonInterface
     {
         return match ($plan->duration_unit) {
@@ -38,12 +41,18 @@ class VoucherValidityService
                 'status'         => 'active',
             ]);
 
-            // FreeRADIUS can enforce expiry at authentication time after the
-            // first login has established the voucher's fixed expiry.
-            Radcheck::updateOrCreate(
-                ['username' => $voucher->username, 'attribute' => 'Expiration'],
-                ['op' => ':=', 'value' => $expiredAt->format('M j Y H:i:s')]
-            );
+            $remaining = max(0, $loginAt->diffInSeconds($expiredAt, false));
+
+            // First login receives the full session duration from provisioning.
+            // After the first accounting record is known, subsequent logins are
+            // constrained by the fixed expiry timestamp.
+            $radius = $this->radius ?? app(RadiusService::class);
+            $radius->setExpiration($voucher->username, (string) $expiredAt->timestamp);
+            $radius->setSessionTimeout($voucher->username, $remaining);
+            Radcheck::where('username', $voucher->username)
+                ->where('attribute', 'Auth-Type')
+                ->where('value', 'Reject')
+                ->delete();
 
             return $voucher->fresh();
         });
@@ -61,10 +70,23 @@ class VoucherValidityService
 
     public function markExpired(): int
     {
-        return Voucher::query()
+        $expired = Voucher::query()
             ->where('status', 'active')
             ->whereNotNull('expired_at')
             ->where('expired_at', '<=', now())
-            ->update(['status' => 'expired']);
+            ->get(['id', 'username']);
+
+        foreach ($expired as $voucher) {
+            $voucher->update(['status' => 'expired']);
+
+            // Keep Expiration in radcheck so rlm_expiration continues to reject
+            // the voucher on future authentication attempts.
+            Radcheck::updateOrCreate(
+                ['username' => $voucher->username, 'attribute' => 'Auth-Type'],
+                ['op' => ':=', 'value' => 'Reject']
+            );
+        }
+
+        return $expired->count();
     }
 }

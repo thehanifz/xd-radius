@@ -45,7 +45,7 @@ class Voucher extends Model
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
-            'active'   => 'Aktif',
+            'active'   => $this->first_login_at ? 'Aktif' : 'Tersedia',
             'used'     => 'Digunakan',
             'expired'  => 'Expired',
             'isolated' => 'Isolir',
@@ -57,7 +57,7 @@ class Voucher extends Model
     public function getStatusColorAttribute(): string
     {
         return match ($this->status) {
-            'active'   => 'green',
+            'active'   => $this->first_login_at ? 'green' : 'blue',
             'used'     => 'blue',
             'expired'  => 'gray',
             'isolated' => 'red',
@@ -80,6 +80,16 @@ class Voucher extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function scopeAvailable($query)
+    {
+        return $query->where('status', 'active')->whereNull('first_login_at');
+    }
+
+    public function scopeUsed($query)
+    {
+        return $query->where('status', 'active')->whereNotNull('first_login_at');
     }
 
     public function scopeByBatch($query, $batchId)

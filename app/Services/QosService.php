@@ -30,15 +30,15 @@ class QosService
         return implode(' ', array_map(static fn ($part) => (string) $part, $parts));
     }
 
-    private function pair($down, $up, bool $required = false, string $suffix = 'k'): ?string
+    private function pair($rx, $tx, bool $required = false, string $suffix = 'k'): ?string
     {
-        if ($down === null && $up === null) {
+        if ($rx === null && $tx === null) {
             return $required ? '0k/0k' : null;
         }
 
-        $down = $down !== null ? ((int) $down) . $suffix : '';
-        $up   = $up !== null ? ((int) $up) . $suffix : '';
+        $rx = $rx !== null ? ((int) $rx) . $suffix : '';
+        $tx = $tx !== null ? ((int) $tx) . $suffix : '';
 
-        return $down . '/' . $up;
+        return $rx . '/' . $tx;
     }
 }

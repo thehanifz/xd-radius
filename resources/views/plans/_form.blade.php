@@ -81,7 +81,7 @@
 <div class="border-t border-slate-200 pt-5 mt-2">
     <div class="mb-3">
         <h3 class="font-semibold text-slate-800">QoS / MikroTik Rate Limit</h3>
-        <p class="text-xs text-slate-400 mt-1">Kosongkan parameter opsional jika tidak digunakan. Max Limit memakai kecepatan utama di atas.</p>
+        <p class="text-xs text-slate-400 mt-1">Max Limit memakai kecepatan utama. Limit At, Burst, Threshold, Burst Time, dan Priority dikirim melalui Mikrotik-Rate-Limit. RouterOS menggunakan rx=upload dan tx=download.</p>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         @foreach([
@@ -107,8 +107,9 @@
             </select>
         </div>
         <div>
-            <label class="form-label">Queue Type</label>
+            <label class="form-label">Queue Type <span class="text-slate-400 font-normal">(metadata)</span></label>
             <input type="text" name="qos_queue_type" value="{{ old('qos_queue_type', $plan->qos_queue_type ?? '') }}" placeholder="default" class="form-input">
+            <p class="text-[11px] text-slate-400 mt-1">Untuk HotSpot RADIUS standar, queue type tidak masuk format Mikrotik-Rate-Limit.</p>
         </div>
     </div>
 </div>

@@ -31,7 +31,7 @@
 
                 <select name="status" class="form-input w-40">
                     <option value="">Semua Status</option>
-                    <option value="active"   {{ request('status') === 'active'   ? 'selected' : '' }}>Aktif</option>
+                    <option value="active"   {{ request('status') === 'active'   ? 'selected' : '' }}>Tersedia / Aktif</option>
                     <option value="used"     {{ request('status') === 'used'     ? 'selected' : '' }}>Digunakan</option>
                     <option value="expired"  {{ request('status') === 'expired'  ? 'selected' : '' }}>Expired</option>
                     <option value="isolated" {{ request('status') === 'isolated' ? 'selected' : '' }}>Isolir</option>
