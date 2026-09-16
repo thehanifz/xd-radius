@@ -46,7 +46,7 @@
                     <select name="plan_id" class="form-input @error('plan_id') border-red-400 @enderror" required>
                         @foreach ($plans as $plan)
                             <option value="{{ $plan->id }}" {{ $member->plan_id == $plan->id ? 'selected' : '' }}>
-                                {{ $plan->name }} &mdash; {{ $plan->price_label }} / {{ $plan->duration_days }} hari
+                                {{ $plan->name }} &mdash; {{ $plan->price_label }} / bulan
                             </option>
                         @endforeach
                     </select>
@@ -67,6 +67,14 @@
                             <option value="inactive" {{ $member->status === 'inactive' ? 'selected' : '' }}>Nonaktif</option>
                         </select>
                     </div>
+                </div>
+                <div>
+                    <label class="form-label">Tanggal Mulai</label>
+                    <input type="date" name="activated_at"
+                        value="{{ old('activated_at', $member->activated_at?->format('Y-m-d')) }}"
+                        class="form-input @error('activated_at') border-red-400 @enderror">
+                    @error('activated_at')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                    <p class="text-xs text-slate-400 mt-1">Tanggal awal periode member.</p>
                 </div>
                 <div>
                     <label class="form-label">Expired At</label>

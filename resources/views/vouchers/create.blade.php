@@ -41,7 +41,7 @@
                                 <option value="">-- Pilih Paket --</option>
                                 @foreach ($plans as $plan)
                                     <option value="{{ $plan->id }}"
-                                        data-speed="{{ $plan->download_label }} / {{ $plan->upload_label }}"
+                                        data-speed="{{ $plan->mikrotik_rate_limit ?: app(\App\Services\QosService::class)->rateLimit($plan) }}"
                                         data-duration="{{ $plan->duration_label }}"
                                         data-price="{{ $plan->price_label }}"
                                         {{ old('plan_id') == $plan->id ? 'selected' : '' }}>
@@ -55,7 +55,7 @@
                         <div x-show="planInfo" x-cloak
                              class="p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm space-y-1">
                             <div class="flex gap-2 text-slate-600">
-                                <span class="text-slate-400 w-24 flex-shrink-0">Kecepatan:</span>
+                                <span class="text-slate-400 w-24 flex-shrink-0">Rate Limit:</span>
                                 <span class="font-medium" x-text="planInfo?.speed"></span>
                             </div>
                             <div class="flex gap-2 text-slate-600">

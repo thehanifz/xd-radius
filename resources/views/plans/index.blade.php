@@ -73,7 +73,7 @@
                     <tr>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nama Paket</th>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipe</th>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kecepatan</th>
+                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">MikroTik Rate Limit</th>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Durasi</th>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Harga</th>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">RADIUS Group</th>
@@ -98,8 +98,7 @@
                             @endif
                         </td>
                         <td class="px-5 py-3.5">
-                            <p class="text-slate-700 font-medium tabular-nums">↓ {{ $plan->download_label }}</p>
-                            <p class="text-slate-400 text-xs tabular-nums">↑ {{ $plan->upload_label }}</p>
+                            <code class="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded font-mono">{{ $plan->mikrotik_rate_limit ?: app(\App\Services\QosService::class)->rateLimit($plan) }}</code>
                         </td>
                         <td class="px-5 py-3.5 text-slate-600 tabular-nums">{{ $plan->duration_label }}</td>
                         <td class="px-5 py-3.5">

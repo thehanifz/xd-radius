@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreMemberRequest extends FormRequest
 {
@@ -18,7 +19,9 @@ class StoreMemberRequest extends FormRequest
                 'unique:vouchers,username',
             ],
             'password'         => ['required', 'string', 'min:6', 'max:64', 'different:username'],
-            'plan_id'          => ['required', 'exists:plans,id'],
+            'plan_id'          => ['required', Rule::exists('plans', 'id')->where(fn ($query) => $query->where('type', 'member')->where('is_active', true))],
+            'activated_at'     => ['nullable', 'date'],
+            'expired_at'       => ['nullable', 'date', 'after:activated_at'],
             'simultaneous_use' => ['required', 'integer', 'min:1', 'max:10'],
             'notes'            => ['nullable', 'string', 'max:500'],
         ];
@@ -30,7 +33,7 @@ class StoreMemberRequest extends FormRequest
             'username.unique'    => 'Username sudah digunakan.',
             'username.regex'     => 'Username hanya boleh huruf, angka, titik, strip, dan underscore.',
             'password.different' => 'Password tidak boleh sama dengan username.',
-            'plan_id.exists'     => 'Paket tidak ditemukan.',
+            'plan_id.exists'     => 'Paket member aktif tidak ditemukan.',
         ];
     }
 }

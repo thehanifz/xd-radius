@@ -8,6 +8,13 @@ use Tests\TestCase;
 
 class QosServiceTest extends TestCase
 {
+    public function test_stored_mikrotik_rate_limit_is_used_as_is(): void
+    {
+        $plan = new Plan(['mikrotik_rate_limit' => '5M/2M 10M/5M 2M/1M 10/10 8']);
+
+        $this->assertSame('5M/2M 10M/5M 2M/1M 10/10 8', app(QosService::class)->rateLimit($plan));
+    }
+
     public function test_routeros_rate_limit_maps_upload_to_rx_and_download_to_tx(): void
     {
         $plan = new Plan([

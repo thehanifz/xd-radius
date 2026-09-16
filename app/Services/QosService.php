@@ -14,16 +14,16 @@ class QosService
      */
     public function rateLimit(Plan $plan): string
     {
+        if ($plan->mikrotik_rate_limit !== null && trim($plan->mikrotik_rate_limit) !== '') {
+            return trim($plan->mikrotik_rate_limit);
+        }
+
+        // Legacy fallback for plans created before the simplified field.
         $minimum = $this->pair($plan->qos_limit_at_up_kbps, $plan->qos_limit_at_down_kbps);
         $priority = $plan->qos_priority;
-
-        // RouterOS uses positional fields. If a minimum rate is supplied but
-        // priority is omitted, use the RouterOS default instead of generating
-        // an invalid positional string with a missing field.
         if ($minimum !== null && $priority === null) {
             $priority = 8;
         }
-
         $parts = [
             $this->pair($plan->upload_speed_kbps, $plan->download_speed_kbps, true),
             $this->pair($plan->qos_burst_limit_up_kbps, $plan->qos_burst_limit_down_kbps),
@@ -32,11 +32,7 @@ class QosService
             $priority,
             $minimum,
         ];
-
-        while ($parts && end($parts) === null) {
-            array_pop($parts);
-        }
-
+        while ($parts && end($parts) === null) { array_pop($parts); }
         return implode(' ', array_map(static fn ($part) => (string) $part, $parts));
     }
 

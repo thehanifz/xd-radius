@@ -6,6 +6,7 @@ use App\Models\Member;
 use App\Models\Plan;
 use App\Models\ServiceActionLog;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use App\Services\QosService;
 
 class MemberService
@@ -15,8 +16,11 @@ class MemberService
         $plan = Plan::findOrFail($data['plan_id']);
 
         return DB::transaction(function () use ($data, $plan) {
-            $activatedAt = now();
-            $expiredAt   = $this->calcExpiry($activatedAt, $plan);
+            $activatedAt = !empty($data['activated_at']) ? Carbon::parse($data['activated_at'])->startOfDay() : now();
+            $expiredAt = !empty($data['expired_at']) ? Carbon::parse($data['expired_at']) : $this->calcExpiry($activatedAt, $plan);
+            if ($expiredAt->lte($activatedAt)) {
+                throw new \InvalidArgumentException('Expired At harus setelah Tanggal Mulai.');
+            }
 
             $member = Member::create([
                 'username'         => $data['username'],
@@ -51,7 +55,8 @@ class MemberService
                 'price_snapshot'   => $data['price_snapshot'] ?? $member->price_snapshot,
                 'simultaneous_use' => $data['simultaneous_use'] ?? $member->simultaneous_use,
                 'status'           => $data['status'] ?? $member->status,
-                'expired_at'       => $data['expired_at'] ?? $member->expired_at,
+                'activated_at'     => !empty($data['activated_at']) ? Carbon::parse($data['activated_at'])->startOfDay() : $member->activated_at,
+                'expired_at'       => !empty($data['expired_at']) ? Carbon::parse($data['expired_at']) : $member->expired_at,
                 'notes'            => $data['notes'] ?? null,
             ];
 
@@ -176,8 +181,10 @@ class MemberService
 
     private function calcExpiry(\DateTime $from, Plan $plan): \DateTime
     {
-        $dt   = clone $from;
-        $days = $plan->duration_days ?? 30;
-        return $dt->modify("+{$days} days");
+        if ($plan->duration_unit === 'months') {
+            return Carbon::instance($from)->addMonthsNoOverflow($plan->duration_value ?? 1);
+        }
+
+        return Carbon::instance($from)->addDays($plan->duration_value ?? $plan->duration_days ?? 30);
     }
 }

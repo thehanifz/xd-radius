@@ -1,148 +1,126 @@
-{{-- Nama Paket --}}
-<div>
-    <label class="form-label">Nama Paket <span class="text-red-500">*</span></label>
-    <input type="text" name="name" value="{{ old('name', $plan->name ?? '') }}"
-        placeholder="cth: Paket 1 Hari 1 Mbps"
-        class="form-input @error('name') border-red-400 @enderror">
-    @error('name') <p class="form-error">{{ $message }}</p> @enderror
-</div>
-
-{{-- Tipe --}}
-<div>
-    <label class="form-label">Tipe Paket <span class="text-red-500">*</span></label>
-    <select name="type" class="form-input @error('type') border-red-400 @enderror">
-        <option value="voucher" @selected(old('type', $plan->type ?? 'voucher') === 'voucher')>Voucher (prepaid, kode)</option>
-        <option value="member"  @selected(old('type', $plan->type ?? '') === 'member')>Member (berlangganan bulanan)</option>
-    </select>
-    @error('type') <p class="form-error">{{ $message }}</p> @enderror
-</div>
-
-{{-- Kecepatan --}}
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div data-plan-form data-initial-type="{{ old('type', $plan->type ?? 'voucher') }}">
+    {{-- Nama Paket --}}
     <div>
-        <label class="form-label">Download (Kbps) <span class="text-red-500">*</span></label>
-        <input type="number" name="download_speed_kbps" min="1"
-            value="{{ old('download_speed_kbps', $plan->download_speed_kbps ?? '') }}"
-            placeholder="cth: 1024 = 1 Mbps"
-            class="form-input @error('download_speed_kbps') border-red-400 @enderror">
-        <p class="text-xs text-slate-400 mt-1">1 Mbps = 1024 Kbps</p>
-        @error('download_speed_kbps') <p class="form-error">{{ $message }}</p> @enderror
+        <label class="form-label">Nama Paket <span class="text-red-500">*</span></label>
+        <input type="text" name="name" value="{{ old('name', $plan->name ?? '') }}"
+            placeholder="cth: 5Mbps Bulanan / Voucher 3 Jam"
+            class="form-input @error('name') border-red-400 @enderror">
+        @error('name') <p class="form-error">{{ $message }}</p> @enderror
     </div>
-    <div>
-        <label class="form-label">Upload (Kbps) <span class="text-red-500">*</span></label>
-        <input type="number" name="upload_speed_kbps" min="1"
-            value="{{ old('upload_speed_kbps', $plan->upload_speed_kbps ?? '') }}"
-            placeholder="cth: 512"
-            class="form-input @error('upload_speed_kbps') border-red-400 @enderror">
-        @error('upload_speed_kbps') <p class="form-error">{{ $message }}</p> @enderror
-    </div>
-</div>
 
-{{-- Durasi & Harga --}}
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    {{-- Tipe --}}
     <div>
-        <label class="form-label">Durasi <span class="text-red-500">*</span></label>
-        <input type="number" name="duration_value" min="1"
-            value="{{ old('duration_value', $plan->duration_value ?? $plan->duration_days ?? '') }}"
-            placeholder="cth: 3"
-            class="form-input @error('duration_value') border-red-400 @enderror">
-        @error('duration_value') <p class="form-error">{{ $message }}</p> @enderror
-    </div>
-    <div>
-        <label class="form-label">Satuan <span class="text-red-500">*</span></label>
-        <select name="duration_unit" class="form-input @error('duration_unit') border-red-400 @enderror">
-            @foreach(['minutes'=>'Menit','hours'=>'Jam','days'=>'Hari'] as $value => $label)
-                <option value="{{ $value }}" @selected(old('duration_unit', $plan->duration_unit ?? 'days') === $value)>{{ $label }}</option>
-            @endforeach
+        <label class="form-label">Tipe Paket <span class="text-red-500">*</span></label>
+        <select name="type" id="plan-type" class="form-input @error('type') border-red-400 @enderror">
+            <option value="voucher">Voucher</option>
+            <option value="member">Member</option>
         </select>
-        @error('duration_unit') <p class="form-error">{{ $message }}</p> @enderror
+        @error('type') <p class="form-error">{{ $message }}</p> @enderror
+        <p id="plan-type-help" class="text-xs text-slate-400 mt-1"></p>
     </div>
+
+    {{-- Durasi Voucher saja --}}
+    <div id="voucher-duration-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-4" hidden>
+        <div>
+            <label class="form-label">Durasi <span class="text-red-500">*</span></label>
+            <input type="number" name="duration_value" min="1"
+                value="{{ old('duration_value', $plan->duration_value ?? $plan->duration_days ?? '') }}"
+                :disabled="type !== 'voucher'"
+                placeholder="cth: 3"
+                class="form-input @error('duration_value') border-red-400 @enderror">
+            @error('duration_value') <p class="form-error">{{ $message }}</p> @enderror
+        </div>
+        <div>
+            <label class="form-label">Satuan <span class="text-red-500">*</span></label>
+            <select name="duration_unit" class="form-input @error('duration_unit') border-red-400 @enderror"
+                :disabled="type !== 'voucher'">
+                @foreach(['minutes'=>'Menit','hours'=>'Jam','days'=>'Hari'] as $value => $label)
+                    <option value="{{ $value }}" @selected(old('duration_unit', $plan->duration_unit ?? 'days') === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+            @error('duration_unit') <p class="form-error">{{ $message }}</p> @enderror
+        </div>
+    </div>
+
+    {{-- Nilai default internal untuk Member: 1 bulan --}}
+    <input type="hidden" name="duration_value" value="1" id="member-duration-value" disabled>
+    <input type="hidden" name="duration_unit" value="months" id="member-duration-unit" disabled>
+
+    {{-- Harga --}}
     <div>
         <label class="form-label">Harga (Rp) <span class="text-red-500">*</span></label>
         <input type="number" name="price" min="0"
             value="{{ old('price', $plan->price ?? '') }}"
-            placeholder="cth: 15000"
+            placeholder="cth: 150000"
             class="form-input @error('price') border-red-400 @enderror">
         @error('price') <p class="form-error">{{ $message }}</p> @enderror
     </div>
-</div>
 
-{{-- Quota --}}
-<div>
-    <label class="form-label">Kuota Data (MB) <span class="text-slate-400 font-normal">— opsional, kosongkan = unlimited</span></label>
-    <input type="number" name="data_quota_mb" min="1"
-        value="{{ old('data_quota_mb', $plan->data_quota_mb ?? '') }}"
-        placeholder="cth: 10240 = 10 GB, kosongkan jika unlimited"
-        class="form-input @error('data_quota_mb') border-red-400 @enderror">
-    @error('data_quota_mb') <p class="form-error">{{ $message }}</p> @enderror
-</div>
-
-{{-- QoS RouterOS --}}
-<div class="border-t border-slate-200 pt-5 mt-2" x-data="{ qosOpen: true }">
-    <div class="mb-3 flex items-start justify-between gap-4">
-        <div><h3 class="font-semibold text-slate-800">QoS / MikroTik Rate Limit</h3>
-        <p class="text-xs text-slate-400 mt-1">Max Limit memakai kecepatan utama. Limit At, Burst, Threshold, Burst Time, dan Priority dikirim melalui Mikrotik-Rate-Limit. RouterOS menggunakan rx=upload dan tx=download.</p></div>
-        <button type="button" @click="qosOpen = !qosOpen" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800" x-text="qosOpen ? 'Ciutkan' : 'Buka'"></button>
+    {{-- QoS --}}
+    <div class="border-t border-slate-200 pt-5 mt-2">
+        <label class="form-label">MikroTik Rate Limit <span class="text-red-500">*</span></label>
+        <input type="text" name="mikrotik_rate_limit"
+            value="{{ old('mikrotik_rate_limit', ($plan->mikrotik_rate_limit ?? null) ?: ($plan->exists ?? false ? app(\App\Services\QosService::class)->rateLimit($plan) : '')) }}"
+            placeholder="cth: 5M/2M"
+            class="form-input font-mono @error('mikrotik_rate_limit') border-red-400 @enderror">
+        @error('mikrotik_rate_limit') <p class="form-error">{{ $message }}</p> @enderror
+        <p class="text-xs text-slate-400 mt-1">
+            Isi langsung format RouterOS. Contoh: <code>5M/2M</code>, atau gunakan format lengkap seperti <code>10M/5M 20M/10M 5M/2M 10/10 8</code>.
+        </p>
     </div>
-    <div x-show="qosOpen" x-transition class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        @foreach([
-            'qos_limit_at_down_kbps' => 'Limit At ↓ (Kbps)',
-            'qos_limit_at_up_kbps' => 'Limit At ↑ (Kbps)',
-            'qos_burst_limit_down_kbps' => 'Burst Limit ↓ (Kbps)',
-            'qos_burst_limit_up_kbps' => 'Burst Limit ↑ (Kbps)',
-            'qos_burst_threshold_down_kbps' => 'Burst Threshold ↓ (Kbps)',
-            'qos_burst_threshold_up_kbps' => 'Burst Threshold ↑ (Kbps)',
-            'qos_burst_time_down_sec' => 'Burst Time ↓ (detik)',
-            'qos_burst_time_up_sec' => 'Burst Time ↑ (detik)',
-        ] as $field => $label)
-        <div>
-            <label class="form-label">{{ $label }}</label>
-            <input type="number" name="{{ $field }}" min="1" value="{{ old($field, $plan->{$field} ?? '') }}" class="form-input">
-        </div>
-        @endforeach
-        <div>
-            <label class="form-label">Priority</label>
-            <select name="qos_priority" class="form-input">
-                <option value="">Default</option>
-                @for($i=1;$i<=8;$i++)<option value="{{ $i }}" @selected((string)old('qos_priority', $plan->qos_priority ?? '') === (string)$i)>{{ $i }}</option>@endfor
-            </select>
-        </div>
-        <div>
-            <label class="form-label">Queue Type <span class="text-slate-400 font-normal">(metadata)</span></label>
-            <input type="text" name="qos_queue_type" value="{{ old('qos_queue_type', $plan->qos_queue_type ?? '') }}" placeholder="default" class="form-input">
-            <p class="text-[11px] text-slate-400 mt-1">Untuk HotSpot RADIUS standar, queue type tidak masuk format Mikrotik-Rate-Limit.</p>
-        </div>
+
+    {{-- RADIUS Group --}}
+    <div>
+        <label class="form-label">Nama Group RADIUS <span class="text-red-500">*</span></label>
+        <input type="text" name="radius_group_name"
+            value="{{ old('radius_group_name', $plan->radius_group_name ?? '') }}"
+            placeholder="cth: voucher-3jam-5mbps"
+            class="form-input font-mono @error('radius_group_name') border-red-400 @enderror">
+        <p class="text-xs text-slate-400 mt-1">Group FreeRADIUS. Harus unik.</p>
+        @error('radius_group_name') <p class="form-error">{{ $message }}</p> @enderror
     </div>
-    <div x-show="qosOpen" class="mt-4 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-xs text-slate-500">
-        <div class="font-semibold text-slate-700 mb-1">Contoh profile</div>
-        <div class="font-mono">10M/5M 20M/10M 5M/2M 10/10 8 2M/1M</div>
-        <p class="mt-1">Urutan mengikuti parameter RouterOS. Queue Type disimpan sebagai metadata dan tidak dimasukkan ke string rate-limit.</p>
+
+    {{-- Deskripsi --}}
+    <div>
+        <label class="form-label">Deskripsi <span class="text-slate-400 font-normal">— opsional</span></label>
+        <textarea name="description" rows="2" placeholder="Catatan tambahan tentang paket ini..."
+            class="form-input resize-none @error('description') border-red-400 @enderror">{{ old('description', $plan->description ?? '') }}</textarea>
+        @error('description') <p class="form-error">{{ $message }}</p> @enderror
     </div>
-</div>
 
-{{-- RADIUS Group --}}
-<div>
-    <label class="form-label">Nama Group RADIUS <span class="text-red-500">*</span></label>
-    <input type="text" name="radius_group_name"
-        value="{{ old('radius_group_name', $plan->radius_group_name ?? '') }}"
-        placeholder="cth: voucher-1hari-1mbps (hanya huruf, angka, strip)"
-        class="form-input font-mono @error('radius_group_name') border-red-400 @enderror">
-    <p class="text-xs text-slate-400 mt-1">Nama ini digunakan sebagai group di FreeRADIUS. Harus unik dan tidak boleh diubah setelah dipakai.</p>
-    @error('radius_group_name') <p class="form-error">{{ $message }}</p> @enderror
-</div>
+    {{-- Status --}}
+    <div class="flex items-center gap-3">
+        <input type="checkbox" id="is_active" name="is_active" value="1"
+            @checked(old('is_active', $plan->is_active ?? true))
+            class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+        <label for="is_active" class="text-sm text-slate-700">Paket aktif</label>
+    </div>
+    <script>
+        (() => {
+            const form = document.querySelector('[data-plan-form]');
+            if (!form) return;
 
-{{-- Deskripsi --}}
-<div>
-    <label class="form-label">Deskripsi <span class="text-slate-400 font-normal">— opsional</span></label>
-    <textarea name="description" rows="2" placeholder="Catatan tambahan tentang paket ini..."
-        class="form-input resize-none @error('description') border-red-400 @enderror">{{ old('description', $plan->description ?? '') }}</textarea>
-    @error('description') <p class="form-error">{{ $message }}</p> @enderror
-</div>
+            const type = document.getElementById('plan-type');
+            const voucherDuration = document.getElementById('voucher-duration-fields');
+            const memberDurationValue = document.getElementById('member-duration-value');
+            const memberDurationUnit = document.getElementById('member-duration-unit');
+            const help = document.getElementById('plan-type-help');
 
-{{-- Status --}}
-<div class="flex items-center gap-3">
-    <input type="checkbox" id="is_active" name="is_active" value="1"
-        @checked(old('is_active', $plan->is_active ?? true))
-        class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-    <label for="is_active" class="text-sm text-slate-700">Paket aktif (bisa dipilih saat generate voucher / daftar member)</label>
+            const sync = () => {
+                const isVoucher = type.value === 'voucher';
+                voucherDuration.style.display = isVoucher ? '' : 'none';
+                voucherDuration.querySelectorAll('input, select').forEach((el) => {
+                    el.disabled = !isVoucher;
+                });
+                memberDurationValue.disabled = isVoucher;
+                memberDurationUnit.disabled = isVoucher;
+                help.textContent = isVoucher
+                    ? 'Voucher mulai dihitung saat first login.'
+                    : 'Member menggunakan periode bulanan kalender. Tanggal mulai dan expired diatur pada akun member.';
+            };
+
+            type.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
 </div>

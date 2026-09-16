@@ -21,8 +21,7 @@ class BillingService
             ? Carbon::parse($member->expired_at)
             : now();
 
-        $durationDays = $member->plan->duration_days ?? 30;
-        $periodEnd    = $periodStart->copy()->addDays($durationDays);
+        $periodEnd = $member->plan->addDurationTo($periodStart);
         $dueDate      = isset($data['due_date'])
             ? Carbon::parse($data['due_date'])
             : now()->addDays(7);

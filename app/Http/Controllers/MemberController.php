@@ -29,14 +29,14 @@ class MemberController extends Controller
         }
 
         $members = $query->orderByDesc('created_at')->paginate(25)->withQueryString();
-        $plans   = Plan::active()->orderBy('name')->get();
+        $plans   = Plan::active()->member()->orderBy('name')->get();
 
         return view('members.index', compact('members', 'plans'));
     }
 
     public function create()
     {
-        $plans = Plan::active()->orderBy('name')->get();
+        $plans = Plan::active()->member()->orderBy('name')->get();
         return view('members.create', compact('plans'));
     }
 
@@ -66,7 +66,7 @@ class MemberController extends Controller
 
     public function edit(Member $member)
     {
-        $plans = Plan::active()->orderBy('name')->get();
+        $plans = Plan::active()->member()->orderBy('name')->get();
         return view('members.edit', compact('member', 'plans'));
     }
 

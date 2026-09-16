@@ -63,15 +63,9 @@
             <div class="card-header"><span class="card-title">QoS / MikroTik</span></div>
             <div class="card-body">
                 @php $plan = $voucher->plan; @endphp
-                <div class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                    <div><p class="stat-label">Max Download</p><p class="font-semibold mt-1">{{ $plan?->download_label ?? '-' }}</p></div>
-                    <div><p class="stat-label">Max Upload</p><p class="font-semibold mt-1">{{ $plan?->upload_label ?? '-' }}</p></div>
-                    <div><p class="stat-label">Limit At ↓ / ↑</p><p class="font-semibold mt-1">{{ $plan?->qos_limit_at_down_kbps ? $plan->qos_limit_at_down_kbps.' Kbps' : '-' }} / {{ $plan?->qos_limit_at_up_kbps ? $plan->qos_limit_at_up_kbps.' Kbps' : '-' }}</p></div>
-                    <div><p class="stat-label">Burst ↓ / ↑</p><p class="font-semibold mt-1">{{ $plan?->qos_burst_limit_down_kbps ? $plan->qos_burst_limit_down_kbps.' Kbps' : '-' }} / {{ $plan?->qos_burst_limit_up_kbps ? $plan->qos_burst_limit_up_kbps.' Kbps' : '-' }}</p></div>
-                    <div><p class="stat-label">Threshold ↓ / ↑</p><p class="font-semibold mt-1">{{ $plan?->qos_burst_threshold_down_kbps ? $plan->qos_burst_threshold_down_kbps.' Kbps' : '-' }} / {{ $plan?->qos_burst_threshold_up_kbps ? $plan->qos_burst_threshold_up_kbps.' Kbps' : '-' }}</p></div>
-                    <div><p class="stat-label">Burst Time ↓ / ↑</p><p class="font-semibold mt-1">{{ $plan?->qos_burst_time_down_sec ? $plan->qos_burst_time_down_sec.'s' : '-' }} / {{ $plan?->qos_burst_time_up_sec ? $plan->qos_burst_time_up_sec.'s' : '-' }}</p></div>
-                    <div><p class="stat-label">Priority</p><p class="font-semibold mt-1">{{ $plan?->qos_priority ?? 'Default' }}</p></div>
-                    <div><p class="stat-label">Queue Type</p><p class="font-semibold mt-1">{{ $plan?->qos_queue_type ?? 'default' }}</p></div>
+                <div class="text-sm">
+                    <p class="stat-label">MikroTik Rate Limit</p>
+                    <p class="font-mono font-semibold text-slate-800 mt-1">{{ $plan?->mikrotik_rate_limit ?: ($plan ? app(\App\Services\QosService::class)->rateLimit($plan) : '-') }}</p>
                 </div>
             </div>
         </div>

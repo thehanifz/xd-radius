@@ -16,6 +16,7 @@ class Plan extends Model
     protected $fillable = [
         'name',
         'type',
+        'mikrotik_rate_limit',
         'price',
         'download_speed_kbps',
         'upload_speed_kbps',
@@ -91,7 +92,19 @@ class Plan extends Model
             'minutes' => 'menit',
             'hours' => 'jam',
             'days' => 'hari',
+            'months' => 'bulan',
             default => $this->duration_unit,
+        };
+    }
+
+    public function addDurationTo(\Carbon\CarbonInterface $start): \Carbon\CarbonInterface
+    {
+        return match ($this->duration_unit) {
+            'minutes' => $start->copy()->addMinutes($this->duration_value),
+            'hours' => $start->copy()->addHours($this->duration_value),
+            'days' => $start->copy()->addDays($this->duration_value),
+            'months' => $start->copy()->addMonthsNoOverflow($this->duration_value),
+            default => throw new \InvalidArgumentException('Unit durasi paket tidak valid.'),
         };
     }
 

@@ -49,34 +49,22 @@ class PlanController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizeDurationInput($request);
         $data = $request->validate([
             'name'                => ['required', 'string', 'max:100'],
             'type'                => ['required', Rule::in(['voucher', 'member'])],
+            'mikrotik_rate_limit' => ['required', 'string', 'max:255', 'regex:/^[^\x00-\x1F\x7F]+$/'],
             'price'               => ['required', 'integer', 'min:0'],
-            'download_speed_kbps' => ['required', 'integer', 'min:1'],
-            'upload_speed_kbps'   => ['required', 'integer', 'min:1'],
             'duration_value'      => ['required', 'integer', 'min:1'],
-            'duration_unit'       => ['required', Rule::in(['minutes', 'hours', 'days'])],
+            'duration_unit'       => ['required', Rule::in(['minutes', 'hours', 'days', 'months'])],
             'data_quota_mb'       => ['nullable', 'integer', 'min:1'],
-            'qos_limit_at_down_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_limit_at_up_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_limit_down_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_limit_up_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_threshold_down_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_threshold_up_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_time_down_sec' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_time_up_sec' => ['nullable', 'integer', 'min:1'],
-            'qos_priority' => ['nullable', 'integer', 'min:1', 'max:8'],
-            'qos_queue_type' => ['nullable', 'string', 'max:100'],
             'radius_group_name'   => ['required', 'string', 'max:100', 'unique:plans,radius_group_name'],
             'description'         => ['nullable', 'string', 'max:500'],
             'is_active'           => ['boolean'],
         ], $this->messages());
 
-        $this->validateQosConsistency($data);
-
         $data['is_active'] = $request->boolean('is_active', true);
-        $data['duration_days'] = $data['duration_unit'] === 'days' ? $data['duration_value'] : max(1, (int) ceil(($data['duration_unit'] === 'hours' ? $data['duration_value'] / 24 : $data['duration_value'] / 1440)));
+        $data['duration_days'] = $this->legacyDurationDays($data['duration_value'], $data['duration_unit']);
 
         Plan::create($data);
 
@@ -91,34 +79,22 @@ class PlanController extends Controller
 
     public function update(Request $request, Plan $plan)
     {
+        $this->normalizeDurationInput($request);
         $data = $request->validate([
             'name'                => ['required', 'string', 'max:100'],
             'type'                => ['required', Rule::in(['voucher', 'member'])],
+            'mikrotik_rate_limit' => ['required', 'string', 'max:255', 'regex:/^[^\x00-\x1F\x7F]+$/'],
             'price'               => ['required', 'integer', 'min:0'],
-            'download_speed_kbps' => ['required', 'integer', 'min:1'],
-            'upload_speed_kbps'   => ['required', 'integer', 'min:1'],
             'duration_value'      => ['required', 'integer', 'min:1'],
-            'duration_unit'       => ['required', Rule::in(['minutes', 'hours', 'days'])],
+            'duration_unit'       => ['required', Rule::in(['minutes', 'hours', 'days', 'months'])],
             'data_quota_mb'       => ['nullable', 'integer', 'min:1'],
-            'qos_limit_at_down_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_limit_at_up_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_limit_down_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_limit_up_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_threshold_down_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_threshold_up_kbps' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_time_down_sec' => ['nullable', 'integer', 'min:1'],
-            'qos_burst_time_up_sec' => ['nullable', 'integer', 'min:1'],
-            'qos_priority' => ['nullable', 'integer', 'min:1', 'max:8'],
-            'qos_queue_type' => ['nullable', 'string', 'max:100'],
             'radius_group_name'   => ['required', 'string', 'max:100', Rule::unique('plans', 'radius_group_name')->ignore($plan->id)],
             'description'         => ['nullable', 'string', 'max:500'],
             'is_active'           => ['boolean'],
         ], $this->messages());
 
-        $this->validateQosConsistency($data);
-
         $data['is_active'] = $request->boolean('is_active', true);
-        $data['duration_days'] = $data['duration_unit'] === 'days' ? $data['duration_value'] : max(1, (int) ceil(($data['duration_unit'] === 'hours' ? $data['duration_value'] / 24 : $data['duration_value'] / 1440)));
+        $data['duration_days'] = $this->legacyDurationDays($data['duration_value'], $data['duration_unit']);
 
         $plan->update($data);
 
@@ -143,45 +119,22 @@ class PlanController extends Controller
         return back()->with('success', "Paket '{$plan->name}' berhasil {$status}.");
     }
 
-    private function validateQosConsistency(array $data): void
+    private function normalizeDurationInput(Request $request): void
     {
-        $pairs = [
-            ['qos_limit_at_down_kbps', 'download_speed_kbps', 'Limit At download tidak boleh melebihi Max Limit download.'],
-            ['qos_limit_at_up_kbps', 'upload_speed_kbps', 'Limit At upload tidak boleh melebihi Max Limit upload.'],
-            ['qos_burst_threshold_down_kbps', 'qos_burst_limit_down_kbps', 'Burst Threshold download tidak boleh melebihi Burst Limit download.'],
-            ['qos_burst_threshold_up_kbps', 'qos_burst_limit_up_kbps', 'Burst Threshold upload tidak boleh melebihi Burst Limit upload.'],
-            ['qos_burst_limit_down_kbps', 'download_speed_kbps', 'Burst Limit download tidak boleh lebih kecil dari Max Limit download.'],
-            ['qos_burst_limit_up_kbps', 'upload_speed_kbps', 'Burst Limit upload tidak boleh lebih kecil dari Max Limit upload.'],
-            ['qos_burst_threshold_down_kbps', 'download_speed_kbps', 'Burst Threshold download tidak boleh melebihi Max Limit download.'],
-            ['qos_burst_threshold_up_kbps', 'upload_speed_kbps', 'Burst Threshold upload tidak boleh melebihi Max Limit upload.'],
-        ];
-
-        foreach ($pairs as [$left, $right, $message]) {
-            if ($data[$left] !== null && $data[$right] !== null) {
-                $mustBeLessOrEqual = str_contains($left, 'limit_at') || str_contains($left, 'threshold');
-                $invalid = $mustBeLessOrEqual
-                    ? (int) $data[$left] > (int) $data[$right]
-                    : (int) $data[$left] < (int) $data[$right];
-
-                if ($invalid) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([$left => $message]);
-                }
-            }
+        if ($request->input('type') === 'member') {
+            $request->merge(['duration_value' => 1, 'duration_unit' => 'months']);
         }
+    }
 
-        if ($data['qos_burst_threshold_down_kbps'] !== null && $data['qos_limit_at_down_kbps'] !== null
-            && $data['qos_burst_threshold_down_kbps'] < $data['qos_limit_at_down_kbps']) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'qos_burst_threshold_down_kbps' => 'Burst Threshold download sebaiknya >= Limit At download untuk perilaku burst yang valid.',
-            ]);
-        }
-
-        if ($data['qos_burst_threshold_up_kbps'] !== null && $data['qos_limit_at_up_kbps'] !== null
-            && $data['qos_burst_threshold_up_kbps'] < $data['qos_limit_at_up_kbps']) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'qos_burst_threshold_up_kbps' => 'Burst Threshold upload sebaiknya >= Limit At upload untuk perilaku burst yang valid.',
-            ]);
-        }
+    private function legacyDurationDays(int $value, string $unit): int
+    {
+        return match ($unit) {
+            'months' => $value * 30,
+            'days' => $value,
+            'hours' => max(1, (int) ceil($value / 24)),
+            'minutes' => max(1, (int) ceil($value / 1440)),
+            default => 30,
+        };
     }
 
     private function messages(): array
@@ -190,8 +143,7 @@ class PlanController extends Controller
             'name.required'                => 'Nama paket wajib diisi.',
             'type.required'                => 'Tipe paket wajib dipilih.',
             'price.required'               => 'Harga wajib diisi.',
-            'download_speed_kbps.required' => 'Kecepatan download wajib diisi.',
-            'upload_speed_kbps.required'   => 'Kecepatan upload wajib diisi.',
+            'mikrotik_rate_limit.required' => 'MikroTik Rate Limit wajib diisi.',
             'duration_value.required'      => 'Durasi wajib diisi.',
             'radius_group_name.required'   => 'Nama group RADIUS wajib diisi.',
             'radius_group_name.unique'     => 'Nama group RADIUS sudah digunakan paket lain.',

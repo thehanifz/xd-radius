@@ -15,12 +15,11 @@ class VoucherValidityService
 
     public function expiryAt(Plan $plan, CarbonInterface $start): CarbonInterface
     {
-        return match ($plan->duration_unit) {
-            'minutes' => $start->copy()->addMinutes($plan->duration_value),
-            'hours'   => $start->copy()->addHours($plan->duration_value),
-            'days'    => $start->copy()->addDays($plan->duration_value),
-            default   => throw new \InvalidArgumentException('Unit durasi voucher tidak valid.'),
-        };
+        if (! in_array($plan->duration_unit, ['minutes', 'hours', 'days'], true)) {
+            throw new \InvalidArgumentException('Unit durasi voucher tidak valid.');
+        }
+
+        return $plan->addDurationTo($start);
     }
 
     public function activateFromFirstLogin(Voucher $voucher, CarbonInterface $loginAt): Voucher

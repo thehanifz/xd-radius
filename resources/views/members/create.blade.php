@@ -51,11 +51,27 @@
                         <option value="">-- Pilih Paket --</option>
                         @foreach ($plans as $plan)
                             <option value="{{ $plan->id }}" {{ old('plan_id') == $plan->id ? 'selected' : '' }}>
-                                {{ $plan->name }} &mdash; {{ $plan->price_label }} / {{ $plan->duration_days }} hari
+                                {{ $plan->name }} &mdash; {{ $plan->price_label }} / bulan
                             </option>
                         @endforeach
                     </select>
                     @error('plan_id')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">Tanggal Mulai <span class="text-red-500">*</span></label>
+                        <input type="date" name="activated_at" value="{{ old('activated_at', now()->toDateString()) }}"
+                            class="form-input @error('activated_at') border-red-400 @enderror" required>
+                        @error('activated_at')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                        <p class="text-xs text-slate-400 mt-1">Default hari ini, dapat diubah.</p>
+                    </div>
+                    <div>
+                        <label class="form-label">Expired At <span class="text-slate-400 font-normal">(opsional)</span></label>
+                        <input type="datetime-local" name="expired_at" value="{{ old('expired_at') }}"
+                            class="form-input @error('expired_at') border-red-400 @enderror">
+                        @error('expired_at')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                        <p class="text-xs text-slate-400 mt-1">Kosong = otomatis 1 bulan dari tanggal mulai.</p>
+                    </div>
                 </div>
                 <div>
                     <label class="form-label">Simultaneous Use <span class="text-red-500">*</span></label>
