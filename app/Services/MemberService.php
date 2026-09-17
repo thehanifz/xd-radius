@@ -56,7 +56,9 @@ class MemberService
                 'simultaneous_use' => $data['simultaneous_use'] ?? $member->simultaneous_use,
                 'status'           => $data['status'] ?? $member->status,
                 'activated_at'     => !empty($data['activated_at']) ? Carbon::parse($data['activated_at'])->startOfDay() : $member->activated_at,
-                'expired_at'       => !empty($data['expired_at']) ? Carbon::parse($data['expired_at']) : $member->expired_at,
+                'expired_at'       => !empty($data['expired_at'])
+                    ? Carbon::parse($data['expired_at'])
+                    : (!empty($data['activated_at']) ? $this->calcExpiry(Carbon::parse($data['activated_at'])->startOfDay(), $plan) : $member->expired_at),
                 'notes'            => $data['notes'] ?? null,
             ];
 

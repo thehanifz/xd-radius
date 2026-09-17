@@ -76,14 +76,15 @@ class RadiusService
 
     public function isolateUser(string $username): void
     {
-        Radcheck::where('username', $username)
-            ->where('attribute', 'Auth-Type')
-            ->where('value', 'Reject')
+        // Hapus mekanisme address-list lama lalu pakai reject RADIUS sebagai source of truth.
+        Radreply::where('username', $username)
+            ->where('attribute', 'Mikrotik-Address-List')
+            ->where('value', 'isolir')
             ->delete();
 
-        Radreply::firstOrCreate(
-            ['username' => $username, 'attribute' => 'Mikrotik-Address-List'],
-            ['op' => '=', 'value' => 'isolir']
+        Radcheck::updateOrCreate(
+            ['username' => $username, 'attribute' => 'Auth-Type'],
+            ['op' => ':=', 'value' => 'Reject']
         );
     }
 
@@ -91,9 +92,11 @@ class RadiusService
     {
         Radcheck::where('username', $username)
             ->where('attribute', 'Auth-Type')
+            ->where('op', ':=')
             ->where('value', 'Reject')
             ->delete();
 
+        // Bersihkan data isolir legacy jika masih tersisa dari versi sebelumnya.
         Radreply::where('username', $username)
             ->where('attribute', 'Mikrotik-Address-List')
             ->where('value', 'isolir')

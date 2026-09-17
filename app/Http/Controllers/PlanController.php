@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class PlanController extends Controller
 {
@@ -58,13 +59,13 @@ class PlanController extends Controller
             'duration_value'      => ['required', 'integer', 'min:1'],
             'duration_unit'       => ['required', Rule::in(['minutes', 'hours', 'days', 'months'])],
             'data_quota_mb'       => ['nullable', 'integer', 'min:1'],
-            'radius_group_name'   => ['required', 'string', 'max:100', 'unique:plans,radius_group_name'],
             'description'         => ['nullable', 'string', 'max:500'],
             'is_active'           => ['boolean'],
         ], $this->messages());
 
         $data['is_active'] = $request->boolean('is_active', true);
         $data['duration_days'] = $this->legacyDurationDays($data['duration_value'], $data['duration_unit']);
+        $data['radius_group_name'] = $this->generateRadiusGroupName($data['name']);
 
         Plan::create($data);
 
@@ -88,7 +89,6 @@ class PlanController extends Controller
             'duration_value'      => ['required', 'integer', 'min:1'],
             'duration_unit'       => ['required', Rule::in(['minutes', 'hours', 'days', 'months'])],
             'data_quota_mb'       => ['nullable', 'integer', 'min:1'],
-            'radius_group_name'   => ['required', 'string', 'max:100', Rule::unique('plans', 'radius_group_name')->ignore($plan->id)],
             'description'         => ['nullable', 'string', 'max:500'],
             'is_active'           => ['boolean'],
         ], $this->messages());
@@ -119,6 +119,18 @@ class PlanController extends Controller
         return back()->with('success', "Paket '{$plan->name}' berhasil {$status}.");
     }
 
+    private function generateRadiusGroupName(string $planName): string
+    {
+        $slug = Str::slug($planName);
+        $slug = $slug !== '' ? $slug : 'plan';
+
+        do {
+            $group = 'radius-' . Str::limit($slug, 78, '') . '-' . Str::lower(Str::random(8));
+        } while (Plan::withTrashed()->where('radius_group_name', $group)->exists());
+
+        return $group;
+    }
+
     private function normalizeDurationInput(Request $request): void
     {
         if ($request->input('type') === 'member') {
@@ -145,8 +157,6 @@ class PlanController extends Controller
             'price.required'               => 'Harga wajib diisi.',
             'mikrotik_rate_limit.required' => 'MikroTik Rate Limit wajib diisi.',
             'duration_value.required'      => 'Durasi wajib diisi.',
-            'radius_group_name.required'   => 'Nama group RADIUS wajib diisi.',
-            'radius_group_name.unique'     => 'Nama group RADIUS sudah digunakan paket lain.',
         ];
     }
 }

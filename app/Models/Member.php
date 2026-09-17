@@ -79,7 +79,7 @@ class Member extends Model
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     /**
-     * Cek apakah member pernah di-isolir (ada entry Auth-Type := Reject di radcheck).
+     * Cek apakah member sedang di-isolir (ada entry Auth-Type := Reject di radcheck).
      * Digunakan oleh BillingService::renewMember() untuk memulihkan akses RADIUS.
      */
     public function wasRecentlyIsolated(): bool

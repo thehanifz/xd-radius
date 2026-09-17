@@ -12,8 +12,8 @@
     <div>
         <label class="form-label">Tipe Paket <span class="text-red-500">*</span></label>
         <select name="type" id="plan-type" class="form-input @error('type') border-red-400 @enderror">
-            <option value="voucher">Voucher</option>
-            <option value="member">Member</option>
+            <option value="voucher" @selected(old('type', $plan->type ?? 'voucher') === 'voucher')>Voucher</option>
+            <option value="member" @selected(old('type', $plan->type ?? 'voucher') === 'member')>Member</option>
         </select>
         @error('type') <p class="form-error">{{ $message }}</p> @enderror
         <p id="plan-type-help" class="text-xs text-slate-400 mt-1"></p>
@@ -69,17 +69,6 @@
         </p>
     </div>
 
-    {{-- RADIUS Group --}}
-    <div>
-        <label class="form-label">Nama Group RADIUS <span class="text-red-500">*</span></label>
-        <input type="text" name="radius_group_name"
-            value="{{ old('radius_group_name', $plan->radius_group_name ?? '') }}"
-            placeholder="cth: voucher-3jam-5mbps"
-            class="form-input font-mono @error('radius_group_name') border-red-400 @enderror">
-        <p class="text-xs text-slate-400 mt-1">Group FreeRADIUS. Harus unik.</p>
-        @error('radius_group_name') <p class="form-error">{{ $message }}</p> @enderror
-    </div>
-
     {{-- Deskripsi --}}
     <div>
         <label class="form-label">Deskripsi <span class="text-slate-400 font-normal">— opsional</span></label>
@@ -89,12 +78,14 @@
     </div>
 
     {{-- Status --}}
-    <div class="flex items-center gap-3">
-        <input type="checkbox" id="is_active" name="is_active" value="1"
-            @checked(old('is_active', $plan->is_active ?? true))
-            class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-        <label for="is_active" class="text-sm text-slate-700">Paket aktif</label>
-    </div>
+    @if(isset($plan) && $plan->exists)
+        <div class="flex items-center gap-3">
+            <input type="checkbox" id="is_active" name="is_active" value="1"
+                @checked(old('is_active', $plan->is_active ?? true))
+                class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            <label for="is_active" class="text-sm text-slate-700">Paket aktif</label>
+        </div>
+    @endif
     <script>
         (() => {
             const form = document.querySelector('[data-plan-form]');
