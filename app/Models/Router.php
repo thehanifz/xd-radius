@@ -21,6 +21,7 @@ class Router extends Model
         'api_username',
         'api_secret',
         'radius_secret',
+        'radius_enabled',
         'location',
         'is_active',
         'last_connection_status',
@@ -34,6 +35,7 @@ class Router extends Model
         'api_secret'        => 'encrypted',
         'api_port'          => 'integer',
         'is_active'         => 'boolean',
+        'radius_enabled'    => 'boolean',
         'last_connected_at' => 'datetime',
     ];
 
@@ -51,11 +53,11 @@ class Router extends Model
 
     /**
      * Upsert baris di tabel nas agar FreeRADIUS mengenali router ini sebagai RADIUS client.
-     * Hanya dijalankan jika radius_secret diisi.
+     * Hanya dijalankan jika FreeRADIUS client diaktifkan dan radius_secret diisi.
      */
     public function syncToNas(): void
     {
-        if (! $this->radius_secret) return;
+        if (! $this->radius_enabled || ! $this->radius_secret) return;
 
         DB::table('nas')->updateOrInsert(
             ['nasname' => $this->ip_address],

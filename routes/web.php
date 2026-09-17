@@ -78,7 +78,7 @@ Route::middleware('auth')->group(function () {
     // ─── Routers / NAS ───────────────────────────────────────────────────────
     Route::resource('routers', RouterController::class);
     Route::post('/routers/{router}/test-connection', [RouterController::class, 'testConnection'])->name('routers.test-connection');
-    Route::patch('/routers/{router}/toggle', [RouterController::class, 'toggleActive'])->name('routers.toggle');
+    Route::patch('/routers/{router}/toggle', [RouterController::class, 'toggleOperational'])->name('routers.toggle');
 
     // ─── Operators (superuser only) ──────────────────────────────────────────
     Route::get('/operators',                      [OperatorController::class, 'index'])->name('operators.index');

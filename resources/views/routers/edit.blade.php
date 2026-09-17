@@ -75,13 +75,6 @@
                     @error('location')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
 
-                <div class="flex items-center gap-2.5">
-                    <input type="checkbox" name="is_active" id="is_active" value="1"
-                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        {{ old('is_active', $router->is_active) ? 'checked' : '' }}>
-                    <label for="is_active" class="text-sm text-slate-700">Router aktif</label>
-                </div>
-
                 <div class="flex gap-3 pt-2">
                     <a href="{{ route('routers.show', $router) }}" class="btn-secondary">Batal</a>
                     <button type="submit" class="btn-primary">Simpan Perubahan</button>

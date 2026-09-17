@@ -33,12 +33,13 @@ class RouterController extends Controller
             'api_port'      => ['required', 'integer', 'min:1', 'max:65535'],
             'api_username'  => ['required', 'string', 'max:100'],
             'api_secret'    => ['required', 'string', 'max:255'],
-            'radius_secret' => ['nullable', 'string', 'max:255'],
+            'radius_secret' => ['required', 'string', 'max:255'],
             'location'      => ['nullable', 'string', 'max:200'],
             'is_active'     => ['nullable', 'boolean'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
+        $data['radius_enabled'] = true;
 
         $router = Router::create($data);
 
@@ -132,13 +133,29 @@ class RouterController extends Controller
             ->with('success', "Router '{$name}' berhasil dihapus.");
     }
 
-    public function toggleActive(Router $router)
+    public function toggleOperational(Router $router)
     {
         Gate::authorize('superuser-only');
-        $router->update(['is_active' => ! $router->is_active]);
-        $label = $router->fresh()->status_label;
 
-        return back()->with('success', "Status router '{$router->name}' diubah ke {$label}.");
+        $enabled = ! $router->is_active;
+        $router->update([
+            'is_active'      => $enabled,
+            'radius_enabled' => $enabled,
+        ]);
+        $router = $router->fresh();
+
+        if ($enabled) {
+            $router->syncToNas();
+        } else {
+            $router->removeFromNas();
+        }
+
+        $this->restartFreeRadius();
+
+        return back()->with(
+            'success',
+            "Router '{$router->name}' dan FreeRADIUS " . ($enabled ? 'diaktifkan.' : 'dinonaktifkan.')
+        );
     }
 
     /**

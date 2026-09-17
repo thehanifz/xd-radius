@@ -116,20 +116,17 @@
         </div>
     </div>
 
-    {{-- Toggle Aktif --}}
+    {{-- Status Operasional --}}
     <div class="card">
-        <div class="card-body flex items-center justify-between">
+        <div class="card-body flex items-center justify-between gap-4">
             <div>
-                <p class="text-sm font-medium text-slate-700">Status Router</p>
-                <p class="text-xs text-slate-500 mt-0.5">
-                    Router nonaktif tidak akan digunakan untuk CoA/disconnect.
-                </p>
+                <p class="text-sm font-medium text-slate-700">Status Router & FreeRADIUS</p>
+                <p class="text-xs text-slate-500 mt-0.5">Satu status mengontrol RouterOS API dan client FreeRADIUS.</p>
             </div>
             <form method="POST" action="{{ route('routers.toggle', $router) }}">
                 @csrf @method('PATCH')
-                <button type="submit"
-                    class="{{ $router->is_active ? 'btn-danger' : 'btn-primary' }}">
-                    {{ $router->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                <button type="submit" class="{{ $router->is_active && $router->radius_enabled ? 'btn-danger' : 'btn-primary' }}">
+                    {{ $router->is_active && $router->radius_enabled ? 'Nonaktifkan' : 'Aktifkan' }}
                 </button>
             </form>
         </div>

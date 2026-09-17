@@ -61,9 +61,9 @@
                 {{-- FreeRADIUS NAS Secret --}}
                 <div class="rounded-lg border border-indigo-100 bg-indigo-50/40 p-4 space-y-2">
                     <p class="text-xs font-semibold text-indigo-600 uppercase tracking-wide">RADIUS Shared Secret</p>
-                    <p class="text-xs text-slate-500">Secret yang sama harus diisi di MikroTik: <strong>Radius → Secret</strong>. Jika kosong, router tidak didaftarkan ke FreeRADIUS.</p>
+                    <p class="text-xs text-slate-500">Secret yang sama harus diisi di MikroTik: <strong>Radius → Secret</strong>. Router baru langsung didaftarkan sebagai client FreeRADIUS aktif.</p>
                     <div>
-                        <label class="form-label">RADIUS Secret</label>
+                        <label class="form-label">RADIUS Secret <span class="text-red-500">*</span></label>
                         <input type="text" name="radius_secret" value="{{ old('radius_secret') }}"
                             class="form-input font-mono @error('radius_secret') border-red-400 @enderror"
                             placeholder="cth: MyRadiusSecret@2026">
@@ -77,13 +77,6 @@
                         class="form-input @error('location') border-red-400 @enderror"
                         placeholder="cth: Gedung A Lt.3, Tower B">
                     @error('location')<p class="form-error">{{ $message }}</p>@enderror
-                </div>
-
-                <div class="flex items-center gap-2.5">
-                    <input type="checkbox" name="is_active" id="is_active" value="1"
-                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        {{ old('is_active', true) ? 'checked' : '' }}>
-                    <label for="is_active" class="text-sm text-slate-700">Router aktif</label>
                 </div>
 
                 <div class="flex gap-3 pt-2">

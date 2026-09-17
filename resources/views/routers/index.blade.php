@@ -65,13 +65,8 @@
                             @endif
                         </td>
                         <td class="px-4 py-3">
-                            @php
-                                $statusColor = $router->is_active
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-slate-100 text-slate-500';
-                            @endphp
-                            <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
-                                {{ $router->status_label }}
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $router->is_active && $router->radius_enabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' }}">
+                                {{ $router->is_active && $router->radius_enabled ? 'Aktif' : 'Nonaktif' }}
                             </span>
                         </td>
                         <td class="px-4 py-3">
@@ -82,7 +77,7 @@
                                 <form method="POST" action="{{ route('routers.toggle', $router) }}">
                                     @csrf @method('PATCH')
                                     <button type="submit"
-                                        title="{{ $router->is_active ? 'Nonaktifkan' : 'Aktifkan' }}"
+                                        title="{{ $router->is_active && $router->radius_enabled ? 'Nonaktifkan Router + FreeRADIUS' : 'Aktifkan Router + FreeRADIUS' }}"
                                         class="{{ $router->is_active ? 'text-slate-400 hover:text-amber-500' : 'text-slate-400 hover:text-green-600' }}">
                                         @if($router->is_active)
                                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
@@ -118,7 +113,9 @@
                                 <p class="text-xs text-slate-400 mt-1 truncate">{{ $router->location }}</p>
                             @endif
                         </div>
-                        <span class="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium {{ $router->is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' }}">{{ $router->status_label }}</span>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium {{ $router->is_active && $router->radius_enabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' }}">{{ $router->is_active && $router->radius_enabled ? 'Aktif' : 'Nonaktif' }}</span>
+                        </div>
                     </div>
                     <div class="flex items-center justify-between gap-3 mt-3">
                         <span class="text-xs {{ $router->last_connection_status === 'ok' ? 'text-green-600' : ($router->last_connection_status === 'error' ? 'text-red-600' : 'text-slate-400') }}">{{ $router->connection_status_label }}</span>
