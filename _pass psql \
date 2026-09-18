@@ -1,0 +1,44 @@
+ table_name |          column_name          |          data_type          
+------------+-------------------------------+-----------------------------
+ plans      | id                            | bigint
+ plans      | name                          | character varying
+ plans      | price                         | bigint
+ plans      | is_active                     | boolean
+ plans      | description                   | text
+ plans      | created_at                    | timestamp without time zone
+ plans      | updated_at                    | timestamp without time zone
+ plans      | deleted_at                    | timestamp without time zone
+ plans      | type                          | character varying
+ plans      | download_speed_kbps           | integer
+ plans      | upload_speed_kbps             | integer
+ plans      | duration_days                 | integer
+ plans      | data_quota_mb                 | bigint
+ plans      | radius_group_name             | character varying
+ plans      | duration_value                | integer
+ plans      | duration_unit                 | character varying
+ plans      | qos_limit_at_down_kbps        | integer
+ plans      | qos_limit_at_up_kbps          | integer
+ plans      | qos_burst_limit_down_kbps     | integer
+ plans      | qos_burst_limit_up_kbps       | integer
+ plans      | qos_burst_threshold_down_kbps | integer
+ plans      | qos_burst_threshold_up_kbps   | integer
+ plans      | qos_burst_time_down_sec       | integer
+ plans      | qos_burst_time_up_sec         | integer
+ plans      | qos_priority                  | smallint
+ plans      | qos_queue_type                | character varying
+ plans      | mikrotik_rate_limit           | character varying
+ vouchers   | id                            | bigint
+ vouchers   | batch_id                      | bigint
+ vouchers   | username                      | character varying
+ vouchers   | password_plain                | text
+ vouchers   | plan_id                       | bigint
+ vouchers   | price_snapshot                | bigint
+ vouchers   | status                        | character varying
+ vouchers   | first_login_at                | timestamp without time zone
+ vouchers   | expired_at                    | timestamp without time zone
+ vouchers   | is_printed                    | boolean
+ vouchers   | created_at                    | timestamp without time zone
+ vouchers   | updated_at                    | timestamp without time zone
+ vouchers   | activated_at                  | timestamp without time zone
+(40 rows)
+

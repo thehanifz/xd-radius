@@ -44,7 +44,10 @@ class VoucherValidityService
             // from the stored Expiration timestamp. Keeping a static Session-Timeout
             // in radreply would become stale after logout/re-login.
             $radius = $this->radius ?? app(RadiusService::class);
-            $radius->setExpiration($voucher->username, (string) $expiredAt->timestamp);
+            $radius->setExpiration(
+                $voucher->username,
+                $expiredAt->format('d M Y H:i:s')
+            );
             Radcheck::where('username', $voucher->username)
                 ->where('attribute', 'Auth-Type')
                 ->where('value', 'Reject')
