@@ -8,6 +8,7 @@ use App\Models\Radcheck;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use App\Services\RadiusService;
+use App\Jobs\ExpireVoucherJob;
 
 class VoucherValidityService
 {
@@ -24,7 +25,9 @@ class VoucherValidityService
 
     public function activateFromFirstLogin(Voucher $voucher, CarbonInterface $loginAt): Voucher
     {
-        return DB::transaction(function () use ($voucher, $loginAt) {
+        $activated = false;
+
+        $voucher = DB::transaction(function () use ($voucher, $loginAt, &$activated) {
             $voucher->refresh();
 
             if ($voucher->first_login_at !== null) {
@@ -53,8 +56,18 @@ class VoucherValidityService
                 ->where('value', 'Reject')
                 ->delete();
 
+            $activated = true;
+
             return $voucher->fresh();
         });
+
+        // One delayed job per activation. The queue worker wakes the job at
+        // expired_at; no per-minute expiry comparison is required.
+        if ($activated && $voucher->expired_at !== null) {
+            ExpireVoucherJob::dispatch($voucher->id)->delay($voucher->expired_at);
+        }
+
+        return $voucher;
     }
 
     public function remainingSeconds(Voucher $voucher, ?CarbonInterface $now = null): ?int
