@@ -7,6 +7,7 @@ use App\Jobs\SyncFirstLoginAtJob;
 use App\Jobs\ReconcileStaleSessionsJob;
 use App\Jobs\GenerateOverdueInvoicesJob;
 use App\Jobs\AutoIsolateOverdueMembersJob;
+use App\Jobs\Radius\DetectDriftJob;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -25,3 +26,5 @@ Schedule::job(new GenerateOverdueInvoicesJob)->dailyAt('01:00')->name('generate-
 
 // Auto-isolir member dengan invoice overdue — setiap hari jam 02:00
 Schedule::job(new AutoIsolateOverdueMembersJob)->dailyAt('02:00')->name('auto-isolate-overdue-members');
+
+Schedule::job(new DetectDriftJob)->hourly()->name('detect-freeradius-drift');

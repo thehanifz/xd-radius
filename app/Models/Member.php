@@ -84,7 +84,7 @@ class Member extends Model
      */
     public function wasRecentlyIsolated(): bool
     {
-        return \Illuminate\Support\Facades\DB::table('radcheck')
+        return \Illuminate\Support\Facades\DB::connection('radius')->table('radcheck')
             ->where('username', $this->username)
             ->where('attribute', 'Auth-Type')
             ->where('op', ':=')

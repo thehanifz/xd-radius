@@ -13,6 +13,7 @@ use App\Http\Controllers\RouterController;
 use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\UserPreferenceController;
 use App\Http\Controllers\VoucherController;
+use App\Http\Controllers\FreeRadiusController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Onboarding (sebelum auth) ───────────────────────────────────────────────
@@ -74,6 +75,11 @@ Route::middleware('auth')->group(function () {
     // ─── Reports (superuser only) ─────────────────────────────────────────────
     Route::get('/reports/monthly',     [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/monthly/pdf', [ReportController::class, 'pdf'])->name('reports.pdf');
+
+    // ─── FreeRADIUS Management ───────────────────────────────────────────────
+    Route::get('/settings/freeradius', [FreeRadiusController::class, 'index'])->name('freeradius.index');
+    Route::post('/settings/freeradius/setup', [FreeRadiusController::class, 'setup'])->name('freeradius.setup');
+    Route::post('/settings/freeradius/reconcile', [FreeRadiusController::class, 'reconcile'])->name('freeradius.reconcile');
 
     // ─── Routers / NAS ───────────────────────────────────────────────────────
     Route::resource('routers', RouterController::class);

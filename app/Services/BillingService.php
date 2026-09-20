@@ -81,7 +81,7 @@ class BillingService
 
             // Jika sebelumnya isolir, pulihkan di RADIUS
             if ($member->wasRecentlyIsolated()) {
-                DB::table('radcheck')
+                DB::connection('radius')->table('radcheck')
                     ->where('username', $member->username)
                     ->where('attribute', 'Auth-Type')
                     ->delete();

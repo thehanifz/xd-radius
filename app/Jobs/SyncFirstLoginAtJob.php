@@ -10,7 +10,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 
 class SyncFirstLoginAtJob implements ShouldQueue
 {
@@ -20,7 +19,7 @@ class SyncFirstLoginAtJob implements ShouldQueue
     {
         Voucher::with('plan')->whereNull('first_login_at')->chunkById(200, function ($vouchers) use ($validity) {
             foreach ($vouchers as $voucher) {
-                $firstSession = DB::table('radacct')
+                $firstSession = DB::connection('radius')->table('radacct')
                     ->where('username', $voucher->username)
                     ->whereNotNull('acctstarttime')
                     ->orderBy('acctstarttime')
@@ -34,7 +33,7 @@ class SyncFirstLoginAtJob implements ShouldQueue
 
         Member::whereNull('first_login_at')->chunkById(200, function ($members) {
             foreach ($members as $member) {
-                $firstSession = DB::table('radacct')
+                $firstSession = DB::connection('radius')->table('radacct')
                     ->where('username', $member->username)
                     ->whereNotNull('acctstarttime')
                     ->orderBy('acctstarttime')

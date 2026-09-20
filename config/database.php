@@ -97,6 +97,21 @@ return [
             'sslmode' => 'prefer',
         ],
 
+        'radius' => [
+            'driver' => env('RADIUS_DB_CONNECTION', env('DB_CONNECTION', 'pgsql')),
+            'url' => env('RADIUS_DB_URL'),
+            'host' => env('RADIUS_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('RADIUS_DB_PORT', env('DB_PORT', '5432')),
+            'database' => env('RADIUS_DB_DATABASE', env('DB_DATABASE', 'laravel')),
+            'username' => env('RADIUS_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('RADIUS_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => env('RADIUS_DB_CHARSET', env('DB_CHARSET', 'utf8')),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => env('RADIUS_DB_SEARCH_PATH', 'public'),
+            'sslmode' => env('RADIUS_DB_SSLMODE', env('DB_SSLMODE', 'prefer')),
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

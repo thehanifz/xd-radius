@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\Jobs\Radius\RunConfigurationJob;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -29,6 +30,10 @@ class Router extends Model
         'last_connection_message',
         'routeros_version',
         'last_connection_error',
+        'radius_sync_status',
+        'radius_last_synced_at',
+        'radius_last_sync_error',
+        'radius_applied_fingerprint',
     ];
 
     protected $casts = [
@@ -37,6 +42,7 @@ class Router extends Model
         'is_active'         => 'boolean',
         'radius_enabled'    => 'boolean',
         'last_connected_at' => 'datetime',
+        'radius_last_synced_at' => 'datetime',
     ];
 
     // --- Activity Log ---
@@ -49,36 +55,16 @@ class Router extends Model
             ->dontSubmitEmptyLogs();
     }
 
-    // --- Sync ke tabel nas FreeRADIUS ---
-
-    /**
-     * Upsert baris di tabel nas agar FreeRADIUS mengenali router ini sebagai RADIUS client.
-     * Hanya dijalankan jika FreeRADIUS client diaktifkan dan radius_secret diisi.
-     */
+    // NAS synchronization is handled by the FreeRADIUS management pipeline.
+    // Kept as compatibility methods for callers outside the current application.
     public function syncToNas(): void
     {
-        if (! $this->radius_enabled || ! $this->radius_secret) return;
-
-        DB::table('nas')->updateOrInsert(
-            ['nasname' => $this->ip_address],
-            [
-                'shortname'   => $this->name,
-                'type'        => 'other',
-                'secret'      => $this->radius_secret,
-                'description' => $this->location ?? $this->name,
-                'server'      => null,
-                'community'   => null,
-                'ports'       => 0,
-            ]
-        );
+        RunConfigurationJob::dispatch('NAS_SYNC');
     }
 
-    /**
-     * Hapus baris dari tabel nas saat router dihapus.
-     */
     public function removeFromNas(): void
     {
-        DB::table('nas')->where('nasname', $this->ip_address)->delete();
+        RunConfigurationJob::dispatch('NAS_SYNC');
     }
 
     // --- Accessors ---

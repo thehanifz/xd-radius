@@ -4,10 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Router;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
 use App\Services\RouterConnectionService;
+use App\Jobs\Radius\RunConfigurationJob;
 
 class RouterController extends Controller
 {
@@ -43,9 +42,8 @@ class RouterController extends Controller
 
         $router = Router::create($data);
 
-        // Sync ke tabel nas & restart FreeRADIUS
-        $router->syncToNas();
-        $this->restartFreeRadius();
+        $router->updateQuietly(['radius_sync_status' => 'pending', 'radius_last_sync_error' => null]);
+        RunConfigurationJob::dispatch('NAS_SYNC', $router->id);
 
         return redirect()
             ->route('routers.show', $router)
@@ -98,19 +96,10 @@ class RouterController extends Controller
             unset($data['api_secret']);
         }
 
-        // Simpan old IP sebelum update (untuk update nas jika IP berubah)
-        $oldIp = $router->ip_address;
-
         $router->update($data);
 
-        // Jika IP berubah, hapus entry nas lama dulu
-        if ($oldIp !== $router->ip_address) {
-            DB::table('nas')->where('nasname', $oldIp)->delete();
-        }
-
-        // Sync ke tabel nas & restart FreeRADIUS
-        $router->syncToNas();
-        $this->restartFreeRadius();
+        $router->updateQuietly(['radius_sync_status' => 'pending', 'radius_last_sync_error' => null]);
+        RunConfigurationJob::dispatch('NAS_SYNC', $router->id);
 
         return redirect()
             ->route('routers.show', $router)
@@ -122,11 +111,9 @@ class RouterController extends Controller
         Gate::authorize('superuser-only');
         $name = $router->name;
 
-        // Hapus dari tabel nas & restart FreeRADIUS
-        $router->removeFromNas();
-        $this->restartFreeRadius();
-
         $router->delete();
+        $router->updateQuietly(['radius_sync_status' => 'pending', 'radius_last_sync_error' => null]);
+        RunConfigurationJob::dispatch('NAS_SYNC', $router->id);
 
         return redirect()
             ->route('routers.index')
@@ -144,13 +131,8 @@ class RouterController extends Controller
         ]);
         $router = $router->fresh();
 
-        if ($enabled) {
-            $router->syncToNas();
-        } else {
-            $router->removeFromNas();
-        }
-
-        $this->restartFreeRadius();
+        $router->updateQuietly(['radius_sync_status' => 'pending', 'radius_last_sync_error' => null]);
+        RunConfigurationJob::dispatch('NAS_SYNC', $router->id);
 
         return back()->with(
             'success',
@@ -158,25 +140,4 @@ class RouterController extends Controller
         );
     }
 
-    /**
-     * Restart FreeRADIUS agar membaca ulang tabel nas dari SQL (generate_sql_clients).
-     * reload (SIGHUP) tidak cukup karena tidak me-reload SQL clients.
-     *
-     * Requires sudoers:
-     *   www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart freeradius
-     */
-    private function restartFreeRadius(): void
-    {
-        $output = [];
-        $code   = 0;
-
-        exec('sudo /bin/systemctl restart freeradius 2>&1', $output, $code);
-
-        if ($code !== 0) {
-            Log::warning('FreeRADIUS restart gagal', [
-                'exit_code' => $code,
-                'output'    => implode('\n', $output),
-            ]);
-        }
-    }
 }

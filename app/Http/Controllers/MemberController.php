@@ -53,7 +53,7 @@ class MemberController extends Controller
     {
         $member->load(['plan', 'invoices.payments']);
 
-        $sessions = DB::table('radacct')
+        $sessions = DB::connection('radius')->table('radacct')
             ->where('username', $member->username)
             ->orderByDesc('acctstarttime')
             ->limit(20)

@@ -80,9 +80,9 @@ class MemberService
     {
         DB::transaction(function () use ($member) {
             $u = $member->username;
-            DB::table('radcheck')->where('username', $u)->delete();
-            DB::table('radreply')->where('username', $u)->delete();
-            DB::table('radusergroup')->where('username', $u)->delete();
+            DB::connection('radius')->table('radcheck')->where('username', $u)->delete();
+            DB::connection('radius')->table('radreply')->where('username', $u)->delete();
+            DB::connection('radius')->table('radusergroup')->where('username', $u)->delete();
             $member->delete();
         });
     }
@@ -122,14 +122,14 @@ class MemberService
         $u         = $member->username;
         $rateLimit = app(QosService::class)->rateLimit($plan);
 
-        DB::table('radcheck')->insert([
+        DB::connection('radius')->table('radcheck')->insert([
             'username'  => $u,
             'attribute' => 'Cleartext-Password',
             'op'        => ':=',
             'value'     => $password,  // plaintext dari request, sebelum encrypt
         ]);
 
-        DB::table('radreply')->insert([
+        DB::connection('radius')->table('radreply')->insert([
             [
                 'username'  => $u,
                 'attribute' => 'Mikrotik-Rate-Limit',
@@ -138,7 +138,7 @@ class MemberService
             ],
         ]);
 
-        DB::table('radcheck')->insert([
+        DB::connection('radius')->table('radcheck')->insert([
             [
                 'username'  => $u,
                 'attribute' => 'Simultaneous-Use',
@@ -147,7 +147,7 @@ class MemberService
             ],
         ]);
 
-        DB::table('radusergroup')->insert([
+        DB::connection('radius')->table('radusergroup')->insert([
             'username'  => $u,
             'groupname' => $plan->radius_group_name,
             'priority'  => 1,
@@ -160,23 +160,23 @@ class MemberService
         $rateLimit = app(QosService::class)->rateLimit($plan);
 
         if ($newPassword !== null) {
-            DB::table('radcheck')
+            DB::connection('radius')->table('radcheck')
                 ->where('username', $u)
                 ->where('attribute', 'Cleartext-Password')
                 ->update(['value' => $newPassword]);
         }
 
-        DB::table('radreply')
+        DB::connection('radius')->table('radreply')
             ->where('username', $u)
             ->where('attribute', 'Mikrotik-Rate-Limit')
             ->update(['value' => $rateLimit]);
 
-        DB::table('radcheck')->updateOrInsert(
+        DB::connection('radius')->table('radcheck')->updateOrInsert(
             ['username' => $u, 'attribute' => 'Simultaneous-Use'],
             ['op' => ':=', 'value' => (string) $member->simultaneous_use]
         );
 
-        DB::table('radusergroup')
+        DB::connection('radius')->table('radusergroup')
             ->where('username', $u)
             ->update(['groupname' => $plan->radius_group_name]);
     }
