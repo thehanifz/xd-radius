@@ -35,6 +35,7 @@ class FreeRadiusEnvironment
             'service_output' => $service['stdout'] ?: $service['stderr'],
             'config_dir' => $this->configDir($version),
             'database' => $this->databaseCheck(),
+            'privileged_access' => $this->privilegedAccessCheck(),
         ];
     }
 
@@ -56,6 +57,24 @@ class FreeRadiusEnvironment
         $candidates = array_merge($candidates, ['/etc/freeradius/3.0', '/etc/freeradius/3.2', '/etc/freeradius']);
         foreach ($candidates as $dir) if (is_dir($dir)) return $dir;
         return null;
+    }
+
+    private function privilegedAccessCheck(): array
+    {
+        try {
+            $result = $this->runner->execute('/bin/systemctl', ['is-active', 'freeradius'], 15, true);
+            return [
+                'ok' => $result['exit_code'] === 0,
+                'helper' => env('FREERADIUS_PRIVILEGED_HELPER', '/usr/local/sbin/xd-radius-freeradius'),
+                'message' => $result['exit_code'] === 0 ? null : ($result['stderr'] ?: 'Privileged helper tidak dapat dipanggil.'),
+            ];
+        } catch (Throwable $e) {
+            return [
+                'ok' => false,
+                'helper' => env('FREERADIUS_PRIVILEGED_HELPER', '/usr/local/sbin/xd-radius-freeradius'),
+                'message' => $e->getMessage(),
+            ];
+        }
     }
 
     private function databaseCheck(): array

@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Root-owned helper for xd-radius FreeRADIUS management.
+# This script is intentionally narrow: it does not provide a generic root shell.
+
+CONFIG_ROOTS=(/etc/freeradius/3.0 /etc/freeradius/3.2 /etc/freeradius)
+STAGING_ROOT=/var/lib/xd-radius-freeradius/staging
+
+fail() { echo "xd-radius privileged helper: $*" >&2; exit 1; }
+
+is_config_path() {
+    local p="$1"
+    for root in "${CONFIG_ROOTS[@]}"; do
+        case "$p" in
+            "$root"|"$root"/*) return 0 ;;
+        esac
+    done
+    return 1
+}
+
+is_staging_path() {
+    local p="$1"
+    case "$p" in
+        "$STAGING_ROOT"|"$STAGING_ROOT"/*) return 0 ;;
+    esac
+    return 1
+}
+
+[ "$(id -u)" -eq 0 ] || fail "must run as root"
+[ "$#" -ge 1 ] || fail "missing operation"
+
+op="$1"
+shift
+
+case "$op" in
+    install)
+        [ "$#" -eq 3 ] || fail "install expects: install <mode> <source> <target>"
+        mode="$1"; source="$2"; target="$3"
+        [ "$mode" = "0640" ] || fail "only mode 0640 is allowed"
+        is_staging_path "$source" || fail "source is outside staging area"
+        is_config_path "$target" || fail "target is outside FreeRADIUS config"
+        [ -f "$source" ] || fail "source file does not exist"
+        install -o root -g freerad -m 0640 -- "$source" "$target"
+        ;;
+    symlink)
+        [ "$#" -eq 2 ] || fail "symlink expects: symlink <source> <target>"
+        source="$1"; target="$2"
+        is_config_path "$source" || fail "symlink source is outside FreeRADIUS config"
+        is_config_path "$target" || fail "symlink target is outside FreeRADIUS config"
+        [ -e "$source" ] || fail "symlink source does not exist"
+        [ ! -e "$target" ] && [ ! -L "$target" ] || fail "symlink target already exists"
+        ln -s -- "$source" "$target"
+        ;;
+    remove)
+        [ "$#" -eq 1 ] || fail "remove expects: remove <target>"
+        target="$1"
+        is_config_path "$target" || fail "target is outside FreeRADIUS config"
+        rm -f -- "$target"
+        ;;
+    systemctl)
+        [ "$#" -eq 2 ] || fail "systemctl expects: systemctl <reload|restart> <service>"
+        action="$1"; service="$2"
+        case "$action" in reload|restart) ;; *) fail "systemctl action not allowed" ;; esac
+        [ "$service" = "freeradius" ] || fail "only freeradius service is allowed"
+        /bin/systemctl "$action" "$service"
+        ;;
+    is-active)
+        [ "$#" -eq 1 ] || fail "is-active expects: is-active <service>"
+        [ "$1" = "freeradius" ] || fail "only freeradius service is allowed"
+        /bin/systemctl is-active freeradius
+        ;;
+    *)
+        fail "operation not allowed: $op"
+        ;;
+esac

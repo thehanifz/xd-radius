@@ -71,18 +71,20 @@ class FreeRadiusConfigGenerator
 
     private function writePrivileged(string $target, string $content): void
     {
-        $temp = storage_path('app/freeradius/' . Str::uuid() . '.conf');
-        if (! is_dir(dirname($temp))) mkdir(dirname($temp), 0750, true);
+        // Privileged helper only accepts files from its dedicated staging directory.
+        $staging = '/var/lib/xd-radius-freeradius/staging';
+        if (! is_dir($staging)) mkdir($staging, 0750, true);
+        $temp = $staging . '/' . Str::uuid() . '.conf';
         file_put_contents($temp, $content);
         $result = $this->runner->execute('/usr/bin/install', ['-m', '0640', $temp, $target], 30, true);
         @unlink($temp);
-        if ($result['exit_code'] !== 0) throw new RuntimeException('Gagal menulis konfigurasi FreeRADIUS: ' . $target);
+        if ($result['exit_code'] !== 0) throw new RuntimeException('Gagal menulis konfigurasi FreeRADIUS: ' . $target . ' (' . ($result['stderr'] ?: $result['stdout'] ?: 'exit code ' . $result['exit_code']) . ')');
     }
 
     private function runPrivileged(string $binary, array $args): void
     {
         $path = '/usr/bin/' . $binary;
         $result = $this->runner->execute($path, $args, 30, true);
-        if ($result['exit_code'] !== 0) throw new RuntimeException('Gagal menjalankan operasi FreeRADIUS: ' . implode(' ', $args));
+        if ($result['exit_code'] !== 0) throw new RuntimeException('Gagal menjalankan operasi FreeRADIUS: ' . implode(' ', $args) . ' (' . ($result['stderr'] ?: $result['stdout'] ?: 'exit code ' . $result['exit_code']) . ')');
     }
 }

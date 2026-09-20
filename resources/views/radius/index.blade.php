@@ -25,6 +25,7 @@
                 <div class="flex justify-between"><dt>Service</dt><dd>{{ $environment['service_active'] ? 'Active' : 'Inactive' }}</dd></div>
                 <div class="flex justify-between"><dt>Config</dt><dd class="text-right">{{ $environment['config_dir'] ?: '-' }}</dd></div>
                 <div class="flex justify-between"><dt>RADIUS DB</dt><dd>{{ $environment['database']['ok'] ? 'Reachable' : 'Unavailable' }}</dd></div>
+                <div class="flex justify-between"><dt>Laravel privileged access</dt><dd class="text-right {{ $environment['privileged_access']['ok'] ? 'text-green-700' : 'text-red-700' }}">{{ $environment['privileged_access']['ok'] ? 'Ready' : 'Not Ready' }}</dd></div>
             </dl>
         </div>
 
