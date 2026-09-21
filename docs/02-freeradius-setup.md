@@ -1,161 +1,102 @@
 # 02 — FreeRADIUS + PostgreSQL Setup
 
-## 1. Install FreeRADIUS
+## Cara Setup (Direkomendasikan): `setup.sh setup`
+
+Sejak revisi ini, seluruh proses install schema FreeRADIUS, konfigurasi SQL module, symlink, validasi, dan restart service **tidak lagi dilakukan manual**. Semuanya dijalankan otomatis lewat:
 
 ```bash
-apt install -y freeradius freeradius-postgresql
+sudo ./setup.sh setup
 ```
 
-Verifikasi:
+Pastikan sebelum menjalankan ini:
+
+1. `./setup.sh check` sudah lolos tanpa `FAIL` (lihat [`01-server-setup.md`](./01-server-setup.md)).
+2. `.env` sudah berisi variabel `RADIUS_DB_*` yang benar (host, port, database, username, password sesuai role PostgreSQL yang sudah dibuat).
+3. FreeRADIUS package sudah terinstall (`apt install freeradius freeradius-postgresql` — atau lewat `sudo ./setup.sh install` jika terdeteksi `FAIL` pada tahap check).
+
+### Apa yang Terjadi di Balik `setup.sh setup`
+
+Mode `setup` menjalankan orkestrasi 7 langkah:
+
+1. **Preflight** — jalankan ulang seluruh pengecekan `check`.
+2. **Privileged helper** — memasang `scripts/xd-radius-freeradius-privileged` ke `/usr/local/sbin/xd-radius-freeradius`, membuat direktori staging `/var/lib/xd-radius-freeradius/staging` (owner `www-data`), dan menulis entri sudoers scoped di `/etc/sudoers.d/xd-radius-freeradius`. Helper ini divalidasi langsung (`visudo -cf` + test invoke sebagai `www-data`) sebelum lanjut.
+3. **Migrasi database Laravel** — `php artisan migrate --force`, lalu verifikasi tidak ada migration yang masih `Pending`.
+4. **Cek konektivitas RADIUS DB** — memastikan koneksi Laravel bernama `radius` (didefinisikan di `config/database.php`, terpisah dari koneksi aplikasi utama) benar-benar bisa diakses.
+5. **`FreeRadiusSetupService::run()`** — service Laravel ini yang menggantikan seluruh langkah manual lama:
+   - Deteksi environment FreeRADIUS (binary, versi, config dir).
+   - `RadiusDatabaseBootstrapper::ensureDatabase()` — cek/buat database RADIUS (jika privilege `CREATEDB` tersedia).
+   - Bootstrap schema vendor PostgreSQL dari `{config_dir}/mods-config/sql/main/postgresql/schema.sql` (persis file yang dulu di-import manual via `psql -f`), plus kolom ekstensi `radacct.is_stale` dan `radacct.stale_detected_at`.
+   - `FreeRadiusConfigurationPipeline::run('SETUP')` — backup config → generate `mods-enabled/sql_app`, `mods-available/sql` (dialect, driver, `radius_db`, `read_clients=yes`), buat symlink `mods-enabled/sql` → validasi (`freeradius -XC`) → sinkronisasi tabel `nas` → reload/restart FreeRADIUS → health check 6 kriteria.
+6. **Validasi konfigurasi** — `freeradius -XC` dijalankan sekali lagi sebagai konfirmasi akhir.
+7. **Verifikasi service & health check aplikasi** — `systemctl is-active freeradius` dan `FreeRadiusHealthChecker::check()` (service aktif, config valid, database reachable, SQL module bisa query, tabel wajib ada, listener port 1812/1813 terbuka).
+
+Setiap langkah kritikal (backup, generate, validate, apply, NAS sync, health check) tercatat di **audit trail** (`activity_log` dan tabel `radius_management_operations`) — bisa dilihat di halaman `/settings/freeradius` pada aplikasi.
+
+### Jika `setup.sh setup` Gagal
+
+Baca pesan error yang ditampilkan — script akan `die` dengan pesan spesifik di langkah mana ia berhenti (contoh: `RADIUS database connection failed`, `FreeRADIUS setup service failed`, `FreeRADIUS service is not healthy`). Karena pipeline melakukan backup sebelum apply dan rollback otomatis saat validasi/health check gagal, **konfigurasi FreeRADIUS yang sudah berjalan sebelumnya tidak akan rusak** — kegagalan berarti perubahan baru belum diterapkan, bukan sistem lama ikut rusak.
+
+Untuk debug lebih detail, jalankan manual salah satu langkah lewat `artisan tinker`, misalnya:
 
 ```bash
-freeradius -v
-# FreeRADIUS Version 3.2.x
+php artisan tinker --execute='dd(app(\App\Services\Radius\FreeRadiusHealthChecker::class)->check());'
 ```
 
-## 2. Import Schema FreeRADIUS ke PostgreSQL
+## Konfigurasi MikroTik sebagai NAS
 
-```bash
-PGPASSWORD='your_password_here' psql -h 127.0.0.1 -p 5433 -U radius_user -d radius_db \
-  -f /etc/freeradius/3.0/mods-config/sql/main/postgresql/schema.sql
-```
-
-Verifikasi tabel:
-
-```bash
-PGPASSWORD='your_password_here' psql -h 127.0.0.1 -p 5433 -U radius_user -d radius_db -c "\dt"
-```
-
-Output yang diharapkan:
-
-```
- Schema |     Name      | Type  |    Owner    
---------+---------------+-------+-------------
- public | nas           | table | radius_user
- public | nasreload     | table | radius_user
- public | radacct       | table | radius_user
- public | radcheck      | table | radius_user
- public | radgroupcheck | table | radius_user
- public | radgroupreply | table | radius_user
- public | radpostauth   | table | radius_user
- public | radreply      | table | radius_user
- public | radusergroup  | table | radius_user
-```
-
-## 3. Konfigurasi SQL Module
-
-### Enable SQL Module
-
-```bash
-ln -s /etc/freeradius/3.0/mods-available/sql /etc/freeradius/3.0/mods-enabled/sql
-```
-
-### Edit `/etc/freeradius/3.0/mods-available/sql`
-
-Perubahan yang diperlukan:
-
-```bash
-# 1. Ubah dialect
-dialect = "postgresql"
-
-# 2. Ubah driver
-driver = "rlm_sql_postgresql"
-
-# 3. Ubah radius_db — gunakan sslmode=disable karena PostgreSQL Docker tidak pakai SSL
-radius_db = "host=127.0.0.1 port=5433 dbname=radius_db user=radius_user password=your_password_here sslmode=disable"
-
-# 4. Enable read_clients
-read_clients = yes
-```
-
-> ⚠️ **Penting:** Gunakan `sslmode=disable` karena PostgreSQL yang berjalan di Docker container lokal tidak dikonfigurasi dengan SSL. Jika menggunakan `sslmode=verify-full` (default), FreeRADIUS akan gagal terhubung.
-
-### Enable SQL di Default Site
-
-Edit `/etc/freeradius/3.0/sites-available/default`, pastikan `sql` aktif (tidak di-comment) di bagian:
-- `authorize { ... }`
-- `accounting { ... }`
-- `session { ... }`
-
-## 4. Test Konfigurasi
-
-```bash
-# Stop service
-service freeradius stop
-
-# Test debug mode
-timeout 10 freeradius -X 2>&1 | grep -E "Ready|Listening|failed|Error|connect"
-```
-
-Output sukses yang diharapkan:
-
-```
-rlm_sql (sql): Attempting to connect to database "host=127.0.0.1 port=5433 ... sslmode=disable"
-rlm_sql_postgresql: Connecting using parameters: host=127.0.0.1 port=5433 ... sslmode=disable
-Listening on auth address * port 1812 bound to server default
-Listening on acct address * port 1813 bound to server default
-Ready to process requests
-```
-
-## 5. Start Service
-
-```bash
-service freeradius start
-service freeradius status
-```
-
-## 6. Test Autentikasi
-
-```bash
-# Insert test user
-PGPASSWORD='your_password_here' psql -h 127.0.0.1 -p 5433 -U radius_user -d radius_db -c "
-INSERT INTO radcheck (username, attribute, op, value)
-VALUES ('testuser', 'Cleartext-Password', ':=', 'testpass123');
-"
-
-# Test auth
-radtest testuser testpass123 127.0.0.1 0 testing123
-
-# Output sukses: Received Access-Accept
-
-# Cleanup test user
-PGPASSWORD='your_password_here' psql -h 127.0.0.1 -p 5433 -U radius_user -d radius_db -c "
-DELETE FROM radcheck WHERE username = 'testuser';
-"
-```
-
-## 7. Konfigurasi MikroTik sebagai NAS
-
-Di MikroTik, konfigurasi RADIUS client mengarah ke server FreeRADIUS:
+Bagian ini **tidak berubah** — tetap dilakukan manual di sisi MikroTik, karena `setup.sh` hanya mengatur sisi server FreeRADIUS/Laravel, bukan router.
 
 ```
 /radius add \
   address=<IP_SERVER_FREERADIUS> \
-  secret=testing123 \
+  secret=<RADIUS_SECRET_ROUTER_INI> \
   service=hotspot,ppp \
   authentication-port=1812 \
   accounting-port=1813
 ```
 
-Dan aktifkan Interim-Update accounting (rekomendasi: setiap 1–5 menit):
+`secret` di atas harus **sama** dengan `radius_secret` yang diisi pada halaman **Router / NAS** di aplikasi — nilai ini yang disinkronkan otomatis ke tabel `nas` oleh `FreeRadiusNasManager` setiap kali router dibuat/diubah/dihapus, tanpa perlu insert manual ke `nas` lagi.
+
+Aktifkan Interim-Update accounting (rekomendasi: setiap 1–5 menit):
 
 ```
 /ip hotspot profile set [find] interim-update=5m
 /ppp profile set [find] interim-update=5m
 ```
 
-> Interim-Update diperlukan agar rekonsiliasi sesi stale di Laravel Scheduler bekerja akurat.
+> Interim-Update diperlukan agar rekonsiliasi sesi stale di Laravel Scheduler (`ReconcileStaleSessionsJob`) bekerja akurat.
 
-## Troubleshooting
+## Troubleshooting (Referensi — Jika Pipeline Gagal)
+
+Tabel ini dipertahankan sebagai referensi untuk memahami *root cause* jika `setup.sh setup` melaporkan gagal di langkah FreeRADIUS:
 
 | Error | Penyebab | Solusi |
 |---|---|---|
-| `server does not support SSL, but SSL was required` | `sslmode=verify-full` di konfigurasi | Ganti ke `sslmode=disable` |
-| `fe_sendauth: no password supplied` | psql CLI tidak mendapat password | Gunakan `PGPASSWORD='...' psql ...` |
-| `Access-Reject` | User tidak ada di `radcheck` | Insert user ke tabel `radcheck` terlebih dahulu |
-| FreeRADIUS hang di debug mode | Normal behavior (daemon) | Gunakan `timeout 10 freeradius -X` |
+| `server does not support SSL, but SSL was required` | `RADIUS_DB_SSLMODE` di `.env` diset `verify-full`/`require` padahal PostgreSQL lokal tidak pakai SSL | Set `RADIUS_DB_SSLMODE=disable` atau `prefer` di `.env`, lalu jalankan ulang `sudo ./setup.sh setup` |
+| `fe_sendauth: no password supplied` (saat debug manual via `psql`) | psql CLI tidak mendapat password | Gunakan `PGPASSWORD='...' psql ...` saat debug manual |
+| `Access-Reject` saat test autentikasi | User tidak ada di `radcheck`, atau voucher/member belum tersinkron | Pastikan pembuatan voucher/member lewat aplikasi (bukan insert manual), cek `MemberService`/`VoucherService` |
+| FreeRADIUS hang di debug mode manual | Normal behavior (daemon) | Gunakan `timeout 10 freeradius -X` untuk debug manual, bukan indikasi bug |
+| `Privileged helper verification failed` saat `setup.sh setup` | `www-data` tidak bisa `sudo -n` ke helper | Cek `sudo -n -u www-data sudo -n /usr/local/sbin/xd-radius-freeradius is-active freeradius` manual, pastikan tidak ada `requiretty` di sudoers global |
 
-## 8. Voucher validity & dynamic Session-Timeout
+### Test Autentikasi Manual (Opsional, untuk Debug)
+
+```bash
+# Insert test user langsung ke radcheck (HANYA untuk debug, jangan untuk data produksi)
+PGPASSWORD='...' psql -h 127.0.0.1 -p <port> -U radius_user -d radius_db -c "
+INSERT INTO radcheck (username, attribute, op, value)
+VALUES ('testuser', 'Cleartext-Password', ':=', 'testpass123');
+"
+
+radtest testuser testpass123 127.0.0.1 0 <radius_secret_dari_router>
+# Output sukses: Received Access-Accept
+
+# Cleanup
+PGPASSWORD='...' psql -h 127.0.0.1 -p <port> -U radius_user -d radius_db -c "
+DELETE FROM radcheck WHERE username = 'testuser';
+"
+```
+
+## Voucher Validity & Dynamic Session-Timeout
 
 Voucher validity is anchored to the first successful login. The Laravel application stores `first_login_at` and `expired_at`. For strict enforcement, the FreeRADIUS `authorize` section should calculate the remaining seconds from PostgreSQL and set `Session-Timeout` on every login.
 
@@ -173,7 +114,7 @@ The resulting value should be assigned to `reply:Session-Timeout` only when it i
 
 For exact first-login activation, place the activation UPDATE in the FreeRADIUS `post-auth` section (after successful authentication), not in `authorize`; otherwise a failed password attempt could consume the voucher. The application scheduler remains a fallback for sessions that were not captured by the normal accounting flow.
 
-## 8.1 Exact first-login activation in FreeRADIUS
+### Exact First-Login Activation in FreeRADIUS
 
 Untuk menghindari delay scheduler, voucher dapat diaktifkan tepat setelah autentikasi berhasil. Jangan melakukan UPDATE ini di `authorize`, karena password yang salah dapat mengaktifkan voucher.
 
@@ -215,7 +156,7 @@ Jika hasil `0`, reject authentication. Jika hasil positif, assign ke `reply:Sess
 
 > Implementasi query `post-auth` harus menggunakan modul SQL FreeRADIUS yang terhubung ke database aplikasi. Uji dulu dengan `freeradius -X` pada staging.
 
-## 9. MikroTik QoS
+## MikroTik QoS
 
 `Mikrotik-Rate-Limit` is generated centrally by Laravel from the plan QoS fields. RouterOS documents the format as:
 
@@ -235,3 +176,7 @@ Recommended test profile:
 - Burst Threshold: 5M / 2M
 - Burst Time: 10s / 10s
 - Priority: 8
+
+## Langkah Berikutnya
+
+Setelah `sudo ./setup.sh setup` sukses dan health check `Healthy/Ready`, lanjut ke [`04-cloudflare-tunnel.md`](./04-cloudflare-tunnel.md) untuk expose aplikasi, atau langsung ke [`05-operational-guide.md`](./05-operational-guide.md) untuk mulai konfigurasi router/paket/voucher dari UI.

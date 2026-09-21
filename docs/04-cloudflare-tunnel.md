@@ -2,6 +2,8 @@
 
 Cloudflare Tunnel meneruskan trafik HTTPS publik ke RadiusManager yang berjalan melalui PM2 pada port `8000`. Aplikasi listen pada `0.0.0.0:8000` agar dapat dijangkau oleh cloudflared, termasuk bila cloudflared berjalan pada container terpisah.
 
+> **Urutan pengerjaan:** siapkan Cloudflare Tunnel **setelah** `sudo ./setup.sh setup` berhasil dan FreeRADIUS berstatus `Healthy/Ready` (lihat [`02-freeradius-setup.md`](./02-freeradius-setup.md)). Tunnel ini hanya mengekspos aplikasi Laravel, bukan bagian dari proses setup FreeRADIUS itu sendiri.
+
 ## Konfigurasi ingress
 
 Atur tunnel agar origin mengarah ke loopback server:
@@ -34,4 +36,9 @@ SESSION_SECURE_COOKIE=true
 1. Jalankan `pm2 start ecosystem.config.cjs` lalu cek `pm2 status`.
 2. Dari server, buka `http://127.0.0.1:8000/up`.
 3. Buka hostname publik HTTPS dan login.
-4. Jika akses langsung ke port 8000 tidak diperlukan, batasi melalui firewall hanya untuk jaringan internal/tunnel.
+4. Buka `/settings/freeradius` untuk memastikan status FreeRADIUS Healthy/Ready juga dapat diakses lewat domain publik.
+5. Jika akses langsung ke port 8000 tidak diperlukan, batasi melalui firewall hanya untuk jaringan internal/tunnel.
+
+## Langkah Berikutnya
+
+Lanjut ke [`05-operational-guide.md`](./05-operational-guide.md) untuk panduan penggunaan harian aplikasi oleh superuser dan operator.

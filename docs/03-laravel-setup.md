@@ -1,10 +1,12 @@
-# 03 — Laravel Setup & Development Journal
+# 03 — Laravel Setup: Riwayat Setup Awal (Arsip)
+
+> **Catatan:** Dokumen ini adalah jurnal historis dari proses setup awal Laravel pada Mei 2026 — sebelum `setup.sh` dan `FreeRadiusSetupService` (management plane FreeRADIUS) dibangun. Untuk setup server/FreeRADIUS **saat ini**, gunakan [`01-server-setup.md`](./01-server-setup.md) dan [`02-freeradius-setup.md`](./02-freeradius-setup.md) yang sudah memakai `setup.sh`. Dokumen ini dipertahankan sebagai referensi struktur database, kredensial default, dan known issues yang masih relevan.
 
 Catatan lengkap perjalanan setup Laravel hingga siap development UI.
 
 ---
 
-## Stack
+## Stack (saat penulisan awal)
 
 | Komponen | Versi |
 |---|---|
@@ -31,7 +33,7 @@ Catatan lengkap perjalanan setup Laravel hingga siap development UI.
 
 ---
 
-## Environment (.env)
+## Environment (.env) — Contoh Historis
 
 ```env
 APP_NAME=RadiusManager
@@ -55,6 +57,8 @@ QUEUE_CONNECTION=database
 TRUSTED_PROXIES=*
 SESSION_SECURE_COOKIE=false
 ```
+
+> **Perbedaan penting dengan kondisi saat ini:** pada revisi awal ini, database aplikasi dan database RADIUS masih memakai **koneksi yang sama** (`DB_*`). Sejak penambahan management plane FreeRADIUS, koneksi RADIUS dipisah eksplisit lewat variabel `RADIUS_DB_*` di `config/database.php` (koneksi bernama `radius`). Jika server Anda di-setup sebelum pemisahan ini, jalankan audit sebelum memakai `setup.sh setup` untuk memastikan tidak ada asumsi yang bergantung pada satu koneksi tunggal.
 
 ---
 
@@ -82,10 +86,11 @@ SESSION_SECURE_COOKIE=false
 | `voucher_batches` | Batch generate voucher |
 | `vouchers` | Voucher hotspot individual |
 | `members` | Member berlangganan bulanan |
-| `routers` | Data router MikroTik |
+| `routers` | Data router MikroTik (+ kolom `radius_sync_status`, `radius_last_synced_at`, `radius_last_sync_error`, `radius_applied_fingerprint` sejak management plane) |
 | `billing_invoices` | Invoice tagihan member |
 | `payments` | Record pembayaran invoice |
 | `service_action_logs` | Log aksi manual (isolate, activate, extend) |
+| `radius_management_operations` | Audit trail operasi SETUP/CONFIG_UPDATE/NAS_SYNC (baru, sejak management plane) |
 
 ### Tabel Laravel Core
 | Tabel | Keterangan |
@@ -123,7 +128,7 @@ File: `config/auth.php`
 | `operator` | `EnsureOperator` | Semua user login bisa akses (superuser + operator) |
 | `active` | `EnsureUserIsActive` | Cek user aktif, logout jika dinonaktifkan |
 
-### Default Superuser
+### Default Superuser (Seeder Awal)
 | Field | Value |
 |---|---|
 | Name | Super Administrator |
@@ -131,7 +136,7 @@ File: `config/auth.php`
 | Password | RadiusAdmin@2026 |
 | Role | superuser |
 
-> ⚠️ **Ganti password setelah login pertama!**
+> ⚠️ **Ganti password setelah login pertama!** Kredensial ini adalah nilai seeder default — jangan dipakai di instalasi produksi tanpa diganti.
 
 Untuk membuat ulang superuser:
 ```bash
@@ -164,7 +169,7 @@ npm run build  # production build
 
 ---
 
-## Troubleshooting yang Ditemukan
+## Troubleshooting yang Ditemukan (Historis, Masih Relevan)
 
 ### 1. `artisan make:migration` menghasilkan file stub kosong
 **Masalah:** File migration dari `php artisan make:migration` hanya berisi stub kosong `$table->id(); $table->timestamps();`
@@ -185,12 +190,14 @@ composer require spatie/laravel-activitylog:"^4.0"
 ### 3. `migrate:fresh` menghapus tabel FreeRADIUS
 **Masalah:** `migrate:fresh` drop SEMUA tabel termasuk tabel FreeRADIUS standar.
 
-**Solusi:** Setelah `migrate:fresh`, jalankan ulang schema FreeRADIUS:
+**Solusi (cara lama, manual):** Setelah `migrate:fresh`, jalankan ulang schema FreeRADIUS:
 ```bash
 PGPASSWORD='RadiusManager@2026' psql -h 127.0.0.1 -p 5433 -U radius_user -d radius_db \
   -f /etc/freeradius/3.0/mods-config/sql/main/postgresql/schema.sql
 php artisan migrate --step
 ```
+
+**Solusi (cara saat ini, direkomendasikan):** Jangan jalankan `migrate:fresh` di server yang sudah punya data RADIUS produksi. Jika benar-benar perlu reset total (misalnya di environment development), jalankan `migrate:fresh` lalu `sudo ./setup.sh setup` untuk membangun ulang schema vendor FreeRADIUS dan sinkronisasi NAS secara otomatis — lihat [`02-freeradius-setup.md`](./02-freeradius-setup.md).
 
 ### 4. Git conflict — file lokal vs remote
 **Masalah:** File lokal (hasil artisan make) belum di-commit, repo remote sudah punya versi berbeda.
@@ -208,7 +215,7 @@ git push origin main --force
 
 ---
 
-## Step Log
+## Step Log (Historis — Mei 2026)
 
 | Step | Deskripsi | Status |
 |---|---|---|
@@ -228,4 +235,5 @@ git push origin main --force
 | 14 | Setup Auth guard `app` + RBAC middleware | ✅ |
 | 15 | SuperUserSeeder — default superuser terbuat | ✅ |
 | 16 | Install Tailwind CSS v3 + Vite build | ✅ |
-| 17 | **Next: Build halaman Login** | 🔄 |
+| 17 | Build halaman Login | ✅ (selesai, lihat commit "login berhasil") |
+| 18 | FreeRADIUS Management Plane (`setup.sh`, privileged helper, pipeline) | ✅ (lihat `02-freeradius-setup.md`) |

@@ -4,97 +4,85 @@
 
 | Komponen | Detail |
 |---|---|
-| OS | Debian GNU/Linux 12 (Bookworm) |
-| Platform | LXC Container di Proxmox |
+| OS | Debian GNU/Linux 12 (Bookworm) / Armbian jammy (teruji) |
+| Platform | LXC Container di Proxmox, atau server ARM/x86 sejenis |
 | PHP | 8.2.x |
-| PostgreSQL | 18.x (Docker container `postgres-global`, port 5433) |
+| PostgreSQL | 14+ (native atau Docker container) |
 | Composer | 2.x |
 
-## 1. Install PHP Extensions
+## Cara Setup (Direkomendasikan): `setup.sh`
 
-PHP 8.2 sudah terinstall. Install ekstensi yang dibutuhkan Laravel + PostgreSQL:
+Sejak revisi ini, seluruh pengecekan dan instalasi prasyarat server dikonsolidasikan ke satu script: **`setup.sh`** di root repository. Jangan lagi menginstall paket satu-satu secara manual — gunakan mode `check` dan `install` di bawah ini.
 
-```bash
-apt update && apt install -y \
-  php8.2-pdo \
-  php8.2-pgsql \
-  php8.2-mbstring \
-  php8.2-xml \
-  php8.2-curl \
-  php8.2-zip \
-  php8.2-bcmath \
-  php8.2-intl \
-  php8.2-cli \
-  unzip \
-  git \
-  curl \
-  postgresql-client
-```
-
-Verifikasi:
+### 1. Cek Prasyarat (tanpa mengubah apa pun)
 
 ```bash
-php -m | grep -E "pdo|pgsql|mbstring|xml|curl|zip|bcmath"
+cd /path/ke/xd-radius
+chmod +x setup.sh
+./setup.sh check
 ```
 
-Output yang diharapkan:
+Script ini memvalidasi: OS, PHP 8.2+ beserta ekstensi wajib (`pdo`, `pdo_pgsql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, `fileinfo`, `curl`, `zip`, `intl`), Composer, Node.js/npm, PostgreSQL client + server (native atau Docker), FreeRADIUS binary + versi + validasi config, file aplikasi (`artisan`, `composer.lock`), dan privilege `sudo` untuk user `www-data`.
+
+Contoh output yang sehat:
+
 ```
-bcmath
-curl
-libxml
-mbstring
-pdo_pgsql
-pgsql
-xml
-xmlreader
-xmlwriter
-zip
+Summary
+-------
+  OK   : 18
+  WARN : 0
+  FAIL : 0
+
+  [OK] Environment passed prerequisite validation.
 ```
 
-## 2. Install Composer
+Kalau ada `[WARN] freeradius.service exists but is not active`, jalankan `sudo systemctl start freeradius` lalu `./setup.sh check` ulang sebelum lanjut — jangan lanjut ke tahap berikutnya selama masih ada `FAIL`.
+
+### 2. Install Paket yang Belum Ada (jika ada FAIL)
 
 ```bash
-curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+sudo ./setup.sh install
 ```
 
-Verifikasi:
+Mode ini menjalankan `check` lagi, menampilkan daftar paket apt yang akan dipasang, lalu meminta konfirmasi `[y/N]` sebelum benar-benar menjalankan `apt-get install`. Gunakan `--yes` untuk skip konfirmasi (misalnya di script CI/provisioning otomatis):
 
 ```bash
-composer --version
+sudo ./setup.sh install --yes
 ```
 
-## 3. PostgreSQL Docker
+Instalasi otomatis hanya didukung di Debian/Ubuntu (`apt-get`). Untuk distribusi lain, `setup.sh` akan menampilkan `[FAIL] Automatic installation is currently supported only on Debian/Ubuntu.` — instal manual sesuai daftar paket yang ditampilkan.
 
-PostgreSQL sudah berjalan sebagai Docker container:
+## PostgreSQL — Native atau Docker
+
+`setup.sh check` mendeteksi PostgreSQL baik yang berjalan native (systemd service) maupun sebagai container Docker. Kalau Anda punya lebih dari satu container PostgreSQL di server yang sama (misalnya dipakai aplikasi lain seperti n8n), **pastikan `.env` Anda mengarah ke container/port yang benar-benar diperuntukkan untuk xd-radius**, jangan sampai tertukar.
+
+### Membuat Role dan Database (Manual, di Luar `setup.sh`)
+
+`setup.sh` **tidak** membuat PostgreSQL role/user — ini tetap langkah manual karena menyangkut kredensial admin database Anda. Yang otomatis dibuat oleh aplikasi (lewat `RadiusDatabaseBootstrapper` saat `setup.sh setup` dijalankan) hanyalah **database** RADIUS, dan itu pun hanya jika role yang dipakai punya privilege `CREATEDB`.
+
+Jika Anda memakai PostgreSQL via Docker:
 
 ```bash
-# Cek container
-docker ps | grep postgres-global
-```
-
-```
-CONTAINER: postgres-global
-PORT: 0.0.0.0:5433->5432/tcp
-IMAGE: postgres:latest (v18)
-```
-
-### Buat Database untuk RadiusManager
-
-```bash
-docker exec -it postgres-global psql -U admin_global -d database_utama
+docker exec -it <nama-container-postgres> psql -U <admin_user> -d <database_admin>
 ```
 
 ```sql
-CREATE USER radius_user WITH PASSWORD 'your_password_here';
+CREATE USER radius_user WITH PASSWORD 'ganti-dengan-password-kuat' CREATEDB;
+-- CREATEDB opsional: hanya perlu jika Anda ingin xd-radius membuat database secara otomatis.
+-- Jika tidak diberi CREATEDB, buat database secara manual:
 CREATE DATABASE radius_db OWNER radius_user;
 GRANT ALL PRIVILEGES ON DATABASE radius_db TO radius_user;
 \q
 ```
 
-Verifikasi:
+Verifikasi koneksi:
 
 ```bash
-PGPASSWORD='your_password_here' psql -h 127.0.0.1 -p 5433 -U radius_user -d radius_db -c "SELECT version();"
+PGPASSWORD='ganti-dengan-password-kuat' psql -h 127.0.0.1 -p <port> -U radius_user -d radius_db -c "SELECT version();"
 ```
 
-> ⚠️ **Catatan Keamanan:** Ganti `your_password_here` dengan password yang kuat. Jangan commit password asli ke repository.
+> ⚠️ **Catatan Keamanan:** Jangan commit password asli ke repository. Isi kredensial ini ke `.env` (`RADIUS_DB_USERNAME`, `RADIUS_DB_PASSWORD`, `RADIUS_DB_HOST`, `RADIUS_DB_PORT`, `RADIUS_DB_DATABASE`) sebelum menjalankan `setup.sh setup`.
+
+## Langkah Berikutnya
+
+Setelah `./setup.sh check` bersih dan role/database PostgreSQL siap, lanjut ke [`02-freeradius-setup.md`](./02-freeradius-setup.md) untuk menjalankan `sudo ./setup.sh setup`.
