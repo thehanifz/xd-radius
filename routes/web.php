@@ -71,6 +71,7 @@ Route::middleware('auth')->group(function () {
 
     // ─── Online Sessions ─────────────────────────────────────────────────────
     Route::get('/online', [OnlineSessionController::class, 'index'])->name('online.index');
+    Route::get('/online/live', [OnlineSessionController::class, 'live'])->name('online.live');
     Route::get('/online/{session}', [OnlineSessionController::class, 'show'])->whereNumber('session')->name('online.show');
 
     // ─── Reports (superuser only) ─────────────────────────────────────────────

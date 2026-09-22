@@ -11,6 +11,28 @@ class OnlineSessionController extends Controller
 {
     public function index(Request $request)
     {
+        return view('online.index', $this->getIndexData($request));
+    }
+
+    public function live(Request $request)
+    {
+        $data = $this->getIndexData($request);
+
+        return response()->json([
+            'stats' => [
+                'active' => $data['totalActive'],
+                'stale' => $data['totalStale'],
+                'upload' => Radacct::formatBytes($data['totalUpload']),
+                'download' => Radacct::formatBytes($data['totalDownload']),
+            ],
+            'rows' => view('online.partials.rows', $data)->render(),
+            'page' => $data['sessions']->currentPage(),
+            'last_page' => $data['sessions']->lastPage(),
+        ]);
+    }
+
+    private function getIndexData(Request $request): array
+    {
         $query = Radacct::whereNull('acctstoptime')
             ->orderByDesc('acctstarttime');
 
@@ -45,10 +67,10 @@ class OnlineSessionController extends Controller
         $totalUpload = (clone $activeQuery)->sum('acctoutputoctets');
         $totalDownload = (clone $activeQuery)->sum('acctinputoctets');
 
-        return view('online.index', compact(
+        return compact(
             'sessions', 'routers', 'nasIps', 'totalActive', 'totalStale',
             'totalUpload', 'totalDownload', 'voucherUsers'
-        ));
+        );
     }
 
     public function show(Radacct $session)
