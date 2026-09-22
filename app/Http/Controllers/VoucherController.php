@@ -20,12 +20,115 @@ class VoucherController extends Controller
     public function index(Request $request)
     {
         $query = Voucher::with(['batch', 'plan']);
+        $this->applyIndexFilters($query, $request);
 
+        $vouchers = $query->orderByDesc('created_at')->paginate(50)->withQueryString();
+        $plans    = Plan::active()->orderBy('name')->get();
+        $batches  = VoucherBatch::with('plan')->withCount('vouchers')->orderByDesc('generated_at')->get();
+
+        $voucherStats = $this->currentVoucherStats();
+
+        return view('vouchers.index', compact('vouchers', 'plans', 'batches', 'voucherStats'));
+    }
+
+    /**
+     * Lightweight polling endpoint for live voucher status/KPI updates.
+     *
+     * The UI derives expiry from expired_at so it does not have to wait for
+     * the queue worker to persist status=expired before showing the correct
+     * state to the operator.
+     */
+    public function realtime(Request $request)
+    {
+        $now = now();
+        $voucherStats = $this->currentVoucherStats($now);
+
+        $query = Voucher::query()->select(['id', 'status', 'first_login_at', 'expired_at']);
+        $this->applyIndexFilters($query, $request);
+
+        $vouchers = $query->orderByDesc('created_at')->paginate(50);
+
+        return response()->json([
+            'server_time' => $now->toIso8601String(),
+            'stats' => $voucherStats,
+            'vouchers' => $vouchers->getCollection()->map(function (Voucher $voucher) use ($now) {
+                return [
+                    'id' => $voucher->id,
+                    'status' => $this->effectiveVoucherStatus($voucher, $now),
+                ];
+            })->values(),
+        ]);
+    }
+
+    private function currentVoucherStats($now = null): array
+    {
+        $now ??= now();
+        $statsBase = Voucher::query();
+
+        return [
+            'total' => (clone $statsBase)->count(),
+            'available' => (clone $statsBase)
+                ->where('status', 'active')
+                ->whereNull('first_login_at')
+                ->count(),
+            'used' => (clone $statsBase)
+                ->whereIn('status', ['active', 'used'])
+                ->whereNotNull('first_login_at')
+                ->where(function ($query) use ($now) {
+                    $query->whereNull('expired_at')->orWhere('expired_at', '>', $now);
+                })
+                ->count(),
+            'expired' => (clone $statsBase)
+                ->where(function ($query) use ($now) {
+                    $query->where('status', 'expired')
+                        ->orWhere(function ($q) use ($now) {
+                            $q->whereNotNull('first_login_at')
+                                ->whereNotNull('expired_at')
+                                ->where('expired_at', '<=', $now);
+                        });
+                })
+                ->count(),
+            'isolated' => (clone $statsBase)->where('status', 'isolated')->count(),
+        ];
+    }
+
+    /**
+     * Keep index and realtime endpoint filters identical.
+     */
+    private function applyIndexFilters($query, Request $request): void
+    {
         if ($search = $request->search) {
             $query->where('username', 'ilike', "%{$search}%");
         }
         if ($status = $request->status) {
-            $query->where('status', $status);
+            $now = now();
+
+            if ($status === 'expired') {
+                $query->where(function ($q) use ($now) {
+                    $q->where('status', 'expired')
+                        ->orWhere(function ($q2) use ($now) {
+                            $q2->whereIn('status', ['active', 'used'])
+                                ->whereNotNull('first_login_at')
+                                ->whereNotNull('expired_at')
+                                ->where('expired_at', '<=', $now);
+                        });
+                });
+            } elseif ($status === 'used') {
+                $query->whereIn('status', ['active', 'used'])
+                    ->whereNotNull('first_login_at')
+                    ->where(function ($q) use ($now) {
+                        $q->whereNull('expired_at')->orWhere('expired_at', '>', $now);
+                    });
+            } elseif ($status === 'active') {
+                $query->where('status', 'active')
+                    ->where(function ($q) use ($now) {
+                        $q->whereNull('first_login_at')
+                            ->orWhereNull('expired_at')
+                            ->orWhere('expired_at', '>', $now);
+                    });
+            } else {
+                $query->where('status', $status);
+            }
         }
         if ($planId = $request->plan_id) {
             $query->where('plan_id', $planId);
@@ -33,21 +136,23 @@ class VoucherController extends Controller
         if ($batchId = $request->batch_id) {
             $query->where('batch_id', $batchId);
         }
+    }
 
-        $vouchers = $query->orderByDesc('created_at')->paginate(50)->withQueryString();
-        $plans    = Plan::active()->orderBy('name')->get();
-        $batches  = VoucherBatch::with('plan')->withCount('vouchers')->orderByDesc('generated_at')->get();
+    private function effectiveVoucherStatus(Voucher $voucher, $now): string
+    {
+        if ($voucher->expired_at !== null && $voucher->first_login_at !== null && $voucher->expired_at->lte($now)) {
+            return 'expired';
+        }
 
-        $statsBase = Voucher::query();
-        $voucherStats = [
-            'total'     => (clone $statsBase)->count(),
-            'available' => (clone $statsBase)->available()->count(),
-            'used'      => (clone $statsBase)->used()->count(),
-            'expired'   => (clone $statsBase)->where('status', 'expired')->count(),
-            'isolated'  => (clone $statsBase)->where('status', 'isolated')->count(),
-        ];
+        if (in_array($voucher->status, ['isolated', 'inactive', 'expired'], true)) {
+            return $voucher->status;
+        }
 
-        return view('vouchers.index', compact('vouchers', 'plans', 'batches', 'voucherStats'));
+        if ($voucher->first_login_at !== null) {
+            return 'used';
+        }
+
+        return 'active';
     }
 
     /**

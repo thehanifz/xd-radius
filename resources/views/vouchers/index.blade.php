@@ -10,22 +10,24 @@
 
 @section('content')
 <div class="space-y-5">
-<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-    @php
-        $voucherKpis = [
-            ['label' => 'Tersedia', 'value' => $voucherStats['available']],
-            ['label' => 'Digunakan', 'value' => $voucherStats['used']],
-            ['label' => 'Expired', 'value' => $voucherStats['expired']],
-            ['label' => 'Isolir', 'value' => $voucherStats['isolated']],
-            ['label' => 'Total', 'value' => $voucherStats['total']],
-        ];
-    @endphp
-    @foreach($voucherKpis as $kpi)
-    <div class="card px-4 py-3">
-        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ $kpi['label'] }}</p>
-        <p class="text-xl font-bold text-slate-800 mt-1 tabular-nums">{{ number_format($kpi['value']) }}</p>
+<div id="voucher-kpi-strip" class="card overflow-hidden">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-x divide-y lg:divide-y-0 divide-slate-100">
+        @php
+            $voucherKpis = [
+                ['key' => 'available', 'label' => 'Tersedia', 'value' => $voucherStats['available']],
+                ['key' => 'used', 'label' => 'Digunakan', 'value' => $voucherStats['used']],
+                ['key' => 'expired', 'label' => 'Expired', 'value' => $voucherStats['expired']],
+                ['key' => 'isolated', 'label' => 'Isolir', 'value' => $voucherStats['isolated']],
+                ['key' => 'total', 'label' => 'Total', 'value' => $voucherStats['total']],
+            ];
+        @endphp
+        @foreach($voucherKpis as $kpi)
+        <div class="px-4 py-2.5 flex items-center justify-between gap-3 min-h-[54px]">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ $kpi['label'] }}</span>
+            <span id="voucher-kpi-{{ $kpi['key'] }}" class="text-lg font-bold text-slate-800 tabular-nums">{{ number_format($kpi['value']) }}</span>
+        </div>
+        @endforeach
     </div>
-    @endforeach
 </div>
 
 
@@ -156,6 +158,7 @@
     {{-- Tabel Voucher --}}
     <div class="card overflow-hidden">
         <div class="card-header flex items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0">
             <span>
                 @if(request('batch_id'))
                     Voucher &mdash; {{ $batches->firstWhere('id', request('batch_id'))?->batch_code }}
@@ -163,7 +166,11 @@
                     Semua Voucher
                 @endif
             </span>
-            <span class="text-xs text-slate-400">{{ $vouchers->total() }} total</span>
+            <span id="voucher-live-indicator" class="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-medium text-slate-400" title="Status diperbarui otomatis setiap 10 detik">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Live
+            </span>
+            </div>
+            <span id="voucher-total-count" class="text-xs text-slate-400">{{ $vouchers->total() }} total</span>
         </div>
 
         @if($vouchers->isEmpty())
@@ -218,10 +225,21 @@
                         </td>
                         <td class="px-5 py-3.5">
                             @php
+                                $displayStatus = ($voucher->first_login_at && $voucher->expired_at && $voucher->expired_at->lte(now()))
+                                    ? 'expired'
+                                    : ($voucher->first_login_at ? 'used' : $voucher->status);
+                                $displayLabel = match ($displayStatus) {
+                                    'active' => $voucher->first_login_at ? 'Aktif' : 'Tersedia',
+                                    'used' => 'Digunakan',
+                                    'expired' => 'Expired',
+                                    'isolated' => 'Isolir',
+                                    'inactive' => 'Nonaktif',
+                                    default => $displayStatus,
+                                };
                                 $colors = ['active'=>'green','used'=>'blue','expired'=>'slate','isolated'=>'red','inactive'=>'yellow'];
-                                $color  = $colors[$voucher->status] ?? 'slate';
+                                $color  = $colors[$displayStatus] ?? 'slate';
                             @endphp
-                            <span class="badge badge-{{ $color }}">{{ $voucher->status_label }}</span>
+                            <span id="voucher-status-{{ $voucher->id }}" data-status="{{ $displayStatus }}" class="badge badge-{{ $color }}">{{ $displayLabel }}</span>
                         </td>
                         <td class="px-5 py-3.5 text-right">
                             <div class="flex justify-end items-center gap-2">
@@ -319,6 +337,65 @@ document.getElementById('clear-selection')?.addEventListener('click', function (
     voucherCheckboxes().forEach(cb => cb.checked = false);
     refreshSelection();
 });
+
+// Keep status/KPI fresh without reloading the page. This is intentionally
+// lightweight: only counts and visible row status are polled.
+(function initVoucherRealtime() {
+    const endpoint = @json(route('vouchers.realtime'));
+    const indicator = document.getElementById('voucher-live-indicator');
+    const statKeys = ['available', 'used', 'expired', 'isolated', 'total'];
+    let inFlight = false;
+
+    function statusMeta(status) {
+        const meta = {
+            active:   { label: 'Tersedia', color: 'green' },
+            used:     { label: 'Digunakan', color: 'blue' },
+            expired:  { label: 'Expired', color: 'slate' },
+            isolated: { label: 'Isolir', color: 'red' },
+            inactive: { label: 'Nonaktif', color: 'yellow' },
+        };
+        return meta[status] || { label: status, color: 'slate' };
+    }
+
+    function refresh() {
+        if (inFlight || document.hidden) return;
+        inFlight = true;
+        const params = new URLSearchParams(window.location.search);
+        fetch(endpoint + (params.toString() ? '?' + params.toString() : ''), {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+            cache: 'no-store',
+        })
+            .then(response => response.ok ? response.json() : Promise.reject(new Error('HTTP ' + response.status)))
+            .then(data => {
+                statKeys.forEach(key => {
+                    const el = document.getElementById('voucher-kpi-' + key);
+                    if (el && data.stats && data.stats[key] !== undefined) {
+                        el.textContent = Number(data.stats[key]).toLocaleString('id-ID');
+                    }
+                });
+
+                (data.vouchers || []).forEach(voucher => {
+                    const badge = document.getElementById('voucher-status-' + voucher.id);
+                    if (!badge) return;
+                    const meta = statusMeta(voucher.status);
+                    badge.className = 'badge badge-' + meta.color;
+                    badge.dataset.status = voucher.status;
+                    badge.textContent = meta.label;
+                });
+
+                if (indicator) indicator.classList.remove('hidden');
+            })
+            .catch(() => {
+                // A transient poll failure should never disrupt the voucher UI.
+            })
+            .finally(() => { inFlight = false; });
+    }
+
+    refresh();
+    setInterval(refresh, 10000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+})();
 
 </script>
 @endpush

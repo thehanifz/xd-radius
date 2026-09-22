@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function () {
 
     // ─── Vouchers ────────────────────────────────────────────────────────────
     Route::get('/vouchers',                        [VoucherController::class, 'index'])->name('vouchers.index');
+    Route::get('/vouchers/realtime',               [VoucherController::class, 'realtime'])->name('vouchers.realtime');
     Route::get('/vouchers/create',                 [VoucherController::class, 'create'])->name('vouchers.create');
     Route::post('/vouchers/generate',              [VoucherController::class, 'generate'])->name('vouchers.generate');
     Route::get('/vouchers/preview-format',         [VoucherController::class, 'previewFormat'])->name('vouchers.preview-format');
