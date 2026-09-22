@@ -44,9 +44,9 @@ return new class extends Migration
                 ->update(['performed_at' => \DB::raw('COALESCE(created_at, updated_at, CURRENT_TIMESTAMP)')]);
         }
 
-        Schema::table('service_action_logs', function (Blueprint $table) {
-            $table->index(['entity_type', 'entity_id'], 'service_action_logs_entity_type_entity_id_index');
-        });
+        // The migration can be partially applied if PostgreSQL DDL survives a
+        // failed migration run. IF NOT EXISTS makes retrying safe.
+        \DB::statement('CREATE INDEX IF NOT EXISTS service_action_logs_entity_type_entity_id_index ON service_action_logs (entity_type, entity_id)');
     }
 
     public function down(): void
@@ -55,9 +55,7 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('service_action_logs', function (Blueprint $table) {
-            $table->dropIndex('service_action_logs_entity_type_entity_id_index');
-        });
+        \DB::statement('DROP INDEX IF EXISTS service_action_logs_entity_type_entity_id_index');
 
         Schema::table('service_action_logs', function (Blueprint $table) {
             if (Schema::hasColumn('service_action_logs', 'entity_type')) {
