@@ -113,7 +113,7 @@
                         <tr>
                             <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Periode</th>
                             <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Nominal</th>
-                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Jatuh Tempo</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Jatuh Tempo Bayar</th>
                             <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Status</th>
                             <th class="text-right px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Aksi</th>
                         </tr>

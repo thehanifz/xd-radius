@@ -40,8 +40,14 @@
                     <p class="text-lg font-bold text-slate-800 mt-0.5 tabular-nums">{{ $invoice->amount_label }}</p>
                 </div>
                 <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold">Jatuh Tempo</p>
-                    <p class="text-sm font-medium text-slate-700 mt-0.5">{{ $invoice->due_date->format('d M Y') }}</p>
+                    <p class="text-xs text-slate-400 uppercase font-semibold">{{ $invoice->status === 'paid' ? 'Dibayar' : 'Jatuh Tempo Bayar' }}</p>
+                    <p class="text-sm font-medium text-slate-700 mt-0.5">
+                        @if($invoice->status === 'paid' && $invoice->payments->isNotEmpty())
+                            {{ $invoice->payments->sortByDesc('paid_at')->first()->paid_at->format('d M Y') }}
+                        @else
+                            {{ $invoice->due_date->format('d M Y') }}
+                        @endif
+                    </p>
                 </div>
                 <div>
                     <p class="text-xs text-slate-400 uppercase font-semibold">Dibuat</p>

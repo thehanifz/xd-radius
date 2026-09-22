@@ -19,7 +19,7 @@
                     <span class="font-bold text-slate-800 tabular-nums">{{ $invoice->amount_label }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
-                    <span class="text-slate-500">Jatuh tempo</span>
+                    <span class="text-slate-500">Jatuh tempo pembayaran</span>
                     <span class="text-slate-700 tabular-nums">{{ $invoice->due_date->format('d M Y') }}</span>
                 </div>
             </div>
