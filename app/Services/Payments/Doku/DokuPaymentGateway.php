@@ -32,14 +32,12 @@ class DokuPaymentGateway implements PaymentGateway
             throw new DokuException('Channel Virtual Account DOKU tidak ditemukan atau tidak aktif.');
         }
 
-        $isDgpc = filled($channel->merchant_bin);
-        $partnerServiceId = $isDgpc
-            ? $this->normalizePartnerServiceId((string) $channel->merchant_bin)
-            : $this->normalizePartnerServiceId((string) ($channel->partner_service_id ?: config('doku.va_partner_service_id')));
-
-        if (trim($partnerServiceId) === '') {
+        $partnerServiceId = $channel->partner_service_id ?: config('doku.va_partner_service_id');
+        if (! filled($partnerServiceId)) {
             throw new DokuException('Kode merchant DOKU untuk ' . $channel->name . ' belum dikonfigurasi.');
         }
+
+        $partnerServiceId = $this->normalizePartnerServiceId((string) $partnerServiceId);
 
         $trxId = 'MEM-' . $member->id . '-' . Str::lower(Str::random(10));
         $payload = [
@@ -59,17 +57,20 @@ class DokuPaymentGateway implements PaymentGateway
             'virtualAccountTrxType' => 'C',
         ];
 
+        $isDgpc = filled($channel->merchant_bin);
         if ($isDgpc) {
-            $customerNo = $this->customerNumber($member->id, $this->normalizeCustomerPrefix($channel->customer_prefix));
-            $merchantBin = preg_replace('/\D+/', '', (string) $channel->merchant_bin);
-            if ($merchantBin === '') {
-                throw new DokuException('Merchant BIN DOKU untuk ' . $channel->name . ' tidak valid.');
+            $customerNo = $this->normalizeCustomerPrefix($channel->customer_prefix);
+            if ($customerNo === '') {
+                throw new DokuException('Prefix Customer No DOKU untuk ' . $channel->name . ' belum dikonfigurasi.');
             }
 
-            // SNAP partnerServiceId is fixed-width and left-padded with spaces,
-            // while the VA number must contain digits only.
+            // DGPC: send the configured prefix and let DOKU generate the
+            // final customerNo/payment code and Virtual Account number.
             $payload['customerNo'] = $customerNo;
-            $payload['virtualAccountNo'] = $merchantBin . $customerNo;
+            $payload['virtualAccountNo'] = $this->buildVirtualAccountNumber(
+                $partnerServiceId,
+                $customerNo,
+            );
         } else {
             $customerPrefix = $this->normalizeCustomerPrefix($channel->customer_prefix);
             $customerNo = $this->customerNumber($member->id, $customerPrefix);
