@@ -5,7 +5,7 @@ namespace App\Services\Payments\Doku;
 use App\Contracts\Payments\PaymentGateway;
 use App\Models\BillingInvoice;
 use App\Models\Member;
-use App\Models\PaymentAccount;
+use App\Models\DokuVaChannel;
 use Illuminate\Support\Str;
 
 class DokuPaymentGateway implements PaymentGateway
@@ -21,20 +21,25 @@ class DokuPaymentGateway implements PaymentGateway
         };
     }
 
-    public function createReusableVirtualAccount(Member $member, string $bank = 'BNI'): array
+    public function createReusableVirtualAccount(Member $member, string $bank = ''): array
     {
-        $bank = strtoupper($bank);
-        $channel = match ($bank) {
-            'BNI' => 'VIRTUAL_ACCOUNT_BNI',
-            default => throw new DokuException('Channel VA DOKU belum dikonfigurasi untuk bank ' . $bank),
-        };
+        $code = strtoupper(trim($bank));
+        $channel = $code !== ''
+            ? DokuVaChannel::forDoku()->enabled()->where('code', $code)->first()
+            : DokuVaChannel::defaultDoku();
 
-        $partnerServiceId = config('doku.va_partner_service_id');
-        if (! filled($partnerServiceId)) {
-            throw new DokuException('DOKU_VA_PARTNER_SERVICE_ID belum dikonfigurasi.');
+        if (! $channel) {
+            throw new DokuException('Channel Virtual Account DOKU tidak ditemukan atau tidak aktif.');
         }
 
-        $customerNo = $this->customerNumber($member->id);
+        $partnerServiceId = $channel->partner_service_id ?: config('doku.va_partner_service_id');
+        if (! filled($partnerServiceId)) {
+            throw new DokuException('Kode merchant DOKU untuk ' . $channel->name . ' belum dikonfigurasi.');
+        }
+
+        $partnerServiceId = $this->normalizePartnerServiceId($partnerServiceId);
+        $customerPrefix = $this->normalizeCustomerPrefix($channel->customer_prefix);
+        $customerNo = $this->customerNumber($member->id, $customerPrefix);
         $virtualAccountNo = $this->buildVirtualAccountNumber($partnerServiceId, $customerNo);
         $trxId = 'MEM-' . $member->id . '-' . Str::lower(Str::random(10));
 
@@ -49,7 +54,7 @@ class DokuPaymentGateway implements PaymentGateway
                 'currency' => 'IDR',
             ],
             'additionalInfo' => [
-                'channel' => $channel,
+                'channel' => $channel->channel,
                 'virtualAccountConfig' => [
                     'reusableStatus' => true,
                 ],
@@ -71,8 +76,11 @@ class DokuPaymentGateway implements PaymentGateway
         }
 
         return [
-            'bank' => $bank,
-            'channel' => $channel,
+            'gateway' => 'doku',
+            'bank' => $channel->code,
+            'channel' => $channel->channel,
+            'doku_va_channel_id' => $channel->id,
+            'partner_service_id' => $partnerServiceId,
             'provider_account_id' => $trxId,
             'provider_customer_id' => $customerNo,
             'account_number' => (string) $responseVa,
@@ -93,21 +101,38 @@ class DokuPaymentGateway implements PaymentGateway
             return false;
         }
 
-        $expected = DokuSigner::snapRequestSignature('POST', $path, $rawBody, $timestamp, (string) config('doku.secret_key'));
+        try {
+            $accessToken = $this->client->accessToken();
+        } catch (DokuException) {
+            return false;
+        }
+
+        $expected = DokuSigner::snapRequestSignature(
+            'POST',
+            '/' . ltrim($path, '/'),
+            $accessToken,
+            $rawBody,
+            $timestamp,
+            (string) config('doku.secret_key'),
+        );
         return hash_equals($expected, $signature);
     }
 
     private function createInvoiceVa(BillingInvoice $invoice): array
     {
-        $account = $invoice->member->paymentAccounts()->where('status', 'active')->orderByDesc('is_default')->first();
+        $account = $invoice->member->paymentAccounts()->where('gateway', 'doku')->where('status', 'active')->orderByDesc('is_default')->first();
         if (! $account) {
-            $created = $this->createReusableVirtualAccount($invoice->member, config('doku.va_bank', 'BNI'));
-            $account = new PaymentAccount($created);
+            throw new DokuException('Member belum memiliki Virtual Account DOKU aktif. Buat Virtual Account dari detail member terlebih dahulu.');
         }
 
         $trxId = 'INV-' . $invoice->id . '-' . Str::lower(Str::random(8));
+        $partnerServiceId = $account->partner_service_id ?: data_get($account->metadata, 'partner_service_id');
+        if (! filled($partnerServiceId)) {
+            throw new DokuException('Partner Service ID pada Virtual Account member belum tersedia.');
+        }
+
         $payload = [
-            'partnerServiceId' => config('doku.va_partner_service_id'),
+            'partnerServiceId' => $partnerServiceId,
             'customerNo' => $account->provider_customer_id,
             'virtualAccountNo' => $account->account_number,
             'virtualAccountName' => Str::limit($invoice->member->username, 255, ''),
@@ -117,7 +142,7 @@ class DokuPaymentGateway implements PaymentGateway
                 'currency' => 'IDR',
             ],
             'additionalInfo' => [
-                'channel' => 'VIRTUAL_ACCOUNT_' . strtoupper($account->bank),
+                'channel' => $account->channel,
                 'virtualAccountConfig' => [
                     'reusableStatus' => true,
                 ],
@@ -182,14 +207,43 @@ class DokuPaymentGateway implements PaymentGateway
         ];
     }
 
-    private function customerNumber(int $memberId): string
+    private function customerNumber(int $memberId, string $prefix = ''): string
     {
-        $prefix = preg_replace('/\\D+/', '', (string) config('doku.va_customer_prefix', '3'));
-        return $prefix . str_pad((string) $memberId, 10, '0', STR_PAD_LEFT);
+        $memberPart = (string) $memberId;
+        $available = 20 - strlen($prefix);
+        if ($available < 1 || strlen($memberPart) > $available) {
+            throw new DokuException('ID member terlalu panjang untuk format customerNo DOKU.');
+        }
+
+        return $prefix . str_pad($memberPart, $available, '0', STR_PAD_LEFT);
+    }
+
+    private function normalizeCustomerPrefix(?string $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+        if (! preg_match('/^\d{1,20}$/', $value)) {
+            throw new DokuException('Prefix Customer No DOKU harus berupa angka.');
+        }
+
+        return $value;
+    }
+
+    private function normalizePartnerServiceId(string $value): string
+    {
+        $value = preg_replace('/\D+/', '', trim($value));
+        if ($value === '' || strlen($value) > 8) {
+            throw new DokuException('Kode merchant DOKU (Partner Service ID) harus 1-8 digit.');
+        }
+
+        return str_pad($value, 8, ' ', STR_PAD_LEFT);
     }
 
     private function buildVirtualAccountNumber(string $partnerServiceId, string $customerNo): string
     {
-        return str_pad(preg_replace('/\\D+/', '', $partnerServiceId), 8, '0', STR_PAD_LEFT) . $customerNo;
+        return $partnerServiceId . $customerNo;
     }
+
 }

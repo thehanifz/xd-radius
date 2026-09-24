@@ -356,6 +356,50 @@ apt_install_missing() {
   run apt-get install -y $unique_packages
 }
 
+
+ensure_doku_keypair() {
+  require_root
+
+  command_exists openssl || die "OpenSSL tidak tersedia; tidak dapat membuat RSA key DOKU."
+
+  local key_dir="/etc/xd-radius/doku"
+  local private_key="$key_dir/private.key"
+  local public_key="$key_dir/public.key"
+
+  install -d -o root -g www-data -m 0750 "$key_dir"
+
+  if [ -f "$private_key" ] && [ -f "$public_key" ]; then
+    chmod 0640 "$private_key"
+    chmod 0644 "$public_key"
+    ok "DOKU RSA key pair already exists; keeping existing keys"
+  elif [ ! -e "$private_key" ] && [ ! -e "$public_key" ]; then
+    run openssl genrsa -out "$private_key" 2048
+    run openssl rsa -in "$private_key" -pubout -out "$public_key"
+    chmod 0640 "$private_key"
+    chmod 0644 "$public_key"
+    ok "DOKU RSA 2048 key pair generated"
+  else
+    die "DOKU RSA key pair tidak lengkap. private.key dan public.key harus ada berpasangan; tidak akan menimpa key existing."
+  fi
+
+  openssl rsa -in "$private_key" -check -noout >/dev/null 2>&1 \
+    || die "DOKU private key gagal diverifikasi."
+
+  local fingerprint
+  fingerprint="$(openssl pkey -pubin -in "$public_key" -outform DER 2>/dev/null | sha256sum | awk '{print $1}')"
+  [ -n "$fingerprint" ] || die "Tidak dapat menghitung fingerprint public key DOKU."
+  ok "DOKU public key fingerprint: SHA256:$fingerprint"
+
+  local env_file="$ROOT/.env"
+  if [ -f "$env_file" ]; then
+    if grep -q '^DOKU_PRIVATE_KEY_PATH=' "$env_file"; then
+      sed -i 's#^DOKU_PRIVATE_KEY_PATH=.*#DOKU_PRIVATE_KEY_PATH=/etc/xd-radius/doku/private.key#' "$env_file"
+    else
+      printf '\nDOKU_PRIVATE_KEY_PATH=/etc/xd-radius/doku/private.key\n' >> "$env_file"
+    fi
+  fi
+}
+
 install_privileged_helper() {
   require_root
 
@@ -407,15 +451,19 @@ run_setup() {
   cd "$ROOT" || die "Cannot enter project root: $ROOT"
 
   say ""
-  say "[1/7] Server prerequisite preflight"
+  say "[1/8] Server prerequisite preflight"
   run_preflight || die "Prerequisite validation failed."
 
   say ""
-  say "[2/7] FreeRADIUS privileged helper"
+  say "[2/8] FreeRADIUS privileged helper"
   install_privileged_helper
 
   say ""
-  say "[3/7] Laravel database migration"
+  say "[3/8] DOKU RSA key pair"
+  ensure_doku_keypair
+
+  say ""
+  say "[4/8] Laravel database migration"
   run php "$ARTISAN" migrate --force || die "Laravel migration failed."
 
   say ""
@@ -428,7 +476,7 @@ run_setup() {
   fi
 
   say ""
-  say "[4/7] RADIUS database connectivity"
+  say "[5/8] RADIUS database connectivity"
   php "$ARTISAN" tinker --execute='
 try {
     DB::connection("radius")->getPdo();
@@ -440,11 +488,11 @@ try {
 ' || die "RADIUS database connection failed."
 
   say ""
-  say "[5/7] FreeRADIUS setup service"
+  say "[6/8] FreeRADIUS setup service"
   run php "$ARTISAN" freeradius:setup || die "FreeRADIUS setup service failed."
 
   say ""
-  say "[6/7] FreeRADIUS configuration validation"
+  say "[7/8] FreeRADIUS configuration validation"
   if command_exists freeradius; then
     run freeradius -XC || die "FreeRADIUS configuration validation failed."
   elif command_exists radiusd; then
@@ -454,7 +502,7 @@ try {
   fi
 
   say ""
-  say "[7/7] FreeRADIUS service / health verification"
+  say "[8/8] FreeRADIUS service / health verification"
   if ! systemctl is-active --quiet freeradius; then
     systemctl status freeradius --no-pager || true
     journalctl -u freeradius -n 50 --no-pager || true
@@ -501,6 +549,9 @@ case "${1:-setup}" in
   install)
     run_install
     ;;
+  doku-key)
+    ensure_doku_keypair
+    ;;
   -h|--help)
     cat <<'EOF'
 xd-radius Unified Setup
@@ -510,6 +561,7 @@ Usage:
   ./setup.sh setup        Full setup
   ./setup.sh check        Check prerequisites only
   ./setup.sh install      Install missing OS packages, then validate
+  ./setup.sh doku-key     Generate/verify DOKU RSA key pair without overwriting existing keys
   ./setup.sh setup --yes  Full setup without confirmations
 
 The script is self-contained. It does not call installation-requirements.sh

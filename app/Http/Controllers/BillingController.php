@@ -141,7 +141,7 @@ class BillingController extends Controller
     public function createMemberVa(Request $request, Member $member)
     {
         $data = $request->validate([
-            'bank' => ['required', 'string', 'max:32'],
+            'bank' => ['required', 'string', 'exists:doku_va_channels,code'],
         ]);
 
         try {

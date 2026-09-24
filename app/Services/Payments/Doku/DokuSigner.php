@@ -15,7 +15,6 @@ class DokuSigner
 
         $signature = '';
         $ok = openssl_sign($clientId . '|' . $timestamp, $signature, $privateKey, OPENSSL_ALGO_SHA256);
-        openssl_free_key($privateKey);
 
         if (! $ok) {
             throw new DokuException('Gagal membuat signature token DOKU.');
@@ -27,14 +26,16 @@ class DokuSigner
     public static function snapRequestSignature(
         string $method,
         string $path,
+        string $accessToken,
         string $body,
         string $timestamp,
         string $secretKey,
     ): string {
         $hash = hash('sha256', self::minifyJson($body));
-        $stringToSign = strtoupper($method) . ':' . $path . ':' . strtolower($hash) . ':' . $timestamp;
+        $stringToSign = strtoupper($method) . ':' . $path . ':' . $accessToken . ':' . strtolower($hash) . ':' . $timestamp;
 
-        return base64_encode(hash_hmac('sha512', $stringToSign, $secretKey, true));
+        // Virtual Account SNAP examples use the lowercase hexadecimal HMAC-SHA512 digest.
+        return hash_hmac('sha512', $stringToSign, $secretKey);
     }
 
     public static function requestId(): string

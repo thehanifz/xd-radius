@@ -6,6 +6,7 @@ use App\Http\Requests\StoreMemberRequest;
 use App\Http\Requests\UpdateMemberRequest;
 use App\Models\Member;
 use App\Models\Plan;
+use App\Models\DokuVaChannel;
 use App\Services\MemberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -60,8 +61,9 @@ class MemberController extends Controller
             ->get();
 
         $invoices = $member->invoices;
+        $dokuVaChannels = DokuVaChannel::forDoku()->enabled()->orderByDesc('is_default')->orderBy('name')->get();
 
-        return view('members.show', compact('member', 'sessions', 'invoices'));
+        return view('members.show', compact('member', 'sessions', 'invoices', 'dokuVaChannels'));
     }
 
     public function edit(Member $member)

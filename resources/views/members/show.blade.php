@@ -99,16 +99,29 @@
         </div>
         <div class="card-body">
             @if($member->paymentAccounts->isEmpty())
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex flex-col gap-4">
                     <div>
                         <p class="text-sm font-medium text-slate-700">Belum ada Virtual Account</p>
                         <p class="text-xs text-slate-400 mt-1">Buat VA DOKU reusable agar member dapat membayar berulang dengan nomor yang sama.</p>
                     </div>
-                    <form method="POST" action="{{ route('members.payment-account', $member) }}">
-                        @csrf
-                        <input type="hidden" name="bank" value="BNI">
-                        <button type="submit" class="btn-primary">Buat BNI VA</button>
-                    </form>
+                    @if($dokuVaChannels->isEmpty())
+                        <div class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">Belum ada channel VA DOKU aktif. Konfigurasikan bank terlebih dahulu di Pengaturan Sistem → Pembayaran DOKU.</div>
+                    @else
+                        <form method="POST" action="{{ route('members.payment-account', $member) }}" class="flex flex-col sm:flex-row gap-3">
+                            @csrf
+                            @if($dokuVaChannels->count() > 1)
+                                <select name="bank" class="form-input sm:max-w-xs">
+                                    @foreach($dokuVaChannels as $channel)
+                                        <option value="{{ $channel->code }}">{{ $channel->name }}{{ $channel->is_default ? ' (Default)' : '' }}</option>
+                                    @endforeach
+                                </select>
+                            @else
+                                <input type="hidden" name="bank" value="{{ $dokuVaChannels->first()->code }}">
+                                <div class="flex items-center rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700">{{ $dokuVaChannels->first()->name }}</div>
+                            @endif
+                            <button type="submit" class="btn-primary">Buat Virtual Account</button>
+                        </form>
+                    @endif
                 </div>
             @else
                 <div class="space-y-3">
@@ -126,6 +139,27 @@
                     </div>
                     @endforeach
                 </div>
+                @if($dokuVaChannels->count() > $member->paymentAccounts->where('gateway', 'doku')->where('status', 'active')->count())
+                    @php
+                        $availableVaChannels = $dokuVaChannels->filter(fn ($channel) => ! $member->paymentAccounts->where('gateway', 'doku')->where('bank', $channel->code)->where('status', 'active')->count());
+                    @endphp
+                    @if($availableVaChannels->isNotEmpty())
+                        <form method="POST" action="{{ route('members.payment-account', $member) }}" class="mt-4 flex flex-col sm:flex-row gap-3">
+                            @csrf
+                            @if($availableVaChannels->count() > 1)
+                                <select name="bank" class="form-input sm:max-w-xs">
+                                    @foreach($availableVaChannels as $channel)
+                                        <option value="{{ $channel->code }}">{{ $channel->name }}</option>
+                                    @endforeach
+                                </select>
+                            @else
+                                <input type="hidden" name="bank" value="{{ $availableVaChannels->first()->code }}">
+                                <div class="flex items-center rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700">{{ $availableVaChannels->first()->name }}</div>
+                            @endif
+                            <button type="submit" class="btn-secondary">Tambah VA Bank Lain</button>
+                        </form>
+                    @endif
+                @endif
             @endif
         </div>
     </div>

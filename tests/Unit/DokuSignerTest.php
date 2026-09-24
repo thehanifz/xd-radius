@@ -13,14 +13,15 @@ class DokuSignerTest extends TestCase
 
         $signature = DokuSigner::snapRequestSignature(
             'POST',
-            '/snap-adapter/b2b/v1.0/qr/qr-mpm-generate',
+            '/virtual-accounts/bi-snap-va/v1.1/transfer-va/create-va',
+            'access-token',
             $body,
             '2026-09-23T06:00:00+07:00',
             'secret',
         );
 
         $this->assertSame(
-            'r13vPCT0Urd+2ml6/zdHyP8lQEJsjI8uuy7PqjPKMPSwYbcTS3vg+8MkIeVUolwVmJ2DgmgSK3IqWUbjb94w8w==',
+            'bea4dbafc3e1743af35be500c344fdf0e4e2b6294286b421ce38d046e012f0e2c83df375a120696bbed39576c896fb4e740cfbb44043256f7edeeefdd508aadd',
             $signature,
         );
     }

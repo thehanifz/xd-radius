@@ -31,7 +31,6 @@ DOKU_MERCHANT_ID=...
 DOKU_TERMINAL_ID=...
 DOKU_CHANNEL_ID=H2H
 DOKU_VA_PARTNER_SERVICE_ID=98829172
-DOKU_VA_CUSTOMER_PREFIX=3
 DOKU_NOTIFICATION_PATH=/webhooks/doku
 ```
 
@@ -72,7 +71,9 @@ If RADIUS provisioning fails after payment, the customer must not be charged aga
 
 ## VA model
 
-The target is one reusable VA per member. The current BNI SNAP integration uses the merchant's `partnerServiceId`, a deterministic member customer number, and `virtualAccountConfig.reusableStatus=true`.
+The target is one reusable VA per member per enabled bank. The admin only selects a bank from the DOKU catalog. Bank/channel names are mapped by the application; the only bank-specific value that may need manual entry is the DOKU `partnerServiceId` / company code when it is not already available in the DOKU settings.
+
+The `customerNo` is generated automatically from the immutable XD-radius member ID, zero-padded to 20 digits. The old per-bank customer-prefix setting is retained only for backward compatibility and is no longer used for new VA creation.
 
 The account is created once; each invoice updates the amount on the same VA.
 
@@ -90,3 +91,16 @@ Do not switch `DOKU_BASE_URL` to production until:
 4. Merchant public key is registered at DOKU.
 5. Sandbox payment and webhook tests pass.
 6. Payment-success/RADIUS-failure retry behavior is verified.
+
+## DOKU settings UI and RSA key lifecycle
+
+DOKU operational settings are stored in the `doku_settings` table. Secret fields are encrypted by Laravel casts. The merchant private key is never stored in the database; it remains at `/etc/xd-radius/doku/private.key` (or the configured protected path). The public key remains a server file and can be viewed by a superuser for registration in DOKU.
+
+`setup.sh` creates the RSA 2048 key pair if neither key exists and never overwrites an existing pair. It also validates the private key and reports the public-key SHA-256 fingerprint. The standalone `./setup.sh doku-key` command performs only this key setup/verification.
+
+The admin UI is available at **System → Pembayaran DOKU** and is restricted to superusers. It can save credentials, test the DOKU B2B token flow, and show key status/fingerprint. Secret values are write-only in the UI.
+
+
+## Merchant/channel configuration security
+
+DOKU merchant credentials and channel identifiers are stored encrypted at rest. This includes Client ID, Secret Key, API Key, Merchant ID, Terminal ID, Partner Service ID, Merchant BIN, and customer prefix. The DOKU merchant private RSA key remains a server-side file with restricted permissions. Member VA identity is generated automatically from the member ID plus the configured channel prefix; administrators do not enter a VA number per member.

@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DokuSettingsController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OnlineSessionController;
@@ -109,4 +110,11 @@ Route::middleware('auth')->group(function () {
     // ─── System Settings (superuser only) ────────────────────────────────────
     Route::get('/settings',  [SystemSettingController::class, 'index'])->name('settings.index');
     Route::put('/settings',  [SystemSettingController::class, 'update'])->name('settings.update');
+    Route::get('/settings/payment/doku', [DokuSettingsController::class, 'index'])->name('settings.doku.index');
+    Route::put('/settings/payment/doku', [DokuSettingsController::class, 'update'])->name('settings.doku.update');
+    Route::post('/settings/payment/doku/test', [DokuSettingsController::class, 'test'])->name('settings.doku.test');
+    Route::get('/settings/payment/doku/public-key', [DokuSettingsController::class, 'publicKey'])->name('settings.doku.public-key');
+    Route::post('/settings/payment/doku/va-channels', [DokuSettingsController::class, 'storeVaChannel'])->name('settings.doku.va-channels.store');
+    Route::put('/settings/payment/doku/va-channels/{channel}', [DokuSettingsController::class, 'updateVaChannel'])->name('settings.doku.va-channels.update');
+    Route::delete('/settings/payment/doku/va-channels/{channel}', [DokuSettingsController::class, 'destroyVaChannel'])->name('settings.doku.va-channels.destroy');
 });

@@ -44,9 +44,11 @@ class DokuClient
         $timestamp = now()->format('Y-m-d\\TH:i:sP');
         $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
+        $endpointUrl = $this->baseUrl . $path;
         $signature = DokuSigner::snapRequestSignature(
             'POST',
             $path,
+            $token,
             $body,
             $timestamp,
             $this->secretKey,
@@ -95,9 +97,9 @@ class DokuClient
                 'X-SIGNATURE' => $signature,
                 'X-TIMESTAMP' => $timestamp,
                 'X-CLIENT-KEY' => $this->clientId,
-                'Content-Type' => 'application/json',
             ])
-            ->post($this->baseUrl . $path, $body);
+            ->withBody($body, 'application/json')
+            ->post($this->baseUrl . $path);
 
         if (! $response->successful()) {
             throw new DokuException('DOKU token request gagal.', $response->json(), $response->status());
@@ -119,12 +121,23 @@ class DokuClient
     {
         $response = Http::timeout($this->timeout)
             ->acceptJson()
-            ->withHeaders($headers)
+            ->withHeaders(array_merge(['Content-Type' => 'application/json'], $headers))
             ->send($method, $this->baseUrl . $path, ['body' => $body]);
 
         $json = $response->json();
         if (! $response->successful()) {
-            throw new DokuException('DOKU API request gagal.', is_array($json) ? $json : null, $response->status());
+            $responseData = is_array($json) ? $json : null;
+            $responseCode = data_get($responseData, 'responseCode');
+            $responseMessage = data_get($responseData, 'responseMessage');
+            $detail = collect([$responseCode, $responseMessage])
+                ->filter(fn ($value) => filled($value))
+                ->implode(' - ');
+
+            throw new DokuException(
+                'DOKU API request gagal.' . ($detail !== '' ? ' ' . $detail : ''),
+                $responseData,
+                $response->status(),
+            );
         }
 
         return is_array($json) ? $json : ['raw' => $response->body()];

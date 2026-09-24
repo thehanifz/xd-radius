@@ -46,9 +46,10 @@ class PaymentService
         });
     }
 
-    public function createReusableVa(Member $member, string $bank = 'BNI'): PaymentAccount
+    public function createReusableVa(Member $member, string $bank = ''): PaymentAccount
     {
-        if ($member->paymentAccounts()->where('gateway', 'doku')->where('bank', $bank)->where('status', 'active')->exists()) {
+        $bank = strtoupper(trim($bank));
+        if ($bank !== '' && $member->paymentAccounts()->where('gateway', 'doku')->where('bank', $bank)->where('status', 'active')->exists()) {
             return $member->paymentAccounts()
                 ->where('gateway', 'doku')
                 ->where('bank', $bank)
@@ -68,6 +69,8 @@ class PaymentService
                 'bank' => $result['bank'],
                 'channel' => $result['channel'] ?? null,
                 'provider_customer_id' => $result['provider_customer_id'] ?? null,
+                'partner_service_id' => $result['partner_service_id'] ?? null,
+                'doku_va_channel_id' => $result['doku_va_channel_id'] ?? null,
                 'provider_account_id' => $result['provider_account_id'] ?? null,
                 'account_number' => $result['account_number'],
                 'status' => $result['status'] ?? 'active',

@@ -66,6 +66,7 @@
             <x-nav-item route="routers.index" icon="server">Router / NAS</x-nav-item>
             <x-nav-item route="operators.index" icon="user-check">Operator</x-nav-item>
             <x-nav-item route="settings.index" icon="settings">Pengaturan Sistem</x-nav-item>
+            <x-nav-item route="settings.doku.index" icon="credit-card">Pembayaran DOKU</x-nav-item>
             @endif
         </nav>
 
