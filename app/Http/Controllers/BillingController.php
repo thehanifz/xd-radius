@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\BillingInvoice;
 use App\Models\Member;
 use App\Services\BillingService;
+use App\Services\PaymentService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class BillingController extends Controller
 {
-    public function __construct(protected BillingService $billing) {}
+    public function __construct(
+        protected BillingService $billing,
+        protected PaymentService $payments,
+    ) {}
 
     /**
      * Daftar semua invoice (global, bisa filter per member / status).
@@ -74,7 +78,7 @@ class BillingController extends Controller
      */
     public function show(BillingInvoice $billing)
     {
-        $billing->load(['member.plan', 'payments']);
+        $billing->load(['member.plan', 'payments', 'paymentAttempts', 'member.paymentAccounts']);
         return view('billing.show', ['invoice' => $billing]);
     }
 
@@ -111,6 +115,45 @@ class BillingController extends Controller
             ->with('success', 'Pembayaran berhasil dicatat.');
     }
 
+
+    public function createDokuPayment(Request $request, BillingInvoice $billing)
+    {
+        $data = $request->validate([
+            'method' => ['required', 'in:va,qris'],
+        ]);
+
+        try {
+            $attempt = $this->payments->createAttempt($billing, $data['method']);
+        } catch (\Throwable $e) {
+            report($e);
+            return back()->with('error', $e->getMessage());
+        }
+
+        $url = $attempt->public_token
+            ? route('public.payment.show', ['token' => $attempt->public_token])
+            : null;
+
+        return redirect()->route('billing.show', $billing)
+            ->with('success', 'Instruksi pembayaran berhasil dibuat.')
+            ->with('payment_url', $url);
+    }
+
+    public function createMemberVa(Request $request, Member $member)
+    {
+        $data = $request->validate([
+            'bank' => ['required', 'string', 'max:32'],
+        ]);
+
+        try {
+            $account = $this->payments->createReusableVa($member, $data['bank']);
+        } catch (\Throwable $e) {
+            report($e);
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Virtual Account DOKU berhasil dibuat: ' . $account->account_number);
+    }
+
     /**
      * Batalkan invoice.
      */
@@ -125,7 +168,7 @@ class BillingController extends Controller
      */
     public function pdf(BillingInvoice $billing)
     {
-        $billing->load(['member.plan', 'payments']);
+        $billing->load(['member.plan', 'payments', 'paymentAttempts', 'member.paymentAccounts']);
         $pdf = Pdf::loadView('billing.pdf', ['invoice' => $billing]);
         $filename = 'invoice-' . $billing->member->username
             . '-' . $billing->period_start->format('Y-m')

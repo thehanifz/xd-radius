@@ -51,7 +51,7 @@ class MemberController extends Controller
 
     public function show(Member $member)
     {
-        $member->load(['plan', 'invoices.payments']);
+        $member->load(['plan', 'invoices.payments', 'paymentAccounts']);
 
         $sessions = DB::connection('radius')->table('radacct')
             ->where('username', $member->username)

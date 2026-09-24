@@ -14,6 +14,8 @@ use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\UserPreferenceController;
 use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\FreeRadiusController;
+use App\Http\Controllers\PaymentWebhookController;
+use App\Http\Controllers\PublicPaymentController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Onboarding (sebelum auth) ───────────────────────────────────────────────
@@ -22,6 +24,11 @@ Route::post('/setup', [OnboardingController::class, 'store'])->name('onboarding.
 
 // ─── Isolir Page ─────────────────────────────────────────────────────────────
 Route::view('/isolir', 'isolir')->name('isolir');
+
+// Public payment page + provider webhook. No admin session required.
+Route::get('/pay/{token}', [PublicPaymentController::class, 'show'])->name('public.payment.show');
+Route::post('/webhooks/doku', [PaymentWebhookController::class, 'doku'])->name('webhooks.doku')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -66,6 +73,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/billing/{billing}',           [BillingController::class, 'show'])->name('billing.show');
     Route::get('/billing/{billing}/pay',       [BillingController::class, 'payForm'])->name('billing.pay.form');
     Route::post('/billing/{billing}/pay',      [BillingController::class, 'pay'])->name('billing.pay');
+    Route::post('/billing/{billing}/doku-payment', [BillingController::class, 'createDokuPayment'])->name('billing.doku-payment');
+    Route::post('/members/{member}/payment-account', [BillingController::class, 'createMemberVa'])->name('members.payment-account');
     Route::patch('/billing/{billing}/cancel',  [BillingController::class, 'cancel'])->name('billing.cancel');
     Route::get('/billing/{billing}/pdf',       [BillingController::class, 'pdf'])->name('billing.pdf');
 

@@ -47,6 +47,11 @@ class Member extends Model
         return $this->hasMany(BillingInvoice::class)->latest();
     }
 
+    public function paymentAccounts(): HasMany
+    {
+        return $this->hasMany(PaymentAccount::class);
+    }
+
     // ─── Accessors ───────────────────────────────────────────────────────────
 
     public function getStatusColorAttribute(): string

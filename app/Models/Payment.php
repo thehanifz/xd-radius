@@ -9,12 +9,13 @@ class Payment extends Model
 {
     protected $fillable = [
         'invoice_id', 'amount', 'paid_at',
-        'payment_method', 'external_transaction_id',
-        'gateway_status', 'notes',
+        'payment_method', 'gateway', 'external_transaction_id',
+        'provider_reference', 'gateway_status', 'status', 'notes', 'metadata',
     ];
 
     protected $casts = [
         'paid_at' => 'datetime',
+        'metadata' => 'array',
     ];
 
     public function invoice(): BelongsTo

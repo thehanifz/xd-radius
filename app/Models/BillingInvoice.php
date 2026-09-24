@@ -29,6 +29,11 @@ class BillingInvoice extends Model
         return $this->hasMany(Payment::class, 'invoice_id');
     }
 
+    public function paymentAttempts(): HasMany
+    {
+        return $this->hasMany(PaymentAttempt::class, 'invoice_id')->latest();
+    }
+
     public function getAmountLabelAttribute(): string
     {
         return 'Rp ' . number_format($this->amount, 0, ',', '.');

@@ -17,6 +17,19 @@
 @section('content')
 <div class="max-w-3xl space-y-5">
 
+    @if(session('payment_url'))
+    <div class="card border border-indigo-200 bg-indigo-50">
+        <div class="card-body">
+            <p class="text-sm font-semibold text-indigo-800">Link pembayaran berhasil dibuat</p>
+            <div class="mt-2 flex flex-col sm:flex-row gap-2">
+                <input readonly value="{{ session('payment_url') }}" class="form-input flex-1 bg-white text-xs" onclick="this.select()">
+                <a href="{{ session('payment_url') }}" target="_blank" class="btn-primary whitespace-nowrap">Buka Pembayaran</a>
+            </div>
+        </div>
+    </div>
+    @endif
+
+
     {{-- Header invoice --}}
     <div class="card">
         <div class="card-body">
@@ -58,6 +71,68 @@
             <p class="mt-4 text-sm text-slate-500 bg-slate-50 rounded-lg px-4 py-2.5">{{ $invoice->notes }}</p>
             @endif
         </div>
+    </div>
+
+    {{-- DOKU payment --}}
+    @if(in_array($invoice->status, ['pending','overdue']))
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Pembayaran DOKU</h3>
+        </div>
+        <div class="card-body">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <form method="POST" action="{{ route('billing.doku-payment', $invoice) }}">
+                    @csrf
+                    <input type="hidden" name="method" value="va">
+                    <button class="w-full btn-secondary" type="submit">Buat / Perbarui VA</button>
+                </form>
+                <form method="POST" action="{{ route('billing.doku-payment', $invoice) }}">
+                    @csrf
+                    <input type="hidden" name="method" value="qris">
+                    <button class="w-full btn-primary" type="submit">Generate QRIS</button>
+                </form>
+            </div>
+            <p class="text-xs text-slate-400 mt-3">Pembayaran DOKU tidak memerlukan login member.</p>
+        </div>
+    </div>
+    @endif
+
+    {{-- Payment attempts --}}
+    <div class="card overflow-hidden">
+        <div class="card-header">
+            <h3 class="card-title">Payment Attempts</h3>
+        </div>
+        @if($invoice->paymentAttempts->isEmpty())
+            <div class="py-8 text-center text-sm text-slate-400">Belum ada attempt pembayaran gateway.</div>
+        @else
+            <div class="table-scroll">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Channel</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Provisioning</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                    @foreach($invoice->paymentAttempts as $attempt)
+                        <tr>
+                            <td class="px-5 py-3 font-medium text-slate-700">{{ strtoupper(str_replace('_',' ', $attempt->channel)) }}</td>
+                            <td class="px-5 py-3"><span class="badge badge-blue">{{ strtoupper($attempt->status) }}</span></td>
+                            <td class="px-5 py-3 text-xs text-slate-500">{{ strtoupper($attempt->provisioning_status) }}</td>
+                            <td class="px-5 py-3">
+                                @if($attempt->public_token_encrypted)
+                                    @php($publicUrl = route('public.payment.show', ['token' => decrypt($attempt->public_token_encrypted)]))
+                                    <a href="{{ $publicUrl }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 font-medium">Buka</a>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 
     {{-- Riwayat Pembayaran --}}

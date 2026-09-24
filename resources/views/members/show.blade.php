@@ -92,6 +92,44 @@
         </div>
     </div>
 
+    {{-- Payment Accounts --}}
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Payment Account</span>
+        </div>
+        <div class="card-body">
+            @if($member->paymentAccounts->isEmpty())
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-medium text-slate-700">Belum ada Virtual Account</p>
+                        <p class="text-xs text-slate-400 mt-1">Buat VA DOKU reusable agar member dapat membayar berulang dengan nomor yang sama.</p>
+                    </div>
+                    <form method="POST" action="{{ route('members.payment-account', $member) }}">
+                        @csrf
+                        <input type="hidden" name="bank" value="BNI">
+                        <button type="submit" class="btn-primary">Buat BNI VA</button>
+                    </form>
+                </div>
+            @else
+                <div class="space-y-3">
+                    @foreach($member->paymentAccounts as $account)
+                    <div class="rounded-xl border border-slate-200 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold text-slate-800">{{ $account->bank }}</span>
+                                @if($account->is_default)<span class="badge badge-green">Default</span>@endif
+                                <span class="badge badge-blue">{{ strtoupper($account->status) }}</span>
+                            </div>
+                            <p class="font-mono text-lg tracking-wider text-slate-900 mt-1">{{ $account->account_number }}</p>
+                            <p class="text-xs text-slate-400 mt-1">Gateway: {{ strtoupper($account->gateway) }}</p>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    </div>
+
     {{-- Riwayat Invoice --}}
     <div class="card">
         <div class="card-header">
