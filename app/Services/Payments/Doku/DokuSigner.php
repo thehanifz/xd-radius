@@ -34,8 +34,9 @@ class DokuSigner
         $hash = hash('sha256', self::minifyJson($body));
         $stringToSign = strtoupper($method) . ':' . $path . ':' . $accessToken . ':' . strtolower($hash) . ':' . $timestamp;
 
-        // Virtual Account SNAP examples use the lowercase hexadecimal HMAC-SHA512 digest.
-        return hash_hmac('sha512', $stringToSign, $secretKey);
+        // DOKU SNAP symmetric signature = Base64(HMAC_SHA512(stringToSign, clientSecret)).
+        // Do NOT return the raw hex digest here — DOKU always expects Base64.
+        return base64_encode(hash_hmac('sha512', $stringToSign, $secretKey, true));
     }
 
     public static function requestId(): string

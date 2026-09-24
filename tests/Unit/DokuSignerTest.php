@@ -3,13 +3,13 @@
 namespace Tests\Unit;
 
 use App\Services\Payments\Doku\DokuSigner;
-use Tests\TestCase;
+use PHPUnit\Framework\TestCase;
 
 class DokuSignerTest extends TestCase
 {
     public function test_snap_request_signature_matches_deterministic_vector(): void
     {
-        $body = '{"partnerReferenceNo":"INV-1","amount":{"value":"1000.00","currency":"IDR"}}';
+        $body = json_encode(['foo' => 'bar']);
 
         $signature = DokuSigner::snapRequestSignature(
             'POST',
@@ -21,7 +21,7 @@ class DokuSignerTest extends TestCase
         );
 
         $this->assertSame(
-            'bea4dbafc3e1743af35be500c344fdf0e4e2b6294286b421ce38d046e012f0e2c83df375a120696bbed39576c896fb4e740cfbb44043256f7edeeefdd508aadd',
+            'bJwtWxxF6BevW97OBZ2xWM9+A6KxUOXMYGZrho4qx/YDG+XhQwLWVOVfMykyMF2FSVEPF7N7ip6LetoYmGQtQA==',
             $signature,
         );
     }
