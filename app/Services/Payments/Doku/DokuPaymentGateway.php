@@ -4,8 +4,8 @@ namespace App\Services\Payments\Doku;
 
 use App\Contracts\Payments\PaymentGateway;
 use App\Models\BillingInvoice;
-use App\Models\Member;
 use App\Models\DokuVaChannel;
+use App\Models\Member;
 use Illuminate\Support\Str;
 
 class DokuPaymentGateway implements PaymentGateway
@@ -32,21 +32,18 @@ class DokuPaymentGateway implements PaymentGateway
             throw new DokuException('Channel Virtual Account DOKU tidak ditemukan atau tidak aktif.');
         }
 
-        $partnerServiceId = $channel->partner_service_id ?: config('doku.va_partner_service_id');
-        if (! filled($partnerServiceId)) {
+        $isDgpc = filled($channel->merchant_bin);
+        $partnerServiceId = $isDgpc
+            ? $this->normalizePartnerServiceId((string) $channel->merchant_bin)
+            : $this->normalizePartnerServiceId((string) ($channel->partner_service_id ?: config('doku.va_partner_service_id')));
+
+        if (trim($partnerServiceId) === '') {
             throw new DokuException('Kode merchant DOKU untuk ' . $channel->name . ' belum dikonfigurasi.');
         }
 
-        $partnerServiceId = $this->normalizePartnerServiceId($partnerServiceId);
-        $customerPrefix = $this->normalizeCustomerPrefix($channel->customer_prefix);
-        $customerNo = $this->customerNumber($member->id, $customerPrefix);
-        $virtualAccountNo = $this->buildVirtualAccountNumber($partnerServiceId, $customerNo);
         $trxId = 'MEM-' . $member->id . '-' . Str::lower(Str::random(10));
-
         $payload = [
             'partnerServiceId' => $partnerServiceId,
-            'customerNo' => $customerNo,
-            'virtualAccountNo' => $virtualAccountNo,
             'virtualAccountName' => Str::limit($member->username, 255, ''),
             'trxId' => $trxId,
             'totalAmount' => [
@@ -62,6 +59,15 @@ class DokuPaymentGateway implements PaymentGateway
             'virtualAccountTrxType' => 'C',
         ];
 
+        // Merchant BIN identifies a DGPC channel. DOKU generates and returns
+        // customerNo/virtualAccountNo; do not create a merchant-generated VA locally.
+        if (! $isDgpc) {
+            $customerPrefix = $this->normalizeCustomerPrefix($channel->customer_prefix);
+            $customerNo = $this->customerNumber($member->id, $customerPrefix);
+            $payload['customerNo'] = $customerNo;
+            $payload['virtualAccountNo'] = $this->buildVirtualAccountNumber($partnerServiceId, $customerNo);
+        }
+
         $response = $this->client->postSnap(
             '/virtual-accounts/bi-snap-va/v1.1/transfer-va/create-va',
             $payload,
@@ -70,6 +76,8 @@ class DokuPaymentGateway implements PaymentGateway
 
         $responseVa = data_get($response, 'virtualAccountData.virtualAccountNo')
             ?? data_get($response, 'virtualAccountData.virtualAccountNumber');
+        $responseCustomerNo = data_get($response, 'virtualAccountData.customerNo')
+            ?? ($payload['customerNo'] ?? null);
 
         if (! filled($responseVa)) {
             throw new DokuException('DOKU tidak mengembalikan nomor Virtual Account.', $response);
@@ -80,9 +88,9 @@ class DokuPaymentGateway implements PaymentGateway
             'bank' => $channel->code,
             'channel' => $channel->channel,
             'doku_va_channel_id' => $channel->id,
-            'partner_service_id' => $partnerServiceId,
+            'partner_service_id' => trim($partnerServiceId),
             'provider_account_id' => $trxId,
-            'provider_customer_id' => $customerNo,
+            'provider_customer_id' => $responseCustomerNo,
             'account_number' => (string) $responseVa,
             'status' => 'active',
             'metadata' => $response,
@@ -132,7 +140,7 @@ class DokuPaymentGateway implements PaymentGateway
         }
 
         $payload = [
-            'partnerServiceId' => $partnerServiceId,
+            'partnerServiceId' => $this->normalizePartnerServiceId((string) $partnerServiceId),
             'customerNo' => $account->provider_customer_id,
             'virtualAccountNo' => $account->account_number,
             'virtualAccountName' => Str::limit($invoice->member->username, 255, ''),
@@ -175,7 +183,7 @@ class DokuPaymentGateway implements PaymentGateway
             throw new DokuException('DOKU QRIS membutuhkan DOKU_MERCHANT_ID dan DOKU_TERMINAL_ID.');
         }
 
-        $expires = now()->addMinutes(30)->format('Y-m-d\\TH:i:sP');
+        $expires = now()->addMinutes(30)->format('Y-m-d\TH:i:sP');
         $payload = [
             'partnerReferenceNo' => 'INV-' . $invoice->id . '-' . Str::upper(Str::random(8)),
             'amount' => [
@@ -245,5 +253,4 @@ class DokuPaymentGateway implements PaymentGateway
     {
         return $partnerServiceId . $customerNo;
     }
-
 }
