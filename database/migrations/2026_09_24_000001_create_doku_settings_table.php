@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Crypt;
 
 return new class extends Migration
 {
@@ -41,8 +42,8 @@ return new class extends Migration
             'environment' => env('DOKU_ENVIRONMENT', 'sandbox'),
             'base_url' => env('DOKU_BASE_URL', 'https://api-sandbox.doku.com'),
             'client_id' => env('DOKU_CLIENT_ID'),
-            'secret_key' => filled(env('DOKU_SECRET_KEY')) ? encrypt(env('DOKU_SECRET_KEY')) : null,
-            'api_key' => filled(env('DOKU_API_KEY')) ? encrypt(env('DOKU_API_KEY')) : null,
+            'secret_key' => filled(env('DOKU_SECRET_KEY')) ? Crypt::encryptString(env('DOKU_SECRET_KEY')) : null,
+            'api_key' => filled(env('DOKU_API_KEY')) ? Crypt::encryptString(env('DOKU_API_KEY')) : null,
             'merchant_id' => env('DOKU_MERCHANT_ID'),
             'terminal_id' => env('DOKU_TERMINAL_ID'),
             'channel_id' => env('DOKU_CHANNEL_ID', 'H2H'),
@@ -52,7 +53,7 @@ return new class extends Migration
             'notification_path' => env('DOKU_NOTIFICATION_PATH', '/webhooks/doku'),
             'timeout' => (int) env('DOKU_HTTP_TIMEOUT', 15),
             'private_key_path' => env('DOKU_PRIVATE_KEY_PATH', '/etc/xd-radius/doku/private.key'),
-            'private_key_passphrase' => filled(env('DOKU_PRIVATE_KEY_PASSPHRASE')) ? encrypt(env('DOKU_PRIVATE_KEY_PASSPHRASE')) : null,
+            'private_key_passphrase' => filled(env('DOKU_PRIVATE_KEY_PASSPHRASE')) ? Crypt::encryptString(env('DOKU_PRIVATE_KEY_PASSPHRASE')) : null,
             'public_key_path' => '/etc/xd-radius/doku/public.key',
             'created_at' => now(),
             'updated_at' => now(),
