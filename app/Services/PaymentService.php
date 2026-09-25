@@ -27,7 +27,7 @@ class PaymentService
         $result = $this->gateway()->createPaymentAttempt($invoice->load('member'), $method);
         $token = Str::random(64);
 
-        return $invoice->paymentAttempts()->create([
+        $attempt = $invoice->paymentAttempts()->create([
             'gateway' => $result['gateway'] ?? 'doku',
             'channel' => $result['channel'] ?? $method,
             'provider_reference' => $result['provider_reference'] ?? null,
@@ -41,9 +41,11 @@ class PaymentService
             'expires_at' => isset($result['expires_at']) ? Carbon::parse($result['expires_at']) : now()->addDays(7),
             'metadata' => $result['metadata'] ?? null,
             'provisioning_status' => 'pending',
-        ])->tap(function (PaymentAttempt $attempt) use ($token) {
-            $attempt->public_token = $token;
-        });
+        ]);
+
+        $attempt->public_token = $token;
+
+        return $attempt;
     }
 
     public function createReusableVa(Member $member, string $bank = ''): PaymentAccount

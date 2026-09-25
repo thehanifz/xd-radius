@@ -143,7 +143,10 @@ class DokuPaymentGateway implements PaymentGateway
             throw new DokuException('Member belum memiliki Virtual Account DOKU aktif. Buat Virtual Account dari detail member terlebih dahulu.');
         }
 
-        $trxId = 'INV-' . $invoice->id . '-' . Str::lower(Str::random(8));
+        $trxId = (string) $account->provider_account_id;
+        if (! filled($trxId)) {
+            throw new DokuException('Transaction ID Virtual Account member belum tersedia.');
+        }
         $partnerServiceId = $account->partner_service_id ?: data_get($account->metadata, 'partner_service_id');
         if (! filled($partnerServiceId)) {
             throw new DokuException('Partner Service ID pada Virtual Account member belum tersedia.');
@@ -162,13 +165,16 @@ class DokuPaymentGateway implements PaymentGateway
             'additionalInfo' => [
                 'channel' => $account->channel,
                 'virtualAccountConfig' => [
-                    'reusableStatus' => true,
+                    'status' => 'ACTIVE',
                 ],
             ],
             'virtualAccountTrxType' => 'C',
+            'expiredDate' => $invoice->due_date
+                ? $invoice->due_date->copy()->endOfDay()->format('Y-m-d\TH:i:sP')
+                : now()->addDays(1)->format('Y-m-d\TH:i:sP'),
         ];
 
-        $response = $this->client->postSnap(
+        $response = $this->client->putSnap(
             '/virtual-accounts/bi-snap-va/v1.1/transfer-va/update-va',
             $payload,
             config('doku.channel_id', 'H2H'),

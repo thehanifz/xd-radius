@@ -64,6 +64,31 @@ class DokuClient
         ]);
     }
 
+    public function putSnap(string $path, array $payload, string $channelId = 'H2H'): array
+    {
+        $token = $this->accessToken();
+        $timestamp = now()->format('Y-m-d\\TH:i:sP');
+        $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        $signature = DokuSigner::snapRequestSignature(
+            'PUT',
+            $path,
+            $token,
+            $body,
+            $timestamp,
+            $this->secretKey,
+        );
+
+        return $this->send('PUT', $path, $body, [
+            'X-PARTNER-ID' => $this->clientId,
+            'X-EXTERNAL-ID' => DokuSigner::externalId(),
+            'X-TIMESTAMP' => $timestamp,
+            'X-SIGNATURE' => $signature,
+            'CHANNEL-ID' => $channelId,
+            'Authorization' => 'Bearer ' . $token,
+        ]);
+    }
+
     public function accessToken(): string
     {
         $cacheKey = 'doku:b2b-token:' . sha1($this->clientId . '|' . $this->baseUrl);
