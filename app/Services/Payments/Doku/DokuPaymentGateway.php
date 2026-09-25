@@ -109,30 +109,39 @@ class DokuPaymentGateway implements PaymentGateway
 
     public function verifyWebhook(array $headers, string $rawBody, string $path): bool
     {
-        $timestamp = $headers['x-timestamp'] ?? $headers['X-TIMESTAMP'] ?? null;
-        $signature = $headers['x-signature'] ?? $headers['X-SIGNATURE'] ?? null;
-        $partnerId = $headers['x-partner-id'] ?? $headers['X-PARTNER-ID'] ?? null;
-        if (! filled($timestamp) || ! filled($signature)) {
-            return false;
+        $normalized = [];
+        foreach ($headers as $key => $value) {
+            $normalized[strtolower((string) $key)] = is_array($value) ? (string) ($value[0] ?? '') : (string) $value;
         }
-        if (filled($partnerId) && filled(config('doku.client_id')) && ! hash_equals((string) config('doku.client_id'), (string) $partnerId)) {
+
+        $clientId = $normalized['client-id'] ?? '';
+        $requestId = $normalized['request-id'] ?? '';
+        $requestTimestamp = $normalized['request-timestamp'] ?? '';
+        $signature = $normalized['signature'] ?? '';
+        $configuredClientId = (string) config('doku.client_id');
+        $secretKey = (string) config('doku.secret_key');
+
+        if (! filled($clientId) || ! filled($requestId) || ! filled($requestTimestamp) || ! filled($signature)) {
             return false;
         }
 
-        try {
-            $accessToken = $this->client->accessToken();
-        } catch (DokuException) {
+        if (! filled($configuredClientId) || ! hash_equals($configuredClientId, $clientId)) {
             return false;
         }
 
-        $expected = DokuSigner::snapRequestSignature(
-            'POST',
+        if (! filled($secretKey)) {
+            return false;
+        }
+
+        $expected = DokuSigner::httpNotificationSignature(
+            $clientId,
+            $requestId,
+            $requestTimestamp,
             '/' . ltrim($path, '/'),
-            $accessToken,
             $rawBody,
-            $timestamp,
-            (string) config('doku.secret_key'),
+            $secretKey,
         );
+
         return hash_equals($expected, $signature);
     }
 

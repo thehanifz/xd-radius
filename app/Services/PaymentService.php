@@ -93,7 +93,10 @@ class PaymentService
             throw new \RuntimeException('Payload webhook DOKU tidak valid.');
         }
 
-        $eventId = (string) ($headers['x-external-id'] ?? $headers['X-EXTERNAL-ID'] ?? $headers['x-request-id'] ?? $headers['X-REQUEST-ID'] ?? '');
+        $eventId = trim((string) (data_get($payload, 'paymentRequestId') ?? ''));
+        if ($eventId === '') {
+            $eventId = (string) ($headers['x-external-id'] ?? $headers['X-EXTERNAL-ID'] ?? $headers['x-request-id'] ?? $headers['X-REQUEST-ID'] ?? '');
+        }
         if ($eventId === '') {
             $eventId = hash('sha256', $rawBody . '|' . ($headers['x-timestamp'] ?? $headers['X-TIMESTAMP'] ?? ''));
         }
@@ -139,48 +142,95 @@ class PaymentService
 
     private function applyWebhook(PaymentWebhookEvent $event, array $payload): void
     {
-        $status = strtoupper((string) (data_get($payload, 'transaction.status') ?? data_get($payload, 'latestTransactionStatus') ?? ''));
-        $invoiceReference = (string) (data_get($payload, 'order.invoice_number') ?? data_get($payload, 'trxId') ?? data_get($payload, 'partnerReferenceNo') ?? '');
-        $invoiceId = $this->extractInvoiceId($invoiceReference);
-
-        if (! $invoiceId) {
-            throw new \RuntimeException('Referensi invoice DOKU tidak dapat dipetakan.');
+        $currency = strtoupper(trim((string) data_get($payload, 'paidAmount.currency')));
+        if ($currency !== 'IDR') {
+            throw new \RuntimeException('Currency pembayaran DOKU tidak valid atau tidak tersedia.');
         }
 
-        $invoice = BillingInvoice::with('member')->findOrFail($invoiceId);
-        $amount = (int) round((float) (data_get($payload, 'order.amount') ?? data_get($payload, 'paidAmount.value') ?? data_get($payload, 'amount.value') ?? 0));
+        $amountValue = data_get($payload, 'paidAmount.value');
+        if ($amountValue === null || ! is_numeric($amountValue)) {
+            throw new \RuntimeException('Nominal paidAmount DOKU tidak valid.');
+        }
 
-        if ($amount > 0 && $amount !== (int) $invoice->amount) {
+        $amount = (int) round((float) $amountValue);
+        if ($amount <= 0) {
+            throw new \RuntimeException('Nominal paidAmount DOKU harus lebih besar dari nol.');
+        }
+
+        $virtualAccountNo = trim((string) data_get($payload, 'virtualAccountNo'));
+        $customerNo = trim((string) data_get($payload, 'customerNo'));
+        $partnerServiceId = trim((string) data_get($payload, 'partnerServiceId'));
+        $trxId = trim((string) data_get($payload, 'trxId'));
+        $paymentRequestId = trim((string) data_get($payload, 'paymentRequestId'));
+
+        if ($virtualAccountNo === '' || $trxId === '' || $paymentRequestId === '') {
+            throw new \RuntimeException('Identifier payment notification DOKU tidak lengkap.');
+        }
+
+        $account = PaymentAccount::query()
+            ->where('gateway', 'doku')
+            ->where('status', 'active')
+            ->whereRaw('TRIM(account_number) = ?', [$virtualAccountNo])
+            ->first();
+
+        if (! $account) {
+            throw new \RuntimeException('Virtual Account DOKU tidak terdaftar di aplikasi.');
+        }
+
+        if ($customerNo !== '' && trim((string) $account->provider_customer_id) !== $customerNo) {
+            throw new \RuntimeException('Customer No DOKU tidak sesuai dengan Virtual Account aplikasi.');
+        }
+
+        if ($partnerServiceId !== '' && trim((string) $account->partner_service_id) !== $partnerServiceId) {
+            throw new \RuntimeException('Partner Service ID DOKU tidak sesuai dengan Virtual Account aplikasi.');
+        }
+
+        if (trim((string) $account->provider_account_id) !== $trxId) {
+            throw new \RuntimeException('Transaction ID DOKU tidak sesuai dengan Virtual Account member.');
+        }
+
+        $attempts = PaymentAttempt::query()
+            ->where('gateway', 'doku')
+            ->where('status', 'pending')
+            ->where('amount', $amount)
+            ->whereHas('invoice', function ($query) use ($account) {
+                $query->where('member_id', $account->member_id)
+                    ->whereIn('status', ['pending', 'overdue']);
+            })
+            ->latest('id')
+            ->get();
+
+        if ($attempts->isEmpty()) {
+            throw new \RuntimeException('Payment attempt DOKU yang sesuai tidak ditemukan.');
+        }
+
+        $invoiceIds = $attempts->pluck('invoice_id')->unique()->values();
+        if ($invoiceIds->count() > 1) {
+            throw new \RuntimeException('Payment attempt DOKU ambigu: terdapat lebih dari satu invoice pending dengan nominal yang sama pada member ini.');
+        }
+
+        $attempt = $attempts->first();
+        $invoice = $attempt->invoice()->with('member')->firstOrFail();
+
+        if ((int) $invoice->amount !== $amount) {
             throw new \RuntimeException('Nominal pembayaran DOKU tidak sesuai invoice.');
         }
 
-        $attempt = $invoice->paymentAttempts()
-            ->where(function ($q) use ($invoiceReference, $event) {
-                $q->where('provider_reference', $invoiceReference)
-                    ->orWhere('metadata->request_id', $event->provider_event_id);
-            })
-            ->latest()
-            ->first();
-
-        if (! $attempt) {
-            $attempt = $invoice->paymentAttempts()->where('status', 'pending')->latest()->first();
-        }
-
-        if (! $attempt) {
-            throw new \RuntimeException('Payment attempt untuk invoice tidak ditemukan.');
-        }
-
-        if ($status === 'SUCCESS' || $status === 'PAID' || $status === '00') {
-            $this->settlePaidAttempt($attempt, $payload);
-            return;
-        }
-
+        $status = strtoupper((string) (data_get($payload, 'transaction.status') ?? data_get($payload, 'latestTransactionStatus') ?? ''));
         if (in_array($status, ['FAILED', 'EXPIRED', 'CANCELLED'], true)) {
             $attempt->update([
                 'status' => strtolower($status),
                 'failure_reason' => data_get($payload, 'transaction.responseMessage') ?? data_get($payload, 'responseMessage'),
             ]);
+            return;
         }
+
+        $payload['_xd_radius'] = [
+            'payment_request_id' => $paymentRequestId,
+            'paid_amount_currency' => $currency,
+        ];
+
+        $this->settlePaidAttempt($attempt, $payload);
     }
 
     private function settlePaidAttempt(PaymentAttempt $attempt, array $payload): void
@@ -204,7 +254,7 @@ class PaymentService
             $payment = Payment::firstOrCreate(
                 [
                     'invoice_id' => $invoice->id,
-                    'external_transaction_id' => (string) (data_get($payload, 'transaction.original_request_id') ?? data_get($payload, 'referenceNo') ?? $attempt->provider_reference ?? $attempt->id),
+                    'external_transaction_id' => (string) (data_get($payload, '_xd_radius.payment_request_id') ?? data_get($payload, 'transaction.original_request_id') ?? data_get($payload, 'referenceNo') ?? $attempt->provider_reference ?? $attempt->id),
                 ],
                 [
                     'amount' => $invoice->amount,
