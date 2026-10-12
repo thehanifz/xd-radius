@@ -18,6 +18,7 @@ use App\Http\Controllers\FreeRadiusController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicPaymentController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DokuTokenController;
 
 // ─── Onboarding (sebelum auth) ───────────────────────────────────────────────
 Route::get('/setup',  [OnboardingController::class, 'show'])->name('onboarding.show');
@@ -28,6 +29,11 @@ Route::view('/isolir', 'isolir')->name('isolir');
 
 // Public payment page + provider webhook. No admin session required.
 Route::get('/pay/{token}', [PublicPaymentController::class, 'show'])->name('public.payment.show');
+Route::match(['GET', 'POST'], '/payments/token', DokuTokenController::class)
+    ->name('payments.token')
+    ->withoutMiddleware([
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+    ]);
 Route::post('/payments/notifications', [PaymentWebhookController::class, 'doku'])
     ->name('payments.notifications')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
