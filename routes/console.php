@@ -7,6 +7,7 @@ use App\Jobs\SyncFirstLoginAtJob;
 use App\Jobs\ReconcileStaleSessionsJob;
 use App\Jobs\GenerateOverdueInvoicesJob;
 use App\Jobs\AutoIsolateOverdueMembersJob;
+use App\Jobs\ReconcileExpiredMembersJob;
 use App\Jobs\Radius\DetectDriftJob;
 
 Artisan::command('inspire', function () {
@@ -20,6 +21,9 @@ Schedule::job(new SyncFirstLoginAtJob)->everyMinute()->name('sync-first-login');
 
 // Rekonsiliasi sesi stale di radacct — setiap 15 menit
 Schedule::job(new ReconcileStaleSessionsJob)->everyFifteenMinutes()->name('reconcile-stale-sessions');
+
+// Expire member dan putus sesi aktif — setiap menit
+Schedule::job(new ReconcileExpiredMembersJob)->everyMinute()->name('reconcile-expired-members');
 
 // Generate invoice untuk member yang jatuh tempo H-7 — setiap hari jam 01:00
 Schedule::job(new GenerateOverdueInvoicesJob)->dailyAt('01:00')->name('generate-overdue-invoices');

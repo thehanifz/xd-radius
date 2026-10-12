@@ -264,6 +264,7 @@ Buka `/reports/monthly` → pilih bulan/tahun → tampil:
 | Job | Jadwal | Fungsi |
 |---|---|---|
 | `ReconcileStaleSessionsJob` | Setiap 5 menit | Tandai sesi stale |
+| `ReconcileExpiredMembersJob` | Setiap menit | Expire member dan putus sesi aktif |
 | `GenerateOverdueInvoicesJob` | Setiap hari 08:00 | Generate invoice jatuh tempo |
 | `AutoIsolateOverdueMembersJob` | Setiap hari 02:00 | Isolir member overdue (jika aktif) |
 | `SyncFirstLoginAtJob` | Setiap jam | Sinkronisasi first login member |

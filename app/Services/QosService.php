@@ -33,7 +33,13 @@ class QosService
             $minimum,
         ];
         while ($parts && end($parts) === null) { array_pop($parts); }
-        return implode(' ', array_map(static fn ($part) => (string) $part, $parts));
+
+        $parts = array_values(array_filter(
+            array_map(static fn ($part) => $part === null ? null : (string) $part, $parts),
+            static fn ($part) => $part !== null && $part !== ''
+        ));
+
+        return implode(' ', $parts);
     }
 
     private function pair($rx, $tx, bool $required = false, string $suffix = 'k'): ?string
