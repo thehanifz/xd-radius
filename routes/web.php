@@ -28,6 +28,10 @@ Route::view('/isolir', 'isolir')->name('isolir');
 
 // Public payment page + provider webhook. No admin session required.
 Route::get('/pay/{token}', [PublicPaymentController::class, 'show'])->name('public.payment.show');
+Route::post('/payments/notifications', [PaymentWebhookController::class, 'doku'])
+    ->name('payments.notifications')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+
 Route::post('/webhooks/doku', [PaymentWebhookController::class, 'doku'])->name('webhooks.doku')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
 

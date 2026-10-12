@@ -26,31 +26,46 @@ class DokuSignerTest extends TestCase
         );
     }
 
-    public function test_http_notification_signature_matches_doku_format(): void
+    public function test_snap_notification_signature_matches_request_notification_formula(): void
     {
         $body = '{"trxId":"MEM-2-euurddglqy","paidAmount":{"value":"150000.00","currency":"IDR"}}';
+        $timestamp = '2026-09-27T07:00:00+07:00';
+        $token = 'access-token';
+        $secret = 'secret';
 
-        $signature = DokuSigner::httpNotificationSignature(
-            'MCH-0001-10791114622547',
-            'cc682442-6c22-493e-8121-b9ef6b3fa728',
-            '2020-08-11T08:45:42Z',
-            '/doku-virtual-account/v2/payment-code',
+        $signature = DokuSigner::snapNotificationSignature(
+            'POST',
+            '/payments/notifications',
+            $token,
             $body,
-            'secret',
+            $timestamp,
+            $secret,
         );
 
-        $digest = base64_encode(hash('sha256', $body, true));
-        $components = implode("\n", [
-            'Client-Id:MCH-0001-10791114622547',
-            'Request-Id:cc682442-6c22-493e-8121-b9ef6b3fa728',
-            'Request-Timestamp:2020-08-11T08:45:42Z',
-            'Request-Target:/doku-virtual-account/v2/payment-code',
-            'Digest:' . $digest,
-        ]);
-        $expected = 'HMACSHA256=' . base64_encode(hash_hmac('sha256', $components, 'secret', true));
+        $hash = hash('sha256', DokuSigner::minifyJson($body));
+        $stringToSign = 'POST:/payments/notifications:' . $token . ':' . strtolower($hash) . ':' . $timestamp;
+        $expected = base64_encode(hash_hmac('sha512', $stringToSign, $secret, true));
 
         $this->assertSame($expected, $signature);
-        $this->assertStringStartsWith('HMACSHA256=', $signature);
+    }
+    public function test_notification_headers_can_be_scalarized_from_framework_header_arrays(): void
+    {
+        $headers = [
+            'X-EXTERNAL-ID' => ['external-123'],
+            'X-SIGNATURE' => ['signature-456'],
+            'Authorization' => ['Bearer access-token'],
+        ];
+
+        $normalized = [];
+        foreach ($headers as $key => $value) {
+            $normalized[strtolower($key)] = is_array($value)
+                ? (string) ($value[0] ?? '')
+                : (string) $value;
+        }
+
+        $this->assertSame('external-123', $normalized['x-external-id']);
+        $this->assertSame('signature-456', $normalized['x-signature']);
+        $this->assertSame('Bearer access-token', $normalized['authorization']);
     }
 
 }

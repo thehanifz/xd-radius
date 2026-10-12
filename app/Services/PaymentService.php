@@ -84,6 +84,8 @@ class PaymentService
 
     public function processWebhook(array $headers, string $rawBody, string $path): PaymentWebhookEvent
     {
+        $headers = $this->normalizeWebhookHeaders($headers);
+
         if (! $this->gateway()->verifyWebhook($headers, $rawBody, $path)) {
             throw new \RuntimeException('Signature DOKU tidak valid.');
         }
@@ -335,6 +337,19 @@ class PaymentService
         }
 
         return null;
+    }
+
+    private function normalizeWebhookHeaders(array $headers): array
+    {
+        $normalized = [];
+
+        foreach ($headers as $key => $value) {
+            $normalized[strtolower((string) $key)] = is_array($value)
+                ? (string) ($value[0] ?? '')
+                : (string) $value;
+        }
+
+        return $normalized;
     }
 
     private function safeHeaders(array $headers): array

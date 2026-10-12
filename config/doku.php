@@ -18,7 +18,7 @@ return [
     'va_bank' => env('DOKU_VA_BANK', 'BNI'),
     'va_partner_service_id' => env('DOKU_VA_PARTNER_SERVICE_ID'),
     'va_customer_prefix' => env('DOKU_VA_CUSTOMER_PREFIX', '3'),
-    'notification_path' => env('DOKU_NOTIFICATION_PATH', '/webhooks/doku'),
+    'notification_path' => env('DOKU_NOTIFICATION_PATH', '/payments/notifications'),
     'timeout' => (int) env('DOKU_HTTP_TIMEOUT', 15),
     'va_banks' => [
         'BCA' => ['name' => 'BCA', 'channel' => 'VIRTUAL_ACCOUNT_BCA'],

@@ -39,24 +39,18 @@ class DokuSigner
         return base64_encode(hash_hmac('sha512', $stringToSign, $secretKey, true));
     }
 
-    public static function httpNotificationSignature(
-        string $clientId,
-        string $requestId,
-        string $requestTimestamp,
-        string $requestTarget,
-        string $rawBody,
+    public static function snapNotificationSignature(
+        string $method,
+        string $path,
+        string $accessToken,
+        string $body,
+        string $timestamp,
         string $secretKey,
     ): string {
-        $digest = base64_encode(hash('sha256', $rawBody, true));
-        $components = implode("\n", [
-            'Client-Id:' . $clientId,
-            'Request-Id:' . $requestId,
-            'Request-Timestamp:' . $requestTimestamp,
-            'Request-Target:' . '/' . ltrim($requestTarget, '/'),
-            'Digest:' . $digest,
-        ]);
+        $hash = hash('sha256', self::minifyJson($body));
+        $stringToSign = strtoupper($method) . ':' . '/' . ltrim($path, '/') . ':' . $accessToken . ':' . strtolower($hash) . ':' . $timestamp;
 
-        return 'HMACSHA256=' . base64_encode(hash_hmac('sha256', $components, $secretKey, true));
+        return base64_encode(hash_hmac('sha512', $stringToSign, $secretKey, true));
     }
 
     public static function requestId(): string

@@ -14,10 +14,18 @@ class PaymentWebhookController extends Controller
 
         try {
             $payments->processWebhook($request->headers->all(), $rawBody, $path);
-            return response()->json(['status' => 'OK']);
+
+            return response()->json([
+                'responseCode' => '2002500',
+                'responseMessage' => 'Success',
+            ]);
         } catch (\RuntimeException $e) {
             report($e);
-            return response()->json(['status' => 'ERROR'], 400);
+
+            return response()->json([
+                'responseCode' => '4002500',
+                'responseMessage' => $e->getMessage(),
+            ], 400);
         }
     }
 }

@@ -114,35 +114,42 @@ class DokuPaymentGateway implements PaymentGateway
             $normalized[strtolower((string) $key)] = is_array($value) ? (string) ($value[0] ?? '') : (string) $value;
         }
 
-        $clientId = $normalized['client-id'] ?? '';
-        $requestId = $normalized['request-id'] ?? '';
-        $requestTimestamp = $normalized['request-timestamp'] ?? '';
-        $signature = $normalized['signature'] ?? '';
+        // DOKU SNAP HTTP Notification headers.
+        $partnerId = $normalized['x-partner-id'] ?? '';
+        $externalId = $normalized['x-external-id'] ?? '';
+        $timestamp = $normalized['x-timestamp'] ?? '';
+        $signature = $normalized['x-signature'] ?? '';
+        $authorization = trim($normalized['authorization'] ?? '');
         $configuredClientId = (string) config('doku.client_id');
         $secretKey = (string) config('doku.secret_key');
 
-        if (! filled($clientId) || ! filled($requestId) || ! filled($requestTimestamp) || ! filled($signature)) {
+        if (! filled($partnerId) || ! filled($externalId) || ! filled($timestamp) || ! filled($signature)) {
             return false;
         }
 
-        if (! filled($configuredClientId) || ! hash_equals($configuredClientId, $clientId)) {
+        if (! filled($configuredClientId) || ! hash_equals($configuredClientId, $partnerId)) {
             return false;
         }
 
-        if (! filled($secretKey)) {
+        if (! preg_match('/^Bearer\s+(.+)$/i', $authorization, $matches)) {
             return false;
         }
 
-        $expected = DokuSigner::httpNotificationSignature(
-            $clientId,
-            $requestId,
-            $requestTimestamp,
+        $accessToken = trim($matches[1]);
+        if (! filled($accessToken) || ! filled($secretKey)) {
+            return false;
+        }
+
+        $expected = DokuSigner::snapNotificationSignature(
+            'POST',
             '/' . ltrim($path, '/'),
+            $accessToken,
             $rawBody,
+            $timestamp,
             $secretKey,
         );
 
-        return hash_equals($expected, $signature);
+        return hash_equals($expected, trim($signature));
     }
 
     private function createInvoiceVa(BillingInvoice $invoice): array
