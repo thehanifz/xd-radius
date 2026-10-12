@@ -9,6 +9,33 @@ use RouterOS\Query;
 class RouterConnectionService
 {
     /**
+     * Return usernames with an active HotSpot or PPP session on a router.
+     */
+    public function activeUsernames(Router $router): array
+    {
+        $client = new Client([
+            'host' => $router->ip_address,
+            'user' => $router->api_username,
+            'pass' => $router->api_secret,
+            'port' => $router->api_port,
+            'timeout' => 5,
+        ]);
+
+        $hotspotSessions = $client->query('/ip/hotspot/active/print')->read();
+        $pppSessions = $client->query('/ppp/active/print')->read();
+        $usernames = [];
+
+        foreach (array_merge($hotspotSessions, $pppSessions) as $session) {
+            $username = $session['user'] ?? $session['name'] ?? null;
+            if (is_string($username) && $username !== '') {
+                $usernames[] = $username;
+            }
+        }
+
+        return array_values(array_unique($usernames));
+    }
+
+    /**
      * Disconnect all active RouterOS sessions for a RADIUS username.
      *
      * The same RADIUS username may be connected through HotSpot or PPP/PPPoE.
