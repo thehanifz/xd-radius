@@ -80,18 +80,12 @@
             <h3 class="card-title">Pembayaran DOKU</h3>
         </div>
         <div class="card-body">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <form method="POST" action="{{ route('billing.doku-payment', $invoice) }}">
-                    @csrf
-                    <input type="hidden" name="method" value="va">
-                    <button class="w-full btn-secondary" type="submit">Buat / Perbarui VA</button>
-                </form>
-                <form method="POST" action="{{ route('billing.doku-payment', $invoice) }}">
-                    @csrf
-                    <input type="hidden" name="method" value="qris">
-                    <button class="w-full btn-primary" type="submit">Generate QRIS</button>
-                </form>
-            </div>
+            @php($vaAttempts = $invoice->paymentAttempts->filter(fn ($attempt) => $attempt->gateway === 'doku' && str_starts_with((string) $attempt->channel, 'va_') && $attempt->status === 'pending'))
+            @if($vaAttempts->isNotEmpty())
+                <p class="text-sm text-slate-600">Instruksi VA sudah disiapkan otomatis. Buka tautan pembayaran pada tabel di bawah untuk melihat detail pembayaran.</p>
+            @else
+                <p class="text-sm text-amber-700">Instruksi VA belum tersedia. Periksa pesan error di atas; sistem tidak akan memperbarui VA jika invoice lain milik member ini masih aktif.</p>
+            @endif
             <p class="text-xs text-slate-400 mt-3">Pembayaran DOKU tidak memerlukan login member.</p>
         </div>
     </div>

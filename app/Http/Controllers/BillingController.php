@@ -69,8 +69,18 @@ class BillingController extends Controller
         $member  = Member::findOrFail($data['member_id']);
         $invoice = $this->billing->createInvoice($member, $data);
 
-        return redirect()->route('billing.show', $invoice)
-            ->with('success', "Invoice untuk {$member->username} berhasil dibuat.");
+        // Siapkan instruksi VA otomatis. Jika gagal/terhalang invoice lain yang
+        // masih aktif, invoice tetap tersimpan dan alasannya ditampilkan.
+        try {
+            $this->payments->createAttempt($invoice, 'va');
+            return redirect()->route('billing.show', $invoice)
+                ->with('success', "Invoice untuk {$member->username} berhasil dibuat. Instruksi VA disiapkan.");
+        } catch (\Throwable $e) {
+            report($e);
+            return redirect()->route('billing.show', $invoice)
+                ->with('success', "Invoice untuk {$member->username} berhasil dibuat.")
+                ->with('error', 'Instruksi VA belum dibuat: ' . $e->getMessage());
+        }
     }
 
     /**

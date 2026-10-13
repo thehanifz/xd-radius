@@ -103,6 +103,7 @@ class DokuPaymentGateway implements PaymentGateway
             'provider_customer_id' => $responseCustomerNo,
             'account_number' => (string) $responseVa,
             'status' => 'active',
+            'is_default' => (bool) $channel->is_default,
             'metadata' => $response,
         ];
     }

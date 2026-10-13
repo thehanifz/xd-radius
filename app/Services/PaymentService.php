@@ -24,6 +24,49 @@ class PaymentService
             throw new \RuntimeException('Invoice tidak dapat menerima pembayaran baru.');
         }
 
+        $method = strtolower(trim($method));
+
+        // Idempotent: buka ulang invoice tidak boleh membuat attempt VA baru.
+        if ($method === 'va') {
+            $existing = $invoice->paymentAttempts()
+                ->where('gateway', 'doku')
+                ->where('status', 'pending')
+                ->where('channel', 'like', 'va_%')
+                ->latest('id')
+                ->first();
+
+            if ($existing) {
+                if ($existing->public_token_encrypted) {
+                    try {
+                        $existing->public_token = decrypt($existing->public_token_encrypted);
+                    } catch (Throwable $e) {
+                        report($e);
+                    }
+                }
+                return $existing;
+            }
+
+            // DOKU update-va mengubah nominal/expiry VA reusable milik member.
+            // Jangan ubah VA jika invoice lain milik member yang sama masih
+            // memiliki attempt VA pending: webhook dapat menjadi ambigu.
+            $otherActiveVa = PaymentAttempt::query()
+                ->where('gateway', 'doku')
+                ->where('status', 'pending')
+                ->where('channel', 'like', 'va_%')
+                ->whereHas('invoice', function ($query) use ($invoice) {
+                    $query->where('member_id', $invoice->member_id)
+                        ->where('id', '<>', $invoice->id)
+                        ->whereIn('status', ['pending', 'overdue']);
+                })
+                ->exists();
+
+            if ($otherActiveVa) {
+                throw new \RuntimeException(
+                    'VA belum dibuat: member ini memiliki invoice lain yang masih menunggu pembayaran. Selesaikan atau batalkan invoice lama terlebih dahulu agar nominal VA dan webhook tidak tertukar.'
+                );
+            }
+        }
+
         $result = $this->gateway()->createPaymentAttempt($invoice->load('member'), $method);
         $token = Str::random(64);
 
@@ -51,12 +94,16 @@ class PaymentService
     public function createReusableVa(Member $member, string $bank = ''): PaymentAccount
     {
         $bank = strtoupper(trim($bank));
-        if ($bank !== '' && $member->paymentAccounts()->where('gateway', 'doku')->where('bank', $bank)->where('status', 'active')->exists()) {
-            return $member->paymentAccounts()
+        if ($bank !== '') {
+            $existing = $member->paymentAccounts()
                 ->where('gateway', 'doku')
-                ->where('bank', $bank)
+                ->whereRaw('UPPER(bank) = ?', [$bank])
                 ->where('status', 'active')
-                ->firstOrFail();
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
         }
 
         $result = $this->gateway()->createReusableVirtualAccount($member, $bank);
@@ -80,6 +127,47 @@ class PaymentService
                 'metadata' => $result['metadata'] ?? null,
             ]);
         });
+    }
+
+    /**
+     * Ensure every enabled DOKU VA channel has one active reusable VA for this member.
+     * Failures are isolated per channel so one unavailable bank does not block others.
+     *
+     * @return array<int, array{channel: string, error: string}>
+     */
+    public function ensureReusableVas(Member $member): array
+    {
+        $channels = \App\Models\DokuVaChannel::forDoku()
+            ->enabled()
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get();
+
+        $errors = [];
+
+        foreach ($channels as $channel) {
+            $exists = $member->paymentAccounts()
+                ->where('gateway', 'doku')
+                ->whereRaw('UPPER(bank) = ?', [strtoupper($channel->code)])
+                ->where('status', 'active')
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            try {
+                $this->createReusableVa($member, $channel->code);
+            } catch (Throwable $e) {
+                report($e);
+                $errors[] = [
+                    'channel' => $channel->name,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return $errors;
     }
 
     public function processWebhook(array $headers, string $rawBody, string $path): PaymentWebhookEvent

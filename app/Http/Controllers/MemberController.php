@@ -8,12 +8,16 @@ use App\Models\Member;
 use App\Models\Plan;
 use App\Models\DokuVaChannel;
 use App\Services\MemberService;
+use App\Services\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class MemberController extends Controller
 {
-    public function __construct(protected MemberService $service) {}
+    public function __construct(
+        protected MemberService $service,
+        protected PaymentService $payments,
+    ) {}
 
     public function index(Request $request)
     {
@@ -52,6 +56,9 @@ class MemberController extends Controller
 
     public function show(Member $member)
     {
+        // Visiting a member detail page also reconciles missing reusable VAs.
+        // Existing active VAs are preserved and never recreated.
+        $dokuVaSyncErrors = $this->payments->ensureReusableVas($member);
         $member->load(['plan', 'invoices.payments', 'paymentAccounts']);
 
         $sessions = DB::connection('radius')->table('radacct')
@@ -63,7 +70,7 @@ class MemberController extends Controller
         $invoices = $member->invoices;
         $dokuVaChannels = DokuVaChannel::forDoku()->enabled()->orderByDesc('is_default')->orderBy('name')->get();
 
-        return view('members.show', compact('member', 'sessions', 'invoices', 'dokuVaChannels'));
+        return view('members.show', compact('member', 'sessions', 'invoices', 'dokuVaChannels', 'dokuVaSyncErrors'));
     }
 
     public function edit(Member $member)
