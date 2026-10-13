@@ -77,8 +77,12 @@
                     @foreach($invoices as $invoice)
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-5 py-3.5">
-                            <a href="{{ route('members.show', $invoice->member) }}" class="font-medium text-slate-800 hover:text-indigo-600">{{ $invoice->member->username }}</a>
-                            <p class="text-xs text-slate-400">{{ $invoice->member->plan->name ?? '-' }}</p>
+                            @if($invoice->member)
+                                <a href="{{ route('members.show', $invoice->member) }}" class="font-medium text-slate-800 hover:text-indigo-600">{{ $invoice->member->username }}</a>
+                            @else
+                                <span class="font-medium text-slate-500">Member tidak tersedia</span>
+                            @endif
+                            <p class="text-xs text-slate-400">{{ $invoice->member?->plan?->name ?? '-' }}</p>
                         </td>
                         <td class="px-5 py-3.5 text-slate-600 tabular-nums text-xs">
                             {{ $invoice->period_start->format('d M Y') }}
