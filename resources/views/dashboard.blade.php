@@ -214,10 +214,14 @@
                 <div class="px-6 py-3.5 flex items-center gap-3 hover:bg-slate-50/60 transition-colors">
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <a href="{{ route('members.show', $inv->member) }}" class="text-sm font-semibold text-slate-800 hover:text-indigo-600 font-mono">{{ $inv->member->username }}</a>
+                            @if($inv->member)
+                                <a href="{{ route('members.show', $inv->member) }}" class="text-sm font-semibold text-slate-800 hover:text-indigo-600 font-mono">{{ $inv->member->username }}</a>
+                            @else
+                                <span class="text-sm font-semibold text-slate-500">Member tidak tersedia</span>
+                            @endif
                             <span class="badge {{ $sc }} text-[10px] py-0">{{ $inv->status_label }}</span>
                         </div>
-                        <p class="text-xs text-slate-400">{{ $inv->member->plan->name ?? '-' }} · Jatuh tempo {{ $inv->due_date->format('d M Y') }}</p>
+                        <p class="text-xs text-slate-400">{{ $inv->member?->plan?->name ?? '-' }} · Jatuh tempo {{ $inv->due_date->format('d M Y') }}</p>
                     </div>
                     <div class="text-right flex-shrink-0">
                         <p class="text-sm font-bold text-slate-700 tabular-nums">{{ $inv->amount_label }}</p>
