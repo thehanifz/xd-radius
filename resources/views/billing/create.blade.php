@@ -20,7 +20,24 @@
                 </div>
 
                 <div>
-                    <label class="form-label">Jatuh Tempo</label>
+                    <label class="form-label">Awal Periode Layanan</label>
+                    <input type="date" name="period_start"
+                           value="{{ old('period_start', $defaultPeriodStart->format('Y-m-d')) }}"
+                           class="form-input" required>
+                    @error('period_start') <p class="form-error">{{ $message }}</p> @enderror
+                    <p class="text-xs text-slate-400 mt-1">Member expired memulai periode dari hari ini secara default. Admin dapat mengubah tanggal ini.</p>
+                </div>
+
+                <div>
+                    <label class="form-label">Akhir Periode Layanan</label>
+                    <input type="date" name="period_end"
+                           value="{{ old('period_end', $defaultPeriodEnd->format('Y-m-d')) }}"
+                           class="form-input" required>
+                    @error('period_end') <p class="form-error">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="form-label">Jatuh Tempo Pembayaran</label>
                     <input type="date" name="due_date"
                            value="{{ old('due_date', now()->addDays(7)->format('Y-m-d')) }}"
                            class="form-input" required>

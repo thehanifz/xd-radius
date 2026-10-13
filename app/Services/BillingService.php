@@ -17,14 +17,26 @@ class BillingService
      */
     public function createInvoice(Member $member, array $data = []): BillingInvoice
     {
-        $periodStart = $member->expired_at
+        // Active members continue from their current expiry. Expired members
+        // start a new service period today unless an administrator overrides it.
+        $defaultStart = $member->expired_at && $member->expired_at->isFuture()
             ? Carbon::parse($member->expired_at)
             : now();
+        $periodStart = isset($data['period_start'])
+            ? Carbon::parse($data['period_start'])->startOfDay()
+            : $defaultStart->copy()->startOfDay();
 
-        $periodEnd = $member->plan->addDurationTo($periodStart);
-        $dueDate      = isset($data['due_date'])
-            ? Carbon::parse($data['due_date'])
-            : now()->addDays(7);
+        $defaultEnd = $member->plan->addDurationTo($periodStart);
+        $periodEnd = isset($data['period_end'])
+            ? Carbon::parse($data['period_end'])->startOfDay()
+            : Carbon::parse($defaultEnd)->startOfDay();
+        if ($periodEnd->lt($periodStart)) {
+            throw new \InvalidArgumentException('Akhir periode tidak boleh sebelum awal periode.');
+        }
+
+        $dueDate = isset($data['due_date'])
+            ? Carbon::parse($data['due_date'])->startOfDay()
+            : now()->addDays(7)->startOfDay();
 
         return BillingInvoice::create([
             'member_id'    => $member->id,
@@ -72,7 +84,7 @@ class BillingService
             $this->recordPayment($invoice, $paymentData);
 
             // Hitung expired baru dari period_end invoice
-            $newExpiredAt = Carbon::parse($invoice->period_end);
+            $newExpiredAt = Carbon::parse($invoice->period_end)->endOfDay();
 
             $member->update([
                 'expired_at' => $newExpiredAt,

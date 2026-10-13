@@ -50,8 +50,13 @@ class BillingController extends Controller
      */
     public function create(Request $request)
     {
-        $member  = Member::with('plan')->findOrFail($request->member_id);
-        return view('billing.create', compact('member'));
+        $member = Member::with('plan')->findOrFail($request->member_id);
+        $defaultPeriodStart = $member->expired_at && $member->expired_at->isFuture()
+            ? $member->expired_at->copy()->startOfDay()
+            : now()->startOfDay();
+        $defaultPeriodEnd = $member->plan->addDurationTo($defaultPeriodStart)->startOfDay();
+
+        return view('billing.create', compact('member', 'defaultPeriodStart', 'defaultPeriodEnd'));
     }
 
     /**
@@ -62,8 +67,10 @@ class BillingController extends Controller
         $data = $request->validate([
             'member_id' => ['required', 'exists:members,id'],
             'amount'    => ['required', 'integer', 'min:1'],
-            'due_date'  => ['required', 'date'],
-            'notes'     => ['nullable', 'string', 'max:500'],
+            'period_start' => ['required', 'date'],
+            'period_end'   => ['required', 'date', 'after_or_equal:period_start'],
+            'due_date'     => ['required', 'date'],
+            'notes'        => ['nullable', 'string', 'max:500'],
         ]);
 
         $member  = Member::findOrFail($data['member_id']);
