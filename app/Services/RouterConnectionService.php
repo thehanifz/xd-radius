@@ -72,6 +72,24 @@ class RouterConnectionService
             $removed++;
         }
 
+        // Remembered HotSpot cookies allow automatic re-login even after the
+        // active session is removed. Remove only cookies matching this user.
+        $hotspotCookies = $client->query(
+            (new Query('/ip/hotspot/cookie/print'))->where('user', $username)
+        )->read();
+
+        foreach ($hotspotCookies as $cookie) {
+            if (empty($cookie['.id'])) {
+                continue;
+            }
+
+            $client->query(
+                (new Query('/ip/hotspot/cookie/remove'))->equal('.id', $cookie['.id'])
+            )->read();
+
+            $removed++;
+        }
+
         // PPP/PPPoE sessions.
         $pppSessions = $client->query(
             (new Query('/ppp/active/print'))->where('name', $username)

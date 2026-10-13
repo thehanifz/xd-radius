@@ -8,6 +8,9 @@ use App\Models\ServiceActionLog;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Services\QosService;
+use App\Models\Router;
+use App\Services\RouterConnectionService;
+use Illuminate\Support\Facades\Log;
 
 class MemberService
 {
@@ -67,7 +70,12 @@ class MemberService
                 $updateData['password_plain'] = $newPassword;
             }
 
+            $previousStatus = $member->status;
             $member->update($updateData);
+
+            if ($member->status !== $previousStatus && in_array($member->status, ['inactive', 'isolated', 'expired'], true)) {
+                $this->cleanupRouterAccess($member->username);
+            }
 
             // Update RADIUS — jika password berubah, kirim plaintext baru
             $this->updateRadius($member, $plan, $newPassword);
@@ -78,6 +86,9 @@ class MemberService
 
     public function delete(Member $member): void
     {
+        // Best-effort cleanup; router failures are logged but must not block deletion.
+        $this->cleanupRouterAccess($member->username);
+
         DB::transaction(function () use ($member) {
             $u = $member->username;
             DB::connection('radius')->table('radcheck')->where('username', $u)->delete();
@@ -100,6 +111,10 @@ class MemberService
             }
 
             $member->update(['status' => $newStatus]);
+
+            if ($newStatus === 'isolated') {
+                $this->cleanupRouterAccess($member->username);
+            }
 
             // Catat di service_action_logs
             ServiceActionLog::record(
@@ -152,6 +167,8 @@ class MemberService
             'groupname' => $plan->radius_group_name,
             'priority'  => 1,
         ]);
+
+        $this->syncRadiusExpiration($member);
     }
 
     private function updateRadius(Member $member, Plan $plan, ?string $newPassword): void
@@ -179,6 +196,59 @@ class MemberService
         DB::connection('radius')->table('radusergroup')
             ->where('username', $u)
             ->update(['groupname' => $plan->radius_group_name]);
+
+        $this->syncRadiusExpiration($member);
+
+        if ($member->expired_at !== null && $member->expired_at->lte(now())) {
+            DB::connection('radius')->table('radcheck')->updateOrInsert(
+                ['username' => $u, 'attribute' => 'Auth-Type'],
+                ['op' => ':=', 'value' => 'Reject']
+            );
+        } elseif ($member->status === 'active' && $member->expired_at?->isFuture()) {
+            DB::connection('radius')->table('radcheck')
+                ->where('username', $u)
+                ->where('attribute', 'Auth-Type')
+                ->where('op', ':=')
+                ->where('value', 'Reject')
+                ->delete();
+        }
+    }
+
+    private function syncRadiusExpiration(Member $member): void
+    {
+        if ($member->expired_at === null) {
+            DB::connection('radius')->table('radcheck')
+                ->where('username', $member->username)
+                ->where('attribute', 'Expiration')
+                ->delete();
+
+            return;
+        }
+
+        DB::connection('radius')->table('radcheck')->updateOrInsert(
+            ['username' => $member->username, 'attribute' => 'Expiration'],
+            ['op' => ':=', 'value' => $member->expired_at->format('d M Y H:i:s')]
+        );
+    }
+
+    /** Remove active sessions and remembered HotSpot cookies on configured routers. */
+    private function cleanupRouterAccess(string $username): void
+    {
+        $connectionService = app(RouterConnectionService::class);
+
+        foreach (Router::withoutTrashed()->get() as $router) {
+            try {
+                $connectionService->disconnectUser($router, $username);
+            } catch (\Throwable $e) {
+                Log::warning('Gagal membersihkan sesi/cookie member dari router.', [
+                    'username' => $username,
+                    'router_id' => $router->id,
+                    'router_name' => $router->name,
+                    'router_ip' => $router->ip_address,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     private function calcExpiry(\DateTime $from, Plan $plan): \DateTime

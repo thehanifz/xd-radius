@@ -79,13 +79,20 @@ class BillingService
                 'status'     => 'active',
             ]);
 
-            // Jika sebelumnya isolir, pulihkan di RADIUS
-            if ($member->wasRecentlyIsolated()) {
-                DB::connection('radius')->table('radcheck')
-                    ->where('username', $member->username)
-                    ->where('attribute', 'Auth-Type')
-                    ->delete();
-            }
+            // Sinkronkan masa berlaku di FreeRADIUS agar autentikasi ulang
+            // ditolak tepat waktu tanpa hanya bergantung pada scheduler Laravel.
+            DB::connection('radius')->table('radcheck')->updateOrInsert(
+                ['username' => $member->username, 'attribute' => 'Expiration'],
+                ['op' => ':=', 'value' => $newExpiredAt->format('d M Y H:i:s')]
+            );
+
+            // Setelah perpanjangan yang sah, pulihkan aturan autentikasi.
+            DB::connection('radius')->table('radcheck')
+                ->where('username', $member->username)
+                ->where('attribute', 'Auth-Type')
+                ->where('op', ':=')
+                ->where('value', 'Reject')
+                ->delete();
 
             // FIX: gunakan positional arguments, bukan named arguments
             // Named argument 'entity_type:' tidak cocok dengan parameter '$entityType'

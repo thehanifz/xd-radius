@@ -49,36 +49,22 @@ class ExpireMemberJob implements ShouldQueue
             ['op' => ':=', 'value' => 'Reject']
         );
 
-        $sessions = Radacct::query()
-            ->where('username', $member->username)
-            ->whereNull('acctstoptime')
-            ->get(['radacctid', 'nasipaddress']);
-
-        if ($sessions->isEmpty()) {
-            return;
-        }
-
+        // radacct may already be empty while RouterOS still has a remembered
+        // HotSpot cookie. Clean every configured router, not only NASes present
+        // in active accounting rows.
+        $routers = Router::withoutTrashed()->get();
         $errors = [];
 
-        foreach ($sessions->pluck('nasipaddress')->filter()->unique() as $nasIp) {
-            $router = Router::withoutTrashed()
-                ->where('ip_address', $nasIp)
-                ->first();
-
-            if (! $router) {
-                $errors[] = "Router {$nasIp} tidak ditemukan untuk member {$member->username}.";
-                continue;
-            }
-
+        foreach ($routers as $router) {
             try {
                 $connectionService->disconnectUser($router, $member->username);
             } catch (\Throwable $e) {
-                $errors[] = "Gagal disconnect {$member->username} dari {$router->name} ({$nasIp}): {$e->getMessage()}";
+                $errors[] = "Gagal membersihkan sesi/cookie {$member->username} dari {$router->name} ({$router->ip_address}): {$e->getMessage()}";
             }
         }
 
         if ($errors !== []) {
-            Log::warning('ExpireMemberJob gagal memutus sebagian sesi member.', [
+            Log::warning('ExpireMemberJob gagal membersihkan sesi/cookie member pada sebagian router.', [
                 'member_id' => $member->id,
                 'username' => $member->username,
                 'errors' => $errors,

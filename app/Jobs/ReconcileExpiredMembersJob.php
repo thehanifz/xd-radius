@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Member;
+use App\Models\Radacct;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -18,11 +19,19 @@ class ReconcileExpiredMembersJob implements ShouldQueue
         Member::query()
             ->whereNotNull('expired_at')
             ->where('expired_at', '<=', now())
-            ->where('status', '!=', 'expired')
-            ->select('id')
+            ->select(['id', 'username', 'status'])
             ->chunkById(100, function ($members): void {
                 foreach ($members as $member) {
-                    ExpireMemberJob::dispatch($member->id);
+                    // Re-run expiry for already-expired members when accounting
+                    // still reports a live session (e.g. a previous API failure).
+                    $hasActiveSession = Radacct::query()
+                        ->where('username', $member->username)
+                        ->whereNull('acctstoptime')
+                        ->exists();
+
+                    if ($member->status !== 'expired' || $hasActiveSession) {
+                        ExpireMemberJob::dispatch($member->id);
+                    }
                 }
             });
     }
