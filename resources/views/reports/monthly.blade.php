@@ -76,7 +76,7 @@
     </div>
     <div class="stat-card">
         <p class="stat-label">Voucher Expired</p>
-        <p class="stat-value text-slate-400">{{ number_format($summary['total_voucher_expired']) }}</p>
+        <p class="stat-value text-slate-400 dark:text-slate-500">{{ number_format($summary['total_voucher_expired']) }}</p>
     </div>
     <div class="stat-card">
         <p class="stat-label">Member Aktif</p>
@@ -84,7 +84,7 @@
     </div>
     <div class="stat-card">
         <p class="stat-label">Est. Pendapatan</p>
-        <p class="stat-value text-indigo-600">Rp {{ number_format($summary['total_revenue']) }}</p>
+        <p class="stat-value text-indigo-600 dark:text-indigo-300">Rp {{ number_format($summary['total_revenue']) }}</p>
     </div>
 </div>
 
@@ -119,14 +119,14 @@
             <tbody>
             @foreach($vouchers as $v)
             <tr>
-                <td class="font-mono text-xs text-slate-500">{{ $v->batch?->batch_code ?? '-' }}</td>
+                <td class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ $v->batch?->batch_code ?? '-' }}</td>
                 <td class="font-mono text-sm font-semibold">{{ $v->username }}</td>
-                <td class="text-slate-500 text-sm">{{ $v->batch?->generatedBy?->name ?? '-' }}</td>
-                <td class="text-slate-600 text-sm">{{ $v->plan?->name ?? '-' }}</td>
-                <td class="text-slate-700 text-sm">Rp {{ number_format($v->price_snapshot) }}</td>
-                <td class="text-slate-400 text-xs">{{ $v->created_at?->format('d/m/Y') }}</td>
-                <td class="text-slate-400 text-xs">{{ $v->first_login_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                <td class="text-slate-400 text-xs">{{ $v->expired_at?->format('d/m/Y') ?? '-' }}</td>
+                <td class="text-slate-500 text-sm dark:text-slate-400">{{ $v->batch?->generatedBy?->name ?? '-' }}</td>
+                <td class="text-slate-600 text-sm dark:text-slate-300">{{ $v->plan?->name ?? '-' }}</td>
+                <td class="text-slate-700 text-sm dark:text-slate-200">Rp {{ number_format($v->price_snapshot) }}</td>
+                <td class="text-slate-400 text-xs dark:text-slate-500">{{ $v->created_at?->format('d/m/Y') }}</td>
+                <td class="text-slate-400 text-xs dark:text-slate-500">{{ $v->first_login_at?->format('d/m/Y H:i') ?? '-' }}</td>
+                <td class="text-slate-400 text-xs dark:text-slate-500">{{ $v->expired_at?->format('d/m/Y') ?? '-' }}</td>
                 <td><span class="badge-{{ $v->status === 'active' ? 'active' : ($v->status === 'expired' ? 'expired' : 'isolated') }} text-xs">{{ ucfirst($v->status) }}</span></td>
             </tr>
             @endforeach
@@ -159,17 +159,17 @@
             @php $invoice = $m->invoices->first(); @endphp
             <tr>
                 <td class="font-mono text-sm font-semibold">{{ $m->username }}</td>
-                <td class="text-slate-600 text-sm">{{ $m->plan?->name ?? '-' }}</td>
-                <td class="text-slate-700 text-sm">Rp {{ number_format($m->price_snapshot) }}</td>
-                <td class="text-slate-400 text-xs">{{ $m->activated_at?->format('d/m/Y') ?? '-' }}</td>
-                <td class="text-slate-400 text-xs">{{ $m->expired_at?->format('d/m/Y') ?? '-' }}</td>
+                <td class="text-slate-600 text-sm dark:text-slate-300">{{ $m->plan?->name ?? '-' }}</td>
+                <td class="text-slate-700 text-sm dark:text-slate-200">Rp {{ number_format($m->price_snapshot) }}</td>
+                <td class="text-slate-400 text-xs dark:text-slate-500">{{ $m->activated_at?->format('d/m/Y') ?? '-' }}</td>
+                <td class="text-slate-400 text-xs dark:text-slate-500">{{ $m->expired_at?->format('d/m/Y') ?? '-' }}</td>
                 <td class="text-sm">
                     @if($invoice)
                         <span class="badge-{{ $invoice->status === 'paid' ? 'active' : ($invoice->status === 'overdue' ? 'isolated' : 'pending') }} text-xs">
                             {{ ucfirst($invoice->status) }} — Rp {{ number_format($invoice->amount) }}
                         </span>
                     @else
-                        <span class="text-slate-300">-</span>
+                        <span class="text-slate-300 dark:text-slate-600">-</span>
                     @endif
                 </td>
                 <td><span class="badge-{{ $m->status === 'active' ? 'active' : ($m->status === 'isolated' ? 'isolated' : 'expired') }} text-xs">{{ ucfirst($m->status) }}</span></td>
@@ -183,8 +183,8 @@
 
 @if($vouchers->isEmpty() && $members->isEmpty())
 <div class="card p-16 text-center">
-    <svg class="mx-auto mb-3 w-12 h-12 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-    <p class="text-slate-400">Tidak ada data untuk periode ini</p>
+    <svg class="mx-auto mb-3 w-12 h-12 text-slate-200 dark:text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <p class="text-slate-400 dark:text-slate-500">Tidak ada data untuk periode ini</p>
 </div>
 @endif
 

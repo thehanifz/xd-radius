@@ -16,7 +16,7 @@
     <p class="text-slate-500 text-sm mt-1">Buat akun Super User pertama untuk memulai</p>
 </div>
 
-<div class="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 mb-6 flex gap-3">
+<div class="onboarding-notice bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 mb-6 flex gap-3">
     <svg class="flex-shrink-0 w-4 h-4 text-indigo-500 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
     </svg>

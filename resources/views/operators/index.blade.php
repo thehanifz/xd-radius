@@ -38,10 +38,10 @@
                              style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
                             {{ strtoupper(substr($op->name, 0, 1)) }}
                         </div>
-                        <span class="font-semibold text-slate-800">{{ $op->name }}</span>
+                        <span class="font-semibold text-slate-800 dark:text-slate-100">{{ $op->name }}</span>
                     </div>
                 </td>
-                <td class="text-slate-500 text-sm">{{ $op->email }}</td>
+                <td class="text-slate-500 text-sm dark:text-slate-400">{{ $op->email }}</td>
                 <td>
                     @if($op->is_active)
                         <span class="badge-active">Aktif</span>
@@ -49,7 +49,7 @@
                         <span class="badge-inactive">Nonaktif</span>
                     @endif
                 </td>
-                <td class="text-slate-400 text-sm">{{ $op->created_at->format('d M Y') }}</td>
+                <td class="text-slate-400 text-sm dark:text-slate-500">{{ $op->created_at->format('d M Y') }}</td>
                 <td class="text-right">
                     <div class="flex items-center justify-end gap-2">
                         <a href="{{ route('operators.edit', $op) }}" class="btn-sm-secondary">Edit</a>
@@ -71,9 +71,9 @@
             <tr>
                 <td colspan="5">
                     <div class="py-14 flex flex-col items-center text-center">
-                        <svg class="text-slate-300 mb-3" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                        <p class="text-slate-500 font-medium text-sm">Belum ada operator</p>
-                        <p class="text-slate-400 text-xs mt-1 mb-4">Tambah operator untuk memberikan akses ke panel ini.</p>
+                        <svg class="text-slate-300 mb-3 dark:text-slate-600" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        <p class="text-slate-500 font-medium text-sm dark:text-slate-400">Belum ada operator</p>
+                        <p class="text-slate-400 text-xs mt-1 mb-4 dark:text-slate-500">Tambah operator untuk memberikan akses ke panel ini.</p>
                         <a href="{{ route('operators.create') }}" class="btn-primary">Tambah Operator</a>
                     </div>
                 </td>
@@ -85,7 +85,7 @@
     </div>
 
     @if($operators->hasPages())
-    <div class="p-4 border-t border-slate-100">
+    <div class="p-4 border-t border-slate-100 dark:border-slate-800">
         {{ $operators->links() }}
     </div>
     @endif

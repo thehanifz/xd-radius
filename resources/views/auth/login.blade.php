@@ -64,7 +64,7 @@
     </div>
 
     {{-- Right panel — login form --}}
-    <div class="flex-1 flex items-center justify-center p-8 bg-white">
+    <div class="login-form-panel flex-1 flex items-center justify-center p-8 bg-white">
         <div class="w-full max-w-sm">
 
             {{-- Mobile logo --}}

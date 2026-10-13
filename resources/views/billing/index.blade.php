@@ -11,16 +11,16 @@
     {{-- Stats --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         @foreach([
-            ['label'=>'Menunggu','value'=>$stats['pending'],'color'=>'text-amber-600','bg'=>'bg-amber-50'],
-            ['label'=>'Jatuh Tempo','value'=>$stats['overdue'],'color'=>'text-red-600','bg'=>'bg-red-50'],
-            ['label'=>'Lunas','value'=>$stats['paid'],'color'=>'text-green-600','bg'=>'bg-green-50'],
+            ['label'=>'Menunggu','value'=>$stats['pending'],'color'=>'text-amber-600 dark:text-amber-400','bg'=>'bg-amber-50 dark:bg-amber-500/10'],
+            ['label'=>'Jatuh Tempo','value'=>$stats['overdue'],'color'=>'text-red-600 dark:text-red-400','bg'=>'bg-red-50 dark:bg-red-500/10'],
+            ['label'=>'Lunas','value'=>$stats['paid'],'color'=>'text-green-600 dark:text-green-400','bg'=>'bg-green-50 dark:bg-green-500/10'],
         ] as $s)
         <div class="card">
             <div class="card-body py-4 flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl {{ $s['bg'] }} flex items-center justify-center">
                     <span class="text-lg font-bold {{ $s['color'] }}">{{ $s['value'] }}</span>
                 </div>
-                <p class="text-sm font-medium text-slate-600">{{ $s['label'] }}</p>
+                <p class="text-sm font-medium text-slate-600 dark:text-slate-300">{{ $s['label'] }}</p>
             </div>
         </div>
         @endforeach
@@ -45,7 +45,7 @@
                 </select>
                 <button type="submit" class="btn-secondary">Filter</button>
                 @if(request()->hasAny(['member_id','status']))
-                    <a href="{{ route('billing.index') }}" class="text-sm text-slate-500 hover:text-slate-700">Reset</a>
+                    <a href="{{ route('billing.index') }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700">Reset</a>
                 @endif
             </form>
         </div>
@@ -55,56 +55,56 @@
     <div class="card overflow-hidden">
         @if($invoices->isEmpty())
         <div class="py-16 flex flex-col items-center text-center">
-            <svg class="text-slate-300 mb-3" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            <p class="text-slate-500 font-medium">Belum ada invoice</p>
-            <p class="text-slate-400 text-sm mt-1">Invoice akan muncul setelah dibuat untuk member.</p>
+            <svg class="text-slate-300 dark:text-slate-600 mb-3" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <p class="text-slate-500 dark:text-slate-400 font-medium">Belum ada invoice</p>
+            <p class="text-slate-400 dark:text-slate-500 text-sm mt-1">Invoice akan muncul setelah dibuat untuk member.</p>
         </div>
         @else
         <div class="overflow-x-auto">
             <div class="table-scroll">
 <table class="w-full text-sm">
-                <thead class="bg-slate-50 border-b border-slate-200">
+                <thead class="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Member</th>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Periode</th>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nominal</th>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Jatuh Tempo</th>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Member</th>
+                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Periode</th>
+                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Nominal</th>
+                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Jatuh Tempo</th>
+                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Status</th>
                         <th class="px-5 py-3"></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/70">
                     @foreach($invoices as $invoice)
-                    <tr class="hover:bg-slate-50 transition-colors">
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                         <td class="px-5 py-3.5">
                             @if($invoice->member)
-                                <a href="{{ route('members.show', $invoice->member) }}" class="font-medium text-slate-800 hover:text-indigo-600">{{ $invoice->member->username }}</a>
+                                <a href="{{ route('members.show', $invoice->member) }}" class="font-medium text-slate-800 dark:text-slate-100 hover:text-indigo-600">{{ $invoice->member->username }}</a>
                             @else
-                                <span class="font-medium text-slate-500">Member tidak tersedia</span>
+                                <span class="font-medium text-slate-500 dark:text-slate-400">Member tidak tersedia</span>
                             @endif
-                            <p class="text-xs text-slate-400">{{ $invoice->member?->plan?->name ?? '-' }}</p>
+                            <p class="text-xs text-slate-400 dark:text-slate-500">{{ $invoice->member?->plan?->name ?? '-' }}</p>
                         </td>
-                        <td class="px-5 py-3.5 text-slate-600 tabular-nums text-xs">
+                        <td class="px-5 py-3.5 text-slate-600 dark:text-slate-300 tabular-nums text-xs">
                             {{ $invoice->period_start->format('d M Y') }}
-                            <span class="text-slate-400">–</span>
+                            <span class="text-slate-400 dark:text-slate-500">–</span>
                             {{ $invoice->period_end->format('d M Y') }}
                         </td>
-                        <td class="px-5 py-3.5 font-semibold text-slate-800 tabular-nums">{{ $invoice->amount_label }}</td>
-                        <td class="px-5 py-3.5 tabular-nums text-slate-600 text-xs">{{ $invoice->due_date->format('d M Y') }}</td>
+                        <td class="px-5 py-3.5 font-semibold text-slate-800 dark:text-slate-100 tabular-nums">{{ $invoice->amount_label }}</td>
+                        <td class="px-5 py-3.5 tabular-nums text-slate-600 dark:text-slate-300 text-xs">{{ $invoice->due_date->format('d M Y') }}</td>
                         <td class="px-5 py-3.5">
                             <span class="badge {{ $invoice->status_badge_class }}">{{ $invoice->status_label }}</span>
                         </td>
                         <td class="px-5 py-3.5">
                             <div class="flex items-center gap-2 justify-end">
-                                <a href="{{ route('billing.show', $invoice) }}" class="text-slate-400 hover:text-indigo-600 transition-colors" title="Detail">
+                                <a href="{{ route('billing.show', $invoice) }}" class="text-slate-400 dark:text-slate-500 hover:text-indigo-600 transition-colors" title="Detail">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                 </a>
                                 @if(in_array($invoice->status, ['pending','overdue']))
-                                <a href="{{ route('billing.pay.form', $invoice) }}" class="text-slate-400 hover:text-green-600 transition-colors" title="Catat Bayar">
+                                <a href="{{ route('billing.pay.form', $invoice) }}" class="text-slate-400 dark:text-slate-500 hover:text-green-600 transition-colors" title="Catat Bayar">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                                 </a>
                                 @endif
-                                <a href="{{ route('billing.pdf', $invoice) }}" class="text-slate-400 hover:text-red-600 transition-colors" title="Download PDF">
+                                <a href="{{ route('billing.pdf', $invoice) }}" class="text-slate-400 dark:text-slate-500 hover:text-red-600 transition-colors" title="Download PDF">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                 </a>
                             </div>
@@ -116,7 +116,7 @@
 </div>
         </div>
         @if($invoices->hasPages())
-        <div class="px-5 py-3 border-t border-slate-100">{{ $invoices->links() }}</div>
+        <div class="px-5 py-3 border-t border-slate-100 dark:border-slate-700/70">{{ $invoices->links() }}</div>
         @endif
         @endif
     </div>

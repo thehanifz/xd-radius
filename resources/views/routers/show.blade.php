@@ -24,7 +24,7 @@
 @endsection
 
 @section('content')
-<div class="max-w-4xl space-y-5">
+<div class="router-page max-w-4xl space-y-5">
 
     {{-- Ringkasan resource --}}
     @if($router->last_connection_status === 'ok')

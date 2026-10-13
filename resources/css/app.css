@@ -992,3 +992,139 @@ a.dashboard-list-title:hover { color: var(--color-primary); }
   .online-topbar-actions { gap: .45rem; }
   .online-live-indicator { font-size: .65rem; }
 }
+
+
+/* Phase 6: Voucher and plan consoles inherit the selected application theme. */
+:root[data-theme="dark"] .voucher-console .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+:root[data-theme="dark"] .plans-console .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--app-border);
+}
+:root[data-theme="dark"] .voucher-console .divide-slate-100,
+:root[data-theme="dark"] .plans-console .divide-slate-100,
+:root[data-theme="dark"] .voucher-console .divide-y,
+:root[data-theme="dark"] .plans-console .divide-y {
+  border-color: var(--app-border);
+}
+:root[data-theme="dark"] .voucher-console .bg-slate-50,
+:root[data-theme="dark"] .plans-console .bg-slate-50,
+:root[data-theme="dark"] .voucher-console .hover\:bg-slate-50:hover,
+:root[data-theme="dark"] .plans-console .hover\:bg-slate-50:hover {
+  background-color: var(--app-surface-muted);
+}
+:root[data-theme="dark"] .voucher-console .bg-slate-100,
+:root[data-theme="dark"] .plans-console .bg-slate-100,
+:root[data-theme="dark"] .voucher-console .hover\:bg-slate-100:hover,
+:root[data-theme="dark"] .plans-console .hover\:bg-slate-100:hover {
+  background-color: #263244;
+}
+:root[data-theme="dark"] .voucher-console .text-slate-800,
+:root[data-theme="dark"] .plans-console .text-slate-800,
+:root[data-theme="dark"] .voucher-console .text-slate-700,
+:root[data-theme="dark"] .plans-console .text-slate-700,
+:root[data-theme="dark"] .voucher-console .text-slate-600,
+:root[data-theme="dark"] .plans-console .text-slate-600 {
+  color: var(--app-text);
+}
+:root[data-theme="dark"] .voucher-console .text-slate-500,
+:root[data-theme="dark"] .plans-console .text-slate-500 {
+  color: var(--app-text-muted);
+}
+:root[data-theme="dark"] .voucher-console .border-slate-100,
+:root[data-theme="dark"] .plans-console .border-slate-100,
+:root[data-theme="dark"] .voucher-console .border-slate-200,
+:root[data-theme="dark"] .plans-console .border-slate-200 {
+  border-color: var(--app-border);
+}
+:root[data-theme="dark"] .voucher-console .bg-blue-50,
+:root[data-theme="dark"] .plans-console .bg-blue-50 {
+  background-color: rgba(59, 130, 246, .12);
+}
+:root[data-theme="dark"] .voucher-console .border-blue-100,
+:root[data-theme="dark"] .plans-console .border-blue-100 {
+  border-color: rgba(96, 165, 250, .28);
+}
+:root[data-theme="dark"] .voucher-console code,
+:root[data-theme="dark"] .plans-console code {
+  background-color: #263244;
+  color: #dbeafe;
+}
+:root[data-theme="dark"] .voucher-console .bg-indigo-50,
+:root[data-theme="dark"] .plans-console .bg-indigo-50 {
+  background-color: rgba(99, 102, 241, .12);
+}
+:root[data-theme="dark"] .voucher-console .border-indigo-200,
+:root[data-theme="dark"] .plans-console .border-indigo-200 {
+  border-color: rgba(129, 140, 248, .35);
+}
+:root[data-theme="dark"] .voucher-console .text-indigo-900,
+:root[data-theme="dark"] .plans-console .text-indigo-900 {
+  color: #e0e7ff;
+}
+:root[data-theme="dark"] .voucher-console .text-indigo-600,
+:root[data-theme="dark"] .plans-console .text-indigo-600 {
+  color: #a5b4fc;
+}
+:root[data-theme="dark"] .voucher-console .bg-white,
+:root[data-theme="dark"] .plans-console .bg-white {
+  background-color: var(--app-surface);
+}
+:root[data-theme="dark"] .voucher-console .border-indigo-300,
+:root[data-theme="dark"] .plans-console .border-indigo-300 {
+  border-color: rgba(129, 140, 248, .5);
+}
+:root[data-theme="dark"] .voucher-console .text-slate-400,
+:root[data-theme="dark"] .plans-console .text-slate-400 {
+  color: #91a0b5;
+}
+
+/* Router / NAS pages: preserve semantic status colors while adapting neutral surfaces to the active theme. */
+:root[data-theme="dark"] .router-page .text-slate-800,
+:root[data-theme="dark"] .router-page .text-slate-700 { color: var(--app-text) !important; }
+:root[data-theme="dark"] .router-page .text-slate-600,
+:root[data-theme="dark"] .router-page .text-slate-500 { color: var(--app-text-muted) !important; }
+:root[data-theme="dark"] .router-page .text-slate-400,
+:root[data-theme="dark"] .router-page .text-slate-300 { color: #8795aa !important; }
+:root[data-theme="dark"] .router-page .bg-slate-50,
+:root[data-theme="dark"] .router-page .bg-slate-100 { background-color: var(--app-surface-muted) !important; }
+:root[data-theme="dark"] .router-page .border-slate-100,
+:root[data-theme="dark"] .router-page .border-slate-200 { border-color: var(--app-border) !important; }
+:root[data-theme="dark"] .router-page .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--app-border) !important; }
+:root[data-theme="dark"] .router-page .hover\:bg-slate-50:hover { background-color: var(--app-table-hover) !important; }
+:root[data-theme="dark"] .router-page .active\:bg-slate-100:active { background-color: var(--app-surface-muted) !important; }
+:root[data-theme="dark"] .router-page .border-indigo-100 { border-color: #373d68 !important; }
+:root[data-theme="dark"] .router-page .bg-indigo-50\/40 { background-color: rgba(49, 46, 129, .18) !important; }
+:root[data-theme="dark"] .router-page .text-indigo-600 { color: #a5b4fc !important; }
+:root[data-theme="dark"] .router-page .text-blue-600 { color: #93c5fd !important; }
+
+/* Phase 10: final theme consistency for remaining operational/public screens. */
+:root[data-theme="dark"] .radius-page .text-gray-500,
+:root[data-theme="dark"] .radius-page .text-slate-500 { color: var(--app-text-muted) !important; }
+:root[data-theme="dark"] .radius-page .card,
+:root[data-theme="dark"] .radius-page .rounded.border.bg-white,
+:root[data-theme="dark"] .radius-page .bg-white { background-color: var(--app-surface) !important; border-color: var(--app-border) !important; }
+:root[data-theme="dark"] .radius-page .border { border-color: var(--app-border); }
+:root[data-theme="dark"] .radius-page .bg-green-50 { background-color: rgba(6, 78, 59, .28) !important; }
+:root[data-theme="dark"] .radius-page .text-green-700 { color: #6ee7b7 !important; }
+:root[data-theme="dark"] .radius-page .bg-red-50 { background-color: rgba(127, 29, 29, .25) !important; }
+:root[data-theme="dark"] .radius-page .text-red-700 { color: #fca5a5 !important; }
+:root[data-theme="dark"] .radius-page .text-indigo-600 { color: #a5b4fc !important; }
+:root[data-theme="dark"] .public-payment-page { background-color: var(--app-bg) !important; color: var(--app-text); }
+:root[data-theme="dark"] .public-payment-page .text-slate-900,
+:root[data-theme="dark"] .public-payment-page .text-slate-800,
+:root[data-theme="dark"] .public-payment-page .text-slate-700 { color: var(--app-text) !important; }
+:root[data-theme="dark"] .public-payment-page .text-slate-500,
+:root[data-theme="dark"] .public-payment-page .text-slate-400 { color: var(--app-text-muted) !important; }
+:root[data-theme="dark"] .public-payment-page .bg-slate-50,
+:root[data-theme="dark"] .public-payment-page .bg-white { background-color: var(--app-surface-muted) !important; }
+:root[data-theme="dark"] .public-payment-page .border-slate-100,
+:root[data-theme="dark"] .public-payment-page .border-slate-200,
+:root[data-theme="dark"] .public-payment-page .border-indigo-100 { border-color: var(--app-border) !important; }
+:root[data-theme="dark"] .public-payment-page .bg-indigo-50 { background-color: rgba(49, 46, 129, .25) !important; }
+:root[data-theme="dark"] .public-payment-page .text-indigo-500,
+:root[data-theme="dark"] .public-payment-page .text-indigo-600 { color: #a5b4fc !important; }
+:root[data-theme="dark"] .login-form-panel { background-color: var(--app-surface) !important; }
+:root[data-theme="dark"] .login-form-panel .text-slate-800,
+:root[data-theme="dark"] .login-form-panel .text-slate-900 { color: var(--app-text) !important; }
+:root[data-theme="dark"] .login-form-panel .text-slate-500 { color: var(--app-text-muted) !important; }
+:root[data-theme="dark"] .onboarding-notice { background-color: rgba(49, 46, 129, .25) !important; border-color: #373d68 !important; }
+:root[data-theme="dark"] .onboarding-notice .text-indigo-700 { color: #c7d2fe !important; }

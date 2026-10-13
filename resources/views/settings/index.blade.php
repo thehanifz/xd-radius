@@ -20,7 +20,7 @@
                        value="{{ old('settings.'.$s->key, $s->value) }}"
                        class="form-input">
                 @if($s->description)
-                <p class="text-xs text-slate-400 mt-1">{{ $s->description }}</p>
+                <p class="text-xs text-slate-400 mt-1 dark:text-slate-500">{{ $s->description }}</p>
                 @endif
             </div>
             @endforeach
@@ -41,13 +41,13 @@
                        value="{{ old('settings.'.$s->key, $s->value) }}"
                        min="5" max="1440" class="form-input w-40">
                 @if($s->description)
-                <p class="text-xs text-slate-400 mt-1">{{ $s->description }}</p>
+                <p class="text-xs text-slate-400 mt-1 dark:text-slate-500">{{ $s->description }}</p>
                 @endif
             </div>
             @endforeach
-            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <p class="text-amber-800 text-sm font-semibold mb-1">Rekomendasi Konfigurasi NAS</p>
-                <p class="text-amber-700 text-xs">Aktifkan Interim-Update di MikroTik: <code class="bg-amber-100 px-1 rounded">RADIUS > Incoming > set interim-update=1m</code>. Threshold stale sebaiknya 2× interval Interim-Update.</p>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 dark:bg-amber-950/30 dark:border-amber-800">
+                <p class="text-amber-800 text-sm font-semibold mb-1 dark:text-amber-200">Rekomendasi Konfigurasi NAS</p>
+                <p class="text-amber-700 text-xs dark:text-amber-300">Aktifkan Interim-Update di MikroTik: <code class="bg-amber-100 px-1 rounded dark:bg-amber-900/40">RADIUS > Incoming > set interim-update=1m</code>. Threshold stale sebaiknya 2× interval Interim-Update.</p>
             </div>
         </div>
     </div>
@@ -76,7 +76,7 @@
                        min="1" max="30" class="form-input w-32">
                 @endif
                 @if($s->description)
-                <p class="text-xs text-slate-400 mt-1">{{ $s->description }}</p>
+                <p class="text-xs text-slate-400 mt-1 dark:text-slate-500">{{ $s->description }}</p>
                 @endif
             </div>
             @endforeach

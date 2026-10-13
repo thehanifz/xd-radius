@@ -1,4 +1,4 @@
-<div data-plan-form data-initial-type="{{ old('type', $plan->type ?? 'voucher') }}">
+<div class="plans-console-form space-y-4" data-plan-form data-initial-type="{{ old('type', $plan->type ?? 'voucher') }}">
     {{-- Nama Paket --}}
     <div>
         <label class="form-label">Nama Paket <span class="text-red-500">*</span></label>

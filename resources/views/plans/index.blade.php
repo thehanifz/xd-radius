@@ -9,7 +9,7 @@
 @endsection
 
 @section('content')
-<div class="space-y-5">
+<div class="plans-console space-y-5">
 
     {{-- Stats --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">

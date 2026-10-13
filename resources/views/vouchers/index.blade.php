@@ -9,7 +9,7 @@
 @endsection
 
 @section('content')
-<div class="space-y-5">
+<div class="voucher-console space-y-5">
 <div id="voucher-kpi-strip" class="card overflow-hidden">
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-x divide-y lg:divide-y-0 divide-slate-100">
         @php

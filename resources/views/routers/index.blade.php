@@ -9,7 +9,7 @@
 @endsection
 
 @section('content')
-<div class="space-y-5">
+<div class="router-page space-y-5">
 
     <div class="card overflow-hidden">
         @if($routers->isEmpty())

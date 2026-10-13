@@ -18,11 +18,11 @@
 <div class="max-w-3xl space-y-5">
 
     @if(session('payment_url'))
-    <div class="card border border-indigo-200 bg-indigo-50">
+    <div class="card border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10">
         <div class="card-body">
-            <p class="text-sm font-semibold text-indigo-800">Link pembayaran berhasil dibuat</p>
+            <p class="text-sm font-semibold text-indigo-800 dark:text-indigo-200">Link pembayaran berhasil dibuat</p>
             <div class="mt-2 flex flex-col sm:flex-row gap-2">
-                <input readonly value="{{ session('payment_url') }}" class="form-input flex-1 bg-white text-xs" onclick="this.select()">
+                <input readonly value="{{ session('payment_url') }}" class="form-input flex-1 bg-white dark:bg-slate-900 text-xs" onclick="this.select()">
                 <a href="{{ session('payment_url') }}" target="_blank" class="btn-primary whitespace-nowrap">Buka Pembayaran</a>
             </div>
         </div>
@@ -35,26 +35,26 @@
         <div class="card-body">
             <div class="flex items-start justify-between gap-4">
                 <div>
-                    <p class="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Invoice #{{ $invoice->id }}</p>
-                    <h2 class="text-xl font-bold text-slate-800">{{ $invoice->member->username }}</h2>
-                    <p class="text-sm text-slate-500 mt-0.5">{{ $invoice->member->plan->name ?? '-' }}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-semibold mb-1">Invoice #{{ $invoice->id }}</p>
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">{{ $invoice->member->username }}</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{{ $invoice->member->plan->name ?? '-' }}</p>
                 </div>
                 <span class="badge {{ $invoice->status_badge_class }} text-sm px-3 py-1">{{ $invoice->status_label }}</span>
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-slate-100">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/70">
                 <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold">Periode</p>
-                    <p class="text-sm font-medium text-slate-700 mt-0.5">
+                    <p class="text-xs text-slate-400 dark:text-slate-500 uppercase font-semibold">Periode</p>
+                    <p class="text-sm font-medium text-slate-700 dark:text-slate-200 mt-0.5">
                         {{ $invoice->period_start->format('d M Y') }} – {{ $invoice->period_end->format('d M Y') }}
                     </p>
                 </div>
                 <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold">Nominal</p>
-                    <p class="text-lg font-bold text-slate-800 mt-0.5 tabular-nums">{{ $invoice->amount_label }}</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 uppercase font-semibold">Nominal</p>
+                    <p class="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5 tabular-nums">{{ $invoice->amount_label }}</p>
                 </div>
                 <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold">{{ $invoice->status === 'paid' ? 'Dibayar' : 'Jatuh Tempo Bayar' }}</p>
-                    <p class="text-sm font-medium text-slate-700 mt-0.5">
+                    <p class="text-xs text-slate-400 dark:text-slate-500 uppercase font-semibold">{{ $invoice->status === 'paid' ? 'Dibayar' : 'Jatuh Tempo Bayar' }}</p>
+                    <p class="text-sm font-medium text-slate-700 dark:text-slate-200 mt-0.5">
                         @if($invoice->status === 'paid' && $invoice->payments->isNotEmpty())
                             {{ $invoice->payments->sortByDesc('paid_at')->first()->paid_at->format('d M Y') }}
                         @else
@@ -63,12 +63,12 @@
                     </p>
                 </div>
                 <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold">Dibuat</p>
-                    <p class="text-sm font-medium text-slate-700 mt-0.5">{{ $invoice->created_at->format('d M Y') }}</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 uppercase font-semibold">Dibuat</p>
+                    <p class="text-sm font-medium text-slate-700 dark:text-slate-200 mt-0.5">{{ $invoice->created_at->format('d M Y') }}</p>
                 </div>
             </div>
             @if($invoice->notes)
-            <p class="mt-4 text-sm text-slate-500 bg-slate-50 rounded-lg px-4 py-2.5">{{ $invoice->notes }}</p>
+            <p class="mt-4 text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/70 rounded-lg px-4 py-2.5">{{ $invoice->notes }}</p>
             @endif
         </div>
     </div>
@@ -82,11 +82,11 @@
         <div class="card-body">
             @php($vaAttempts = $invoice->paymentAttempts->filter(fn ($attempt) => $attempt->gateway === 'doku' && str_starts_with((string) $attempt->channel, 'va_') && $attempt->status === 'pending'))
             @if($vaAttempts->isNotEmpty())
-                <p class="text-sm text-slate-600">Instruksi VA sudah disiapkan otomatis. Buka tautan pembayaran pada tabel di bawah untuk melihat detail pembayaran.</p>
+                <p class="text-sm text-slate-600 dark:text-slate-300">Instruksi VA sudah disiapkan otomatis. Buka tautan pembayaran pada tabel di bawah untuk melihat detail pembayaran.</p>
             @else
-                <p class="text-sm text-amber-700">Instruksi VA belum tersedia. Periksa pesan error di atas; sistem tidak akan memperbarui VA jika invoice lain milik member ini masih aktif.</p>
+                <p class="text-sm text-amber-700 dark:text-amber-300">Instruksi VA belum tersedia. Periksa pesan error di atas; sistem tidak akan memperbarui VA jika invoice lain milik member ini masih aktif.</p>
             @endif
-            <p class="text-xs text-slate-400 mt-3">Pembayaran DOKU tidak memerlukan login member.</p>
+            <p class="text-xs text-slate-400 dark:text-slate-500 mt-3">Pembayaran DOKU tidak memerlukan login member.</p>
         </div>
     </div>
     @endif
@@ -97,28 +97,28 @@
             <h3 class="card-title">Payment Attempts</h3>
         </div>
         @if($invoice->paymentAttempts->isEmpty())
-            <div class="py-8 text-center text-sm text-slate-400">Belum ada attempt pembayaran gateway.</div>
+            <div class="py-8 text-center text-sm text-slate-400 dark:text-slate-500">Belum ada attempt pembayaran gateway.</div>
         @else
             <div class="table-scroll">
                 <table class="w-full text-sm">
-                    <thead class="bg-slate-50 border-b border-slate-200">
+                    <thead class="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700">
                         <tr>
-                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Channel</th>
-                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
-                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Provisioning</th>
-                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Aksi</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Channel</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Status</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Provisioning</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700/70">
                     @foreach($invoice->paymentAttempts as $attempt)
                         <tr>
-                            <td class="px-5 py-3 font-medium text-slate-700">{{ strtoupper(str_replace('_',' ', $attempt->channel)) }}</td>
+                            <td class="px-5 py-3 font-medium text-slate-700 dark:text-slate-200">{{ strtoupper(str_replace('_',' ', $attempt->channel)) }}</td>
                             <td class="px-5 py-3"><span class="badge badge-blue">{{ strtoupper($attempt->status) }}</span></td>
-                            <td class="px-5 py-3 text-xs text-slate-500">{{ strtoupper($attempt->provisioning_status) }}</td>
+                            <td class="px-5 py-3 text-xs text-slate-500 dark:text-slate-400">{{ strtoupper($attempt->provisioning_status) }}</td>
                             <td class="px-5 py-3">
                                 @if($attempt->public_token_encrypted)
                                     @php($publicUrl = route('public.payment.show', ['token' => decrypt($attempt->public_token_encrypted)]))
-                                    <a href="{{ $publicUrl }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 font-medium">Buka</a>
+                                    <a href="{{ $publicUrl }}" target="_blank" class="text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 font-medium">Buka</a>
                                 @endif
                             </td>
                         </tr>
@@ -136,29 +136,29 @@
         </div>
         @if($invoice->payments->isEmpty())
         <div class="py-10 flex flex-col items-center text-center">
-            <svg class="text-slate-300 mb-2" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-            <p class="text-slate-400 text-sm">Belum ada pembayaran</p>
+            <svg class="text-slate-300 dark:text-slate-600 mb-2" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            <p class="text-slate-400 dark:text-slate-500 text-sm">Belum ada pembayaran</p>
         </div>
         @else
         <div class="table-scroll">
 <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-200">
+            <thead class="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                    <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Tanggal</th>
-                    <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Nominal</th>
-                    <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Metode</th>
-                    <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Catatan</th>
+                    <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Tanggal</th>
+                    <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Nominal</th>
+                    <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Metode</th>
+                    <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Catatan</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/70">
                 @foreach($invoice->payments as $pay)
-                <tr class="hover:bg-slate-50">
-                    <td class="px-5 py-3 tabular-nums text-slate-600">{{ $pay->paid_at->format('d M Y H:i') }}</td>
-                    <td class="px-5 py-3 font-semibold text-slate-800 tabular-nums">{{ $pay->amount_label }}</td>
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                    <td class="px-5 py-3 tabular-nums text-slate-600 dark:text-slate-300">{{ $pay->paid_at->format('d M Y H:i') }}</td>
+                    <td class="px-5 py-3 font-semibold text-slate-800 dark:text-slate-100 tabular-nums">{{ $pay->amount_label }}</td>
                     <td class="px-5 py-3">
                         <span class="badge badge-blue">{{ $pay->method_label }}</span>
                     </td>
-                    <td class="px-5 py-3 text-slate-400 text-xs">{{ $pay->notes ?? '-' }}</td>
+                    <td class="px-5 py-3 text-slate-400 dark:text-slate-500 text-xs">{{ $pay->notes ?? '-' }}</td>
                 </tr>
                 @endforeach
             </tbody>

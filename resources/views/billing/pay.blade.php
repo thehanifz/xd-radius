@@ -9,18 +9,18 @@
         </div>
         <div class="card-body">
             {{-- Ringkasan Invoice --}}
-            <div class="bg-slate-50 rounded-xl px-4 py-3.5 mb-5 space-y-1">
+            <div class="bg-slate-50 dark:bg-slate-800/70 rounded-xl px-4 py-3.5 mb-5 space-y-1">
                 <div class="flex justify-between text-sm">
-                    <span class="text-slate-500">Periode</span>
-                    <span class="font-medium text-slate-700">{{ $invoice->period_start->format('d M') }} – {{ $invoice->period_end->format('d M Y') }}</span>
+                    <span class="text-slate-500 dark:text-slate-400">Periode</span>
+                    <span class="font-medium text-slate-700 dark:text-slate-200">{{ $invoice->period_start->format('d M') }} – {{ $invoice->period_end->format('d M Y') }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
-                    <span class="text-slate-500">Nominal tagihan</span>
-                    <span class="font-bold text-slate-800 tabular-nums">{{ $invoice->amount_label }}</span>
+                    <span class="text-slate-500 dark:text-slate-400">Nominal tagihan</span>
+                    <span class="font-bold text-slate-800 dark:text-slate-100 tabular-nums">{{ $invoice->amount_label }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
-                    <span class="text-slate-500">Jatuh tempo pembayaran</span>
-                    <span class="text-slate-700 tabular-nums">{{ $invoice->due_date->format('d M Y') }}</span>
+                    <span class="text-slate-500 dark:text-slate-400">Jatuh tempo pembayaran</span>
+                    <span class="text-slate-700 dark:text-slate-200 tabular-nums">{{ $invoice->due_date->format('d M Y') }}</span>
                 </div>
             </div>
 
@@ -55,14 +55,14 @@
                 </div>
 
                 {{-- Opsi perpanjang otomatis --}}
-                <div class="flex items-start gap-3 bg-indigo-50 rounded-xl px-4 py-3.5">
+                <div class="flex items-start gap-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl px-4 py-3.5">
                     <input type="checkbox" name="renew" value="1" id="renew" class="mt-0.5"
                            {{ old('renew') ? 'checked' : '' }}>
                     <div>
-                        <label for="renew" class="text-sm font-semibold text-indigo-800 cursor-pointer">
+                        <label for="renew" class="text-sm font-semibold text-indigo-800 dark:text-indigo-200 cursor-pointer">
                             Perpanjang masa aktif member
                         </label>
-                        <p class="text-xs text-indigo-600 mt-0.5">
+                        <p class="text-xs text-indigo-600 dark:text-indigo-300 mt-0.5">
                             Expired akan dihitung dari jatuh tempo lama:
                             <strong class="tabular-nums">{{ $invoice->period_end->format('d M Y') }}</strong>
                         </p>

@@ -9,7 +9,7 @@
 @endsection
 
 @section('content')
-<div class="max-w-5xl" x-data="voucherGenerator()" x-init="init()">
+<div class="voucher-console max-w-5xl" x-data="voucherGenerator()" x-init="init()">
 
     {{-- Flash setelah generate berhasil --}}
     @if(isset($batchCode))

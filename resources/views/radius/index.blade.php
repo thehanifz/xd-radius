@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-5xl mx-auto space-y-6">
+<div class="radius-page max-w-5xl mx-auto space-y-6">
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-semibold">FreeRADIUS Management</h1>
-            <p class="text-sm text-gray-500">Setup, configure, health check, dan reconciliation.</p>
+            <p class="text-sm text-slate-500">Setup, configure, health check, dan reconciliation.</p>
         </div>
         <form method="POST" action="{{ route('freeradius.setup') }}">
             @csrf
@@ -13,11 +13,11 @@
         </form>
     </div>
 
-    @if(session('success'))<div class="p-3 rounded bg-green-50 text-green-700">{{ session('success') }}</div>@endif
-    @if(session('error'))<div class="p-3 rounded bg-red-50 text-red-700">{{ session('error') }}</div>@endif
+    @if(session('success'))<div class="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">{{ session('success') }}</div>@endif
+    @if(session('error'))<div class="p-3 rounded-xl border border-red-200 bg-red-50 text-red-700">{{ session('error') }}</div>@endif
 
     <div class="grid md:grid-cols-2 gap-4">
-        <div class="rounded border p-5 bg-white">
+        <div class="card p-5">
             <h2 class="font-semibold mb-3">Environment</h2>
             <dl class="space-y-2 text-sm">
                 <div class="flex justify-between"><dt>Installed</dt><dd>{{ $environment['installed'] ? 'Yes' : 'No' }}</dd></div>
@@ -29,7 +29,7 @@
             </dl>
         </div>
 
-        <div class="rounded border p-5 bg-white">
+        <div class="card p-5">
             <h2 class="font-semibold mb-3">Health</h2>
             <div class="mb-4 font-medium {{ $health['healthy'] ? 'text-green-700' : 'text-red-700' }}">
                 {{ $health['healthy'] ? 'Healthy / Ready' : 'Not Healthy' }}
@@ -42,15 +42,15 @@
         </div>
     </div>
 
-    <div class="rounded border p-5 bg-white">
+    <div class="card p-5">
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="font-semibold">Configuration Reconciliation</h2>
-                <p class="text-sm text-gray-500">Generate → validate → apply → health check.</p>
+                <p class="text-sm text-slate-500">Generate → validate → apply → health check.</p>
             </div>
             <form method="POST" action="{{ route('freeradius.reconcile') }}">
                 @csrf
-                <button class="px-4 py-2 rounded border">Run Reconciliation</button>
+                <button class="btn-secondary">Run Reconciliation</button>
             </form>
         </div>
     </div>

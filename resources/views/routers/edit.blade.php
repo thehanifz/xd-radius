@@ -2,7 +2,7 @@
 @section('title', 'Edit Router')
 
 @section('content')
-<div class="max-w-xl">
+<div class="router-page max-w-xl">
     <div class="card">
         <div class="card-header">
             <h2 class="font-semibold text-slate-800">Edit Router</h2>

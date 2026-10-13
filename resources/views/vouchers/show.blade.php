@@ -11,7 +11,7 @@
 @endsection
 
 @section('content')
-<div class="max-w-5xl mx-auto space-y-5">
+<div class="voucher-console max-w-5xl mx-auto space-y-5">
     <div class="card overflow-hidden">
         <div class="px-6 py-6 bg-gradient-to-r from-indigo-600 to-violet-600 text-white">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

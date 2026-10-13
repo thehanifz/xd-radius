@@ -6,7 +6,7 @@
     <title>Pembayaran Invoice #{{ $attempt->invoice_id }} — XD Radius</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+<body class="public-payment-page min-h-screen bg-slate-50 flex items-center justify-center p-4">
 <div class="w-full max-w-lg">
     <div class="card overflow-hidden">
         <div class="card-body p-6 sm:p-8">

@@ -14,7 +14,7 @@
                     <div class="font-medium {{ $setting->enabled ? 'text-emerald-600' : 'text-slate-400' }}">
                         {{ $setting->enabled ? '● Aktif' : '● Nonaktif' }}
                     </div>
-                    <div class="text-slate-400 mt-1">{{ ucfirst($setting->environment) }}</div>
+                    <div class="text-slate-400 mt-1 dark:text-slate-500">{{ ucfirst($setting->environment) }}</div>
                 </div>
             </div>
         </div>
@@ -25,10 +25,10 @@
             <section>
                 <div class="flex items-center justify-between gap-4 mb-4">
                     <div>
-                        <h3 class="font-semibold text-slate-800">Koneksi</h3>
-                        <p class="text-xs text-slate-400 mt-1">Credential rahasia tersimpan terenkripsi.</p>
+                        <h3 class="font-semibold text-slate-800 dark:text-slate-100">Koneksi</h3>
+                        <p class="text-xs text-slate-400 mt-1 dark:text-slate-500">Credential rahasia tersimpan terenkripsi.</p>
                     </div>
-                    <label class="flex items-center gap-2 text-sm text-slate-700">
+                    <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
                         <input type="checkbox" name="enabled" value="1" class="w-4 h-4 rounded accent-indigo-600" {{ old('enabled', $setting->enabled) ? 'checked' : '' }}>
                         Aktifkan DOKU
                     </label>
@@ -50,8 +50,8 @@
             </section>
 
             <section class="border-t pt-5">
-                <h3 class="font-semibold text-slate-800">Credential</h3>
-                <p class="text-xs text-slate-400 mt-1">Secret yang sudah tersimpan tidak pernah ditampilkan kembali.</p>
+                <h3 class="font-semibold text-slate-800 dark:text-slate-100">Credential</h3>
+                <p class="text-xs text-slate-400 mt-1 dark:text-slate-500">Secret yang sudah tersimpan tidak pernah ditampilkan kembali.</p>
                 <div class="grid md:grid-cols-2 gap-4 mt-4">
                     <div>
                         <label class="form-label">Client ID</label>
@@ -69,7 +69,7 @@
             </section>
 
             <section class="border-t pt-5">
-                <h3 class="font-semibold text-slate-800">Merchant</h3>
+                <h3 class="font-semibold text-slate-800 dark:text-slate-100">Merchant</h3>
                 <div class="grid md:grid-cols-3 gap-4 mt-4">
                     <div>
                         <label class="form-label">Merchant ID</label>
@@ -105,25 +105,25 @@
                     <h2 class="card-title">Virtual Account</h2>
                     <p class="card-subtitle">Cukup pilih bank. Nomor customer VA dibuat otomatis dari ID member.</p>
                 </div>
-                <span class="text-xs text-slate-400">{{ $channels->where('enabled', true)->count() }} aktif</span>
+                <span class="text-xs text-slate-400 dark:text-slate-500">{{ $channels->where('enabled', true)->count() }} aktif</span>
             </div>
         </div>
 
         <div class="p-6 space-y-4">
             @forelse($channels as $channel)
-                <div class="rounded-xl border border-slate-200 p-4">
+                <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
                     <div class="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <div class="flex items-center gap-2">
-                                <span class="font-semibold text-slate-800">{{ $channel->name }}</span>
+                                <span class="font-semibold text-slate-800 dark:text-slate-100">{{ $channel->name }}</span>
                                 @if($channel->is_default)
-                                    <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600">Default</span>
+                                    <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">Default</span>
                                 @endif
                                 <span class="rounded-full px-2 py-0.5 text-[11px] font-medium {{ $channel->enabled ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500' }}">
                                     {{ $channel->enabled ? 'Aktif' : 'Nonaktif' }}
                                 </span>
                             </div>
-                            <div class="text-xs text-slate-400 mt-1">
+                            <div class="text-xs text-slate-400 mt-1 dark:text-slate-500">
                                 @if($channel->merchant_bin || $channel->partner_service_id)
                                     BIN {{ $channel->merchant_bin ?: '-' }} · Partner Service ID {{ $channel->partner_service_id ?: '-' }} · Prefix {{ $channel->customer_prefix ?? '-' }}
                                 @else
@@ -132,8 +132,8 @@
                             </div>
                         </div>
                         <details>
-                            <summary class="cursor-pointer text-sm text-indigo-600 hover:text-indigo-800">Edit</summary>
-                            <div class="mt-4 w-full min-w-[280px] max-w-md rounded-xl bg-slate-50 border border-slate-200 p-4">
+                            <summary class="cursor-pointer text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-300">Edit</summary>
+                            <div class="mt-4 w-full min-w-[280px] max-w-md rounded-xl bg-slate-50 border border-slate-200 p-4 dark:bg-slate-800 dark:border-slate-700">
                                 <form method="POST" action="{{ route('settings.doku.va-channels.update', $channel) }}" class="space-y-3">
                                     @csrf @method('PUT')
                                     <div>
@@ -142,7 +142,7 @@
                                             <div><label class="form-label">Partner Service ID</label><input name="partner_service_id" value="{{ $channel->partner_service_id }}" inputmode="numeric" pattern="[0-9]{1,8}" maxlength="8" placeholder="contoh 86188" class="form-input"></div>
                                             <div><label class="form-label">Prefix Customer No</label><input name="customer_prefix" value="{{ $channel->customer_prefix }}" inputmode="numeric" maxlength="20" placeholder="contoh 0" class="form-input"></div>
                                         </div>
-                                        <p class="text-xs text-slate-400 mt-1">Nilai ini berasal dari konfigurasi channel DOKU Anda. Disimpan terenkripsi.</p>
+                                        <p class="text-xs text-slate-400 mt-1 dark:text-slate-500">Nilai ini berasal dari konfigurasi channel DOKU Anda. Disimpan terenkripsi.</p>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-4 text-sm">
                                         <label class="flex items-center gap-2"><input type="checkbox" name="enabled" value="1" {{ $channel->enabled ? 'checked' : '' }}> Aktif</label>
@@ -152,19 +152,19 @@
                                 </form>
                                 <form method="POST" action="{{ route('settings.doku.va-channels.destroy', $channel) }}" class="mt-3" onsubmit="return confirm('Hapus bank {{ addslashes($channel->name) }}?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="text-xs text-red-600 hover:text-red-800">Hapus bank</button>
+                                    <button type="submit" class="text-xs text-red-600 hover:text-red-800 dark:text-red-400">Hapus bank</button>
                                 </form>
                             </div>
                         </details>
                     </div>
                 </div>
             @empty
-                <div class="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">Belum ada bank VA. Tambahkan bank yang aktif di akun DOKU Anda.</div>
+                <div class="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Belum ada bank VA. Tambahkan bank yang aktif di akun DOKU Anda.</div>
             @endforelse
 
-            <details class="rounded-xl border border-dashed border-slate-300">
-                <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-indigo-600">+ Tambah Bank</summary>
-                <div class="border-t border-slate-200 p-4 bg-slate-50">
+            <details class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-indigo-600 dark:text-indigo-300">+ Tambah Bank</summary>
+                <div class="border-t border-slate-200 p-4 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
                     <form method="POST" action="{{ route('settings.doku.va-channels.store') }}" class="space-y-4">
                         @csrf
                         <div>
@@ -184,7 +184,7 @@
                             <div class="md:col-span-2"><label class="form-label">Channel DOKU</label><input name="custom_channel" placeholder="Channel dari dokumentasi DOKU" class="form-input"></div>
                         </div>
 
-                        <p class="text-xs text-slate-500">Partner Service ID, Merchant BIN, dan Prefix Customer No diisi satu kali sesuai konfigurasi channel DOKU. Setelah disimpan, pembuatan VA member berjalan otomatis.</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Partner Service ID, Merchant BIN, dan Prefix Customer No diisi satu kali sesuai konfigurasi channel DOKU. Setelah disimpan, pembuatan VA member berjalan otomatis.</p>
 
                         <div class="grid md:grid-cols-3 gap-3">
                             <div><label class="form-label">Merchant BIN</label><input name="merchant_bin" inputmode="numeric" pattern="[0-9]{1,8}" maxlength="8" placeholder="contoh 861880" class="form-input"></div>
@@ -209,7 +209,7 @@
             <p class="card-subtitle">Meminta access token DOKU tanpa menampilkan token ke UI atau log.</p>
         </div>
         <div class="p-6 flex flex-wrap items-center justify-between gap-4">
-            <div class="text-sm text-slate-500">Gunakan setelah credential berubah untuk memastikan koneksi masih valid.</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Gunakan setelah credential berubah untuk memastikan koneksi masih valid.</div>
             <form method="POST" action="{{ route('settings.doku.test') }}">
                 @csrf
                 <button type="submit" class="btn-secondary">Test Koneksi DOKU</button>
@@ -224,25 +224,25 @@
                     <h2 class="card-title">Pengaturan Lanjutan</h2>
                     <p class="card-subtitle">Pengaturan server yang biasanya tidak perlu diubah.</p>
                 </div>
-                <span class="text-sm text-indigo-600">Tampilkan</span>
+                <span class="text-sm text-indigo-600 dark:text-indigo-300">Tampilkan</span>
             </div>
         </summary>
         <div class="border-t p-6 space-y-5 text-sm">
             <div class="grid md:grid-cols-2 gap-4">
-                <div><span class="text-slate-500">Webhook Path</span><code class="block mt-1">{{ $setting->notification_path ?: '/webhooks/doku' }}</code></div>
-                <div><span class="text-slate-500">HTTP Timeout</span><code class="block mt-1">{{ $setting->timeout ?: 15 }} detik</code></div>
+                <div><span class="text-slate-500 dark:text-slate-400">Webhook Path</span><code class="block mt-1">{{ $setting->notification_path ?: '/webhooks/doku' }}</code></div>
+                <div><span class="text-slate-500 dark:text-slate-400">HTTP Timeout</span><code class="block mt-1">{{ $setting->timeout ?: 15 }} detik</code></div>
             </div>
             <div>
-                <div class="font-semibold text-slate-800">RSA Key Pair</div>
-                <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                    <div class="flex justify-between gap-4"><span class="text-slate-500">Private key</span><span class="font-medium {{ $keyStatus['private_exists'] ? 'text-emerald-600' : 'text-red-600' }}">{{ $keyStatus['private_exists'] ? 'Installed' : 'Missing' }}</span></div>
-                    <div class="flex justify-between gap-4"><span class="text-slate-500">Public key</span><span class="font-medium {{ $keyStatus['public_exists'] ? 'text-emerald-600' : 'text-red-600' }}">{{ $keyStatus['public_exists'] ? 'Installed' : 'Missing' }}</span></div>
-                    <div><span class="text-slate-500">Fingerprint</span><code class="block mt-1 text-xs break-all">{{ $keyStatus['fingerprint'] ?? 'Belum tersedia' }}</code></div>
+                <div class="font-semibold text-slate-800 dark:text-slate-100">RSA Key Pair</div>
+                <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 dark:border-slate-700 dark:bg-slate-800">
+                    <div class="flex justify-between gap-4"><span class="text-slate-500 dark:text-slate-400">Private key</span><span class="font-medium {{ $keyStatus['private_exists'] ? 'text-emerald-600' : 'text-red-600' }}">{{ $keyStatus['private_exists'] ? 'Installed' : 'Missing' }}</span></div>
+                    <div class="flex justify-between gap-4"><span class="text-slate-500 dark:text-slate-400">Public key</span><span class="font-medium {{ $keyStatus['public_exists'] ? 'text-emerald-600' : 'text-red-600' }}">{{ $keyStatus['public_exists'] ? 'Installed' : 'Missing' }}</span></div>
+                    <div><span class="text-slate-500 dark:text-slate-400">Fingerprint</span><code class="block mt-1 text-xs break-all">{{ $keyStatus['fingerprint'] ?? 'Belum tersedia' }}</code></div>
                 </div>
                 @if($keyStatus['public_exists'])
                     <a href="{{ route('settings.doku.public-key') }}" target="_blank" class="btn-secondary inline-block mt-3">Lihat Public Key</a>
                 @endif
-                <p class="text-xs text-slate-400 mt-3">Private key tetap sebagai file server dan tidak disimpan di database.</p>
+                <p class="text-xs text-slate-400 mt-3 dark:text-slate-500">Private key tetap sebagai file server dan tidak disimpan di database.</p>
             </div>
         </div>
     </details>
