@@ -48,45 +48,45 @@
         <div class="card-body">
             <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Username</dt>
-                    <dd class="font-mono font-semibold text-slate-800 mt-1">{{ $member->username }}</dd>
+                    <dt class="text-slate-400 dark:text-slate-500 text-xs uppercase tracking-wide font-semibold">Username</dt>
+                    <dd class="font-mono font-semibold text-slate-800 dark:text-slate-100 mt-1">{{ $member->username }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Paket</dt>
+                    <dt class="text-slate-400 dark:text-slate-500 text-xs uppercase tracking-wide font-semibold">Paket</dt>
                     <dd class="font-medium mt-1">{{ $member->plan?->name ?? '-' }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Harga</dt>
+                    <dt class="text-slate-400 dark:text-slate-500 text-xs uppercase tracking-wide font-semibold">Harga</dt>
                     <dd class="font-medium mt-1 tabular-nums">{{ $member->price_snapshot_label }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Simultaneous Use</dt>
+                    <dt class="text-slate-400 dark:text-slate-500 text-xs uppercase tracking-wide font-semibold">Simultaneous Use</dt>
                     <dd class="mt-1">{{ $member->simultaneous_use }}x sesi</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Aktif Sejak</dt>
+                    <dt class="text-slate-400 dark:text-slate-500 text-xs uppercase tracking-wide font-semibold">Aktif Sejak</dt>
                     <dd class="mt-1">{{ $member->activated_at?->format('d M Y') ?? '-' }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Pertama Login</dt>
+                    <dt class="text-slate-400 dark:text-slate-500 text-xs uppercase tracking-wide font-semibold">Pertama Login</dt>
                     <dd class="mt-1">{{ $member->first_login_at?->format('d M Y H:i') ?? '-' }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Expired</dt>
+                    <dt class="text-slate-400 dark:text-slate-500 text-xs uppercase tracking-wide font-semibold">Expired</dt>
                     <dd class="mt-1 {{ $member->expired_at?->isPast() ? 'text-red-600 font-semibold' : '' }}">
                         {{ $member->expired_at?->format('d M Y H:i') ?? '-' }}
                     </dd>
                 </div>
                 <div>
-                    <dt class="text-slate-400 text-xs uppercase tracking-wide font-semibold">Dibuat</dt>
+                    <dt class="text-slate-400 dark:text-slate-500 text-xs uppercase tracking-wide font-semibold">Dibuat</dt>
                     <dd class="mt-1">{{ $member->created_at?->format('d M Y') ?? '-' }}</dd>
                 </div>
             </dl>
 
             @if($member->notes)
-            <div class="mt-4 pt-4 border-t border-slate-100">
-                <p class="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-1">Catatan</p>
-                <p class="text-sm text-slate-600">{{ $member->notes }}</p>
+            <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                <p class="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide font-semibold mb-1">Catatan</p>
+                <p class="text-sm text-slate-600 dark:text-slate-300">{{ $member->notes }}</p>
             </div>
             @endif
         </div>
@@ -99,13 +99,13 @@
         </div>
         <div class="card-body">
             @if($dokuVaChannels->isEmpty())
-                <div class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <div class="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
                     Belum ada channel VA DOKU aktif. Konfigurasikan channel di Pengaturan Sistem → Pembayaran DOKU.
                 </div>
             @endif
 
             @if(!empty($dokuVaSyncErrors))
-                <div class="mb-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <div class="mb-4 text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
                     <p class="font-semibold">Sebagian Virtual Account belum berhasil dibuat otomatis.</p>
                     <p class="mt-1">Sistem akan mencoba kembali saat halaman member dibuka lagi.</p>
                     <ul class="list-disc ml-5 mt-2">
@@ -117,19 +117,19 @@
             @endif
 
             @if($member->paymentAccounts->isEmpty())
-                <p class="text-sm text-slate-500">Belum ada VA yang berhasil dibuat. Periksa konfigurasi channel DOKU atau buka kembali halaman ini untuk mencoba ulang.</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Belum ada VA yang berhasil dibuat. Periksa konfigurasi channel DOKU atau buka kembali halaman ini untuk mencoba ulang.</p>
             @else
                 <div class="space-y-3">
                     @foreach($member->paymentAccounts as $account)
-                        <div class="rounded-xl border border-slate-200 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
                                 <div class="flex items-center gap-2">
-                                    <span class="font-semibold text-slate-800">{{ $account->bank }}</span>
+                                    <span class="font-semibold text-slate-800 dark:text-slate-100">{{ $account->bank }}</span>
                                     @if($account->is_default)<span class="badge badge-green">Default</span>@endif
                                     <span class="badge badge-blue">{{ strtoupper($account->status) }}</span>
                                 </div>
-                                <p class="font-mono text-lg tracking-wider text-slate-900 mt-1">{{ $account->account_number }}</p>
-                                <p class="text-xs text-slate-400 mt-1">Gateway: {{ strtoupper($account->gateway) }}</p>
+                                <p class="font-mono text-lg tracking-wider text-slate-900 dark:text-slate-100 mt-1">{{ $account->account_number }}</p>
+                                <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Gateway: {{ strtoupper($account->gateway) }}</p>
                             </div>
                         </div>
                     @endforeach
@@ -143,37 +143,37 @@
         <div class="card-header">
             <span class="card-title">Riwayat Invoice</span>
             <a href="{{ route('billing.create', ['member_id' => $member->id]) }}"
-               class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+               class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors">
                 + Buat Invoice
             </a>
         </div>
         @if($invoices->isEmpty())
-            <div class="py-10 text-center text-slate-400 text-sm">
+            <div class="py-10 text-center text-slate-400 dark:text-slate-500 text-sm">
                 Belum ada invoice untuk member ini.
             </div>
         @else
             <div class="overflow-x-auto">
                 <div class="table-scroll">
-<table class="w-full text-sm">
-                    <thead class="bg-slate-50 border-b border-slate-200">
+<table class="data-table w-full text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                         <tr>
-                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Periode</th>
-                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Nominal</th>
-                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Jatuh Tempo Bayar</th>
-                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Status</th>
-                            <th class="text-right px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Aksi</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Periode</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Nominal</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Jatuh Tempo Bayar</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Status</th>
+                            <th class="text-right px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                         @foreach ($invoices as $invoice)
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-4 py-3 text-xs text-slate-600 tabular-nums">
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors">
+                            <td class="px-4 py-3 text-xs text-slate-600 dark:text-slate-300 tabular-nums">
                                 {{ $invoice->period_start->format('d M Y') }}
-                                <span class="text-slate-400">–</span>
+                                <span class="text-slate-400 dark:text-slate-500">–</span>
                                 {{ $invoice->period_end->format('d M Y') }}
                             </td>
                             <td class="px-4 py-3 font-semibold tabular-nums">{{ $invoice->amount_label }}</td>
-                            <td class="px-4 py-3 text-xs tabular-nums {{ $invoice->due_date->isPast() && $invoice->status !== 'paid' ? 'text-red-600 font-semibold' : 'text-slate-500' }}">
+                            <td class="px-4 py-3 text-xs tabular-nums {{ $invoice->due_date->isPast() && $invoice->status !== 'paid' ? 'text-red-600 font-semibold' : 'text-slate-500 dark:text-slate-400' }}">
                                 {{ $invoice->due_date->format('d M Y') }}
                             </td>
                             <td class="px-4 py-3">
@@ -182,13 +182,13 @@
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-3">
                                     <a href="{{ route('billing.show', $invoice) }}"
-                                       class="text-xs text-indigo-600 hover:text-indigo-800">Detail</a>
+                                       class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">Detail</a>
                                     @if(in_array($invoice->status, ['pending', 'overdue']))
                                     <a href="{{ route('billing.pay.form', $invoice) }}"
-                                       class="text-xs text-green-600 hover:text-green-800">Bayar</a>
+                                       class="text-xs text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300">Bayar</a>
                                     @endif
                                     <a href="{{ route('billing.pdf', $invoice) }}"
-                                       class="text-xs text-slate-500 hover:text-slate-700" target="_blank">PDF</a>
+                                       class="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" target="_blank">PDF</a>
                                 </div>
                             </td>
                         </tr>
@@ -206,36 +206,36 @@
             <span class="card-title">Riwayat Sesi (20 Terakhir)</span>
         </div>
         @if($sessions->isEmpty())
-            <div class="py-10 text-center text-slate-400 text-sm">
+            <div class="py-10 text-center text-slate-400 dark:text-slate-500 text-sm">
                 Belum ada sesi tercatat di radacct.
             </div>
         @else
         <div class="overflow-x-auto">
             <div class="table-scroll">
-<table class="w-full text-sm">
-                <thead class="bg-slate-50 border-b border-slate-200">
+<table class="data-table w-full text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                        <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Login</th>
-                        <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Logout</th>
-                        <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Durasi</th>
-                        <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">NAS / IP</th>
+                        <th class="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Login</th>
+                        <th class="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Logout</th>
+                        <th class="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Durasi</th>
+                        <th class="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">NAS / IP</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @foreach ($sessions as $s)
-                    <tr class="hover:bg-slate-50 transition-colors">
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors">
                         <td class="px-4 py-2.5 text-xs tabular-nums">{{ $s->acctstarttime }}</td>
-                        <td class="px-4 py-2.5 text-xs text-slate-500">
+                        <td class="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">
                             {{ $s->acctstoptime ?? '—' }}
                             @if(!$s->acctstoptime)
                                 <span class="ml-1 badge badge-green text-[10px] py-0">Online</span>
                             @endif
                         </td>
-                        <td class="px-4 py-2.5 text-xs text-slate-500">
+                        <td class="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">
                             @php $sec = $s->acctsessiontime ?? 0; @endphp
                             {{ $sec >= 3600 ? floor($sec/3600).'j '.floor(($sec%3600)/60).'m' : floor($sec/60).'m '.($sec%60).'d' }}
                         </td>
-                        <td class="px-4 py-2.5 text-xs text-slate-500 font-mono">
+                        <td class="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
                             {{ $s->nasipaddress ?? '-' }} / {{ $s->framedipaddress ?? '-' }}
                         </td>
                     </tr>
@@ -252,8 +252,8 @@
         <div class="card-body">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="font-semibold text-slate-700">Hapus Member</p>
-                    <p class="text-sm text-slate-400 mt-0.5">
+                    <p class="font-semibold text-slate-700 dark:text-slate-200">Hapus Member</p>
+                    <p class="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
                         Menghapus member dan semua data RADIUS terkait. Tidak bisa dibatalkan.
                     </p>
                 </div>

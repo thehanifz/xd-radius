@@ -1,36 +1,30 @@
 @forelse($sessions as $s)
 @php
-    $isStale    = $s->is_stale;
-    $isVoucher  = isset($voucherUsers[$s->username]);
-    $type       = $isVoucher ? 'Voucher' : 'Member';
+    $isStale = $s->is_stale;
+    $isVoucher = isset($voucherUsers[$s->username]);
+    $type = $isVoucher ? 'Voucher' : 'Member';
 @endphp
-<tr class="{{ $isStale ? 'opacity-60' : '' }}">
-    <td class="font-mono text-sm font-semibold">{{ $s->username }}</td>
-    <td><span class="badge-{{ $isVoucher ? 'info' : 'purple' }} text-xs">{{ $type }}</span></td>
-    <td class="text-slate-500 text-sm">{{ $s->nasipaddress }}</td>
-    <td class="text-slate-500 text-sm font-mono">{{ $s->framedipaddress ?? '-' }}</td>
-    <td class="text-slate-500 text-sm">{{ $s->acctstarttime?->format('d/m H:i') ?? '-' }}</td>
-    <td class="text-slate-500 text-sm">{{ $s->duration }}</td>
-    <td class="text-slate-500 text-xs whitespace-nowrap">↑ {{ $s->upload_label }} / ↓ {{ $s->download_label }}</td>
+<tr class="online-session-row {{ $isStale ? 'is-stale' : '' }}">
+    <td><span class="online-username">{{ $s->username }}</span></td>
+    <td><span class="online-type-pill {{ $isVoucher ? 'is-voucher' : 'is-member' }}">{{ $type }}</span></td>
+    <td><span class="online-mono">{{ $s->nasipaddress }}</span></td>
+    <td><span class="online-mono">{{ $s->framedipaddress ?? '-' }}</span></td>
+    <td><span class="online-cell-muted">{{ $s->acctstarttime?->format('d/m H:i') ?? '-' }}</span></td>
+    <td><span class="online-cell-muted">{{ $s->duration }}</span></td>
+    <td><span class="online-traffic"><span class="upload">↑ {{ $s->upload_label }}</span><span class="download">↓ {{ $s->download_label }}</span></span></td>
     <td>
         @if($isStale)
-            <span class="badge-isolated text-xs">Diduga Putus</span>
+            <span class="online-status-pill is-stale"><span></span> Diduga putus</span>
         @else
-            <span class="badge-active text-xs">Online</span>
+            <span class="online-status-pill is-online"><span></span> Online</span>
         @endif
     </td>
-    <td class="text-right whitespace-nowrap">
-        <a href="{{ route('online.show', $s) }}" class="btn-sm-secondary mr-1">Detail</a>
-        <button disabled
-            title="Disconnect akan tersedia setelah integrasi RouterOS"
-            class="btn-sm-danger opacity-40 cursor-not-allowed">
-            Disconnect
-        </button>
-    </td>
+    <td class="text-right whitespace-nowrap"><a href="{{ route('online.show', $s) }}" class="btn-sm-secondary">Detail</a></td>
 </tr>
 @empty
-<tr><td colspan="9" class="text-center text-slate-400 py-12">
-    <svg class="mx-auto mb-3 w-10 h-10 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
-    Tidak ada sesi aktif
-</td></tr>
+<tr><td colspan="9"><div class="online-empty-state">
+    <span class="online-empty-icon" aria-hidden="true">∅</span>
+    <strong>Tidak ada sesi yang cocok</strong>
+    <span>Coba ubah filter tipe, NAS, atau status sesi.</span>
+</div></td></tr>
 @endforelse

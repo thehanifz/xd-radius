@@ -39,7 +39,7 @@
          data-modal-close="{{ $id }}"></div>
 
     {{-- Panel --}}
-    <div class="relative z-10 w-full max-w-sm mx-4 bg-white rounded-2xl shadow-2xl p-6 space-y-4 animate-modal-in">
+    <div class="confirm-modal-panel relative z-10 w-full max-w-sm mx-4 rounded-xl p-6 space-y-4 animate-modal-in">
 
         {{-- Icon --}}
         <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto">
@@ -52,13 +52,13 @@
         </div>
 
         <div class="text-center">
-            <h3 id="{{ $id }}-title" class="text-base font-bold text-slate-800">{{ $title }}</h3>
-            <p class="text-sm text-slate-500 mt-1.5">{{ $message }}</p>
+            <h3 id="{{ $id }}-title" class="confirm-modal-title text-base font-bold">{{ $title }}</h3>
+            <p class="confirm-modal-message text-sm mt-1.5">{{ $message }}</p>
         </div>
 
         {{-- Info tambahan (misal: notif Tahap 1) --}}
         @if($infoText)
-        <div class="px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-100 text-xs text-amber-700">
+        <div class="confirm-modal-info px-3 py-2.5 rounded-lg text-xs">
             {{ $infoText }}
         </div>
         @endif
@@ -69,7 +69,7 @@
 
             {{-- Auto-confirm preference — disimpan ke database via API --}}
             @if($preferenceKey)
-            <label class="flex items-center gap-2.5 text-sm text-slate-500 select-none cursor-pointer">
+            <label class="confirm-modal-preference flex items-center gap-2.5 text-sm select-none cursor-pointer">
                 <input type="checkbox"
                        id="{{ $id }}-pref-cb"
                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"

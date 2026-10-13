@@ -23,7 +23,7 @@
                         placeholder="contoh: budi.santoso"
                         autocomplete="off" required>
                     @error('username')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
-                    <p class="text-xs text-slate-400 mt-1">Huruf, angka, titik, strip, underscore. Min 3 karakter.</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Huruf, angka, titik, strip, underscore. Min 3 karakter.</p>
                 </div>
                 <div>
                     <label class="form-label">Password <span class="text-red-500">*</span></label>
@@ -33,7 +33,7 @@
                             placeholder="Min 6 karakter, berbeda dari username"
                             autocomplete="new-password" required>
                         <button type="button" onclick="togglePass()"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </button>
                     </div>
@@ -63,14 +63,14 @@
                         <input type="date" name="activated_at" value="{{ old('activated_at', now()->toDateString()) }}"
                             class="form-input @error('activated_at') border-red-400 @enderror" required>
                         @error('activated_at')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
-                        <p class="text-xs text-slate-400 mt-1">Default hari ini, dapat diubah.</p>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Default hari ini, dapat diubah.</p>
                     </div>
                     <div>
-                        <label class="form-label">Expired At <span class="text-slate-400 font-normal">(opsional)</span></label>
+                        <label class="form-label">Expired At <span class="text-slate-400 dark:text-slate-500 font-normal">(opsional)</span></label>
                         <input type="datetime-local" name="expired_at" value="{{ old('expired_at') }}"
                             class="form-input @error('expired_at') border-red-400 @enderror">
                         @error('expired_at')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
-                        <p class="text-xs text-slate-400 mt-1">Kosong = otomatis 1 bulan dari tanggal mulai.</p>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Kosong = otomatis 1 bulan dari tanggal mulai.</p>
                     </div>
                 </div>
                 <div>
@@ -79,7 +79,7 @@
                         min="1" max="10"
                         class="form-input w-32 @error('simultaneous_use') border-red-400 @enderror">
                     @error('simultaneous_use')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
-                    <p class="text-xs text-slate-400 mt-1">Jumlah sesi login bersamaan yang diizinkan.</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Jumlah sesi login bersamaan yang diizinkan.</p>
                 </div>
                 <div>
                     <label class="form-label">Catatan</label>

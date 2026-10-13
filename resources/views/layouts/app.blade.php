@@ -1,5 +1,13 @@
+@php
+    $themePreference = auth('app')->check()
+        ? auth('app')->user()->preferences()->where('key', 'theme')->value('value')
+        : null;
+    $themePreference = in_array($themePreference, ['system', 'light', 'dark'], true)
+        ? $themePreference
+        : 'system';
+@endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme-preference="{{ $themePreference }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,18 +19,35 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
+    <script>
+        (() => {
+            const serverPreference = @json($themePreference);
+            let preference = serverPreference;
+            try {
+                const browserPreference = window.localStorage.getItem('xd-radius-theme');
+                if (['system', 'light', 'dark'].includes(browserPreference)) {
+                    preference = browserPreference;
+                }
+            } catch (_) {}
+
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.dataset.themePreference = preference;
+            document.documentElement.dataset.theme = preference === 'system'
+                ? (systemDark ? 'dark' : 'light')
+                : preference;
+        })();
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
-<body class="bg-slate-50 overflow-hidden">
+<body class="app-shell bg-slate-50 overflow-hidden">
 
 <div class="flex h-screen">
 
     {{-- SIDEBAR --}}
     <aside id="sidebar"
-        class="flex flex-col w-64 flex-shrink-0 transition-transform duration-300 ease-in-out
-               lg:translate-x-0 -translate-x-full fixed lg:static inset-y-0 z-40"
-        style="background: linear-gradient(180deg, #0d1117 0%, #0f1623 100%);">
+        class="app-sidebar flex flex-col w-64 flex-shrink-0 transition-transform duration-300 ease-in-out
+               lg:translate-x-0 -translate-x-full fixed lg:static inset-y-0 z-40">
 
         <div class="flex items-center gap-3 px-5 h-16 border-b border-white/5 flex-shrink-0">
             <div class="flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
@@ -102,8 +127,7 @@
     {{-- MAIN --}}
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        <header class="flex items-center justify-between gap-3 px-4 sm:px-6 h-16 bg-white/80 backdrop-blur-md border-b border-slate-100 flex-shrink-0 sticky top-0 z-20"
-                style="box-shadow: 0 1px 0 rgba(0,0,0,0.04);">
+        <header class="app-topbar flex items-center justify-between gap-3 px-4 sm:px-6 h-16 bg-white/80 backdrop-blur-md border-b border-slate-100 flex-shrink-0 sticky top-0 z-20">
             <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                 <button id="hamburger-btn" onclick="toggleSidebar()"
                     class="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all">
@@ -117,7 +141,18 @@
                     <h1 class="text-sm font-bold text-slate-800 tracking-tight truncate">@yield('title', 'Dashboard')</h1>
                 </div>
             </div>
-            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 max-w-[52vw] sm:max-w-none overflow-x-auto scrollbar-hide">
+            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 max-w-[62vw] sm:max-w-none overflow-x-auto scrollbar-hide">
+                <label class="theme-control flex items-center gap-2" for="theme-preference">
+                    <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3.5"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>
+                    </svg>
+                    <span class="sr-only">Tema tampilan</span>
+                    <select id="theme-preference" class="theme-select" aria-label="Tema tampilan">
+                        <option value="system" @selected($themePreference === 'system')>System</option>
+                        <option value="light" @selected($themePreference === 'light')>Light</option>
+                        <option value="dark" @selected($themePreference === 'dark')>Dark</option>
+                    </select>
+                </label>
                 @yield('topbar-actions')
             </div>
         </header>

@@ -18,8 +18,8 @@
             <div class="card-body space-y-4">
                 <div>
                     <label class="form-label">Username</label>
-                    <input type="text" value="{{ $member->username }}" class="form-input bg-slate-50 cursor-not-allowed" disabled>
-                    <p class="text-xs text-slate-400 mt-1">Username tidak dapat diubah.</p>
+                    <input type="text" value="{{ $member->username }}" class="form-input bg-slate-50 dark:bg-slate-800 cursor-not-allowed" disabled>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Username tidak dapat diubah.</p>
                 </div>
                 <div>
                     <label class="form-label">Password Baru</label>
@@ -29,7 +29,7 @@
                             placeholder="Kosongkan jika tidak ingin mengubah"
                             autocomplete="new-password">
                         <button type="button" onclick="togglePass()"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </button>
                     </div>
@@ -74,21 +74,21 @@
                         value="{{ old('activated_at', $member->activated_at?->format('Y-m-d')) }}"
                         class="form-input @error('activated_at') border-red-400 @enderror">
                     @error('activated_at')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
-                    <p class="text-xs text-slate-400 mt-1">Tanggal awal periode member.</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Tanggal awal periode member.</p>
                 </div>
                 <div>
                     <label class="form-label">Expired At</label>
                     <input type="datetime-local" name="expired_at"
                         value="{{ old('expired_at', $member->expired_at?->format('Y-m-d\TH:i')) }}"
                         class="form-input">
-                    <p class="text-xs text-slate-400 mt-1">Ubah untuk perpanjang masa aktif secara manual.</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Ubah untuk perpanjang masa aktif secara manual.</p>
                 </div>
                 <div>
                     <label class="form-label">Harga (Price Snapshot)</label>
                     <input type="number" name="price_snapshot"
                         value="{{ old('price_snapshot', $member->price_snapshot) }}"
                         min="0" class="form-input">
-                    <p class="text-xs text-slate-400 mt-1">Harga saat member dibuat. Dipakai di laporan.</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Harga saat member dibuat. Dipakai di laporan.</p>
                 </div>
                 <div>
                     <label class="form-label">Catatan</label>

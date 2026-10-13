@@ -5,13 +5,8 @@
 @endphp
 
 <a href="{{ route($route) }}"
-   class="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-          {{ $isActive
-              ? 'text-white'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5' }}"
-   @if($isActive)
-   style="background: linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.15) 100%); box-shadow: inset 0 0 0 1px rgba(99,102,241,0.2);"
-   @endif
+   class="sidebar-nav-item group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 {{ $isActive ? 'is-active' : '' }}"
+   @if($isActive) aria-current="page" @endif
 >
     {{-- Active indicator bar --}}
     @if($isActive)
@@ -22,7 +17,7 @@
 
     {{-- Icon --}}
     <svg class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110
-                {{ $isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300' }}"
+                {{ $isActive ? 'sidebar-nav-icon-active' : 'sidebar-nav-icon' }}"
          width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="{{ $isActive ? '2.2' : '1.8' }}"
          stroke-linecap="round" stroke-linejoin="round">
@@ -127,7 +122,6 @@
 
     {{-- Active glow dot --}}
     @if($isActive)
-    <span class="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
-          style="background:#818cf8; box-shadow: 0 0 6px rgba(129,140,248,0.8);"></span>
+    <span class="sidebar-nav-indicator ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0" aria-hidden="true"></span>
     @endif
 </a>

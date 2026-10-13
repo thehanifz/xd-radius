@@ -6,7 +6,8 @@
 @endsection
 
 @section('content')
-<div class="space-y-6">
+<div class="online-page online-detail-page space-y-6">
+    <div class="online-detail-heading"><div><p class="online-eyebrow">NETWORK OPERATIONS</p><h2 class="online-heading">Session detail</h2><p class="online-subheading">Informasi koneksi dan riwayat accounting untuk akun ini.</p></div></div>
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="stat-card"><p class="stat-label">Total Session</p><p class="stat-value">{{ number_format($summary['sessions']) }}</p></div>
         <div class="stat-card"><p class="stat-label">Total Durasi</p><p class="stat-value text-sm lg:text-xl">{{ \App\Models\Radacct::formatDuration($summary['duration']) }}</p></div>
@@ -18,7 +19,7 @@
         <div class="card-header">
             <div>
                 <h2 class="card-title font-mono">{{ $session->username }}</h2>
-                <p class="text-xs text-slate-400 mt-1">Session {{ $session->acctsessionid ?? '-' }}</p>
+                <p class="online-subheading mt-1">Session ID · <span class="online-mono">{{ $session->acctsessionid ?? '-' }}</span></p>
             </div>
             @if($session->acctstoptime)
                 <span class="badge-isolated text-xs">Offline</span>
@@ -53,7 +54,7 @@
 
     <div class="card">
         <div class="card-header"><h2 class="card-title">Riwayat Session</h2><span class="text-xs text-slate-400">Maks. 30 terakhir</span></div>
-        <div class="overflow-x-auto">
+        <div class="online-table-wrap overflow-x-auto">
             <div class="table-scroll table-compact">
 <table class="data-table">
                 <thead><tr><th>Start</th><th>Stop</th><th>Durasi</th><th>IP</th><th>Upload</th><th>Download</th><th>Status</th></tr></thead>
