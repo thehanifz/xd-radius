@@ -100,7 +100,7 @@
         <div class="card-body">
             @if($dokuVaChannels->isEmpty())
                 <div class="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
-                    Belum ada channel VA DOKU aktif. Konfigurasikan channel di Pengaturan Sistem → Pembayaran DOKU.
+                    Belum ada channel VA DOKU aktif. Konfigurasikan channel di Pengaturan → Pembayaran DOKU.
                 </div>
             @endif
 

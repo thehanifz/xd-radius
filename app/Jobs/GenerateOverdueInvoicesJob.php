@@ -21,6 +21,7 @@ class GenerateOverdueInvoicesJob implements ShouldQueue
 
         // Mark existing invoices as overdue
         BillingInvoice::where('status', 'pending')
+            ->forCurrentMembers()
             ->where('due_date', '<', now()->toDateString())
             ->update(['status' => 'overdue']);
 

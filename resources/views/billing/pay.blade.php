@@ -5,7 +5,7 @@
 <div class="max-w-xl">
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">Catat Pembayaran — {{ $invoice->member->username }}</h3>
+            <h3 class="card-title">Catat Pembayaran — {{ $invoice->member?->username ?? 'Member #' . $invoice->member_id }}</h3>
         </div>
         <div class="card-body">
             {{-- Ringkasan Invoice --}}
@@ -55,6 +55,7 @@
                 </div>
 
                 {{-- Opsi perpanjang otomatis --}}
+                @if($invoice->member && ! $invoice->member->trashed())
                 <div class="flex items-start gap-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl px-4 py-3.5">
                     <input type="checkbox" name="renew" value="1" id="renew" class="mt-0.5"
                            {{ old('renew') ? 'checked' : '' }}>
@@ -68,6 +69,10 @@
                         </p>
                     </div>
                 </div>
+                @else
+                <p class="text-sm text-amber-700 dark:text-amber-300">{{ $invoice->member ? 'Member sudah diarsipkan' : 'Data member tidak ditemukan' }}. Pembayaran dapat dicatat, tetapi perpanjangan otomatis dinonaktifkan.</p>
+                @error('renew') <p class="form-error">{{ $message }}</p> @enderror
+                @endif
 
                 <div class="flex gap-3 pt-2">
                     <button type="submit" class="btn-primary">Simpan Pembayaran</button>

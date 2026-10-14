@@ -1,91 +1,36 @@
 @extends('layouts.app')
-@section('title', 'Pengaturan Sistem')
+@section('title', 'Pengaturan')
 
 @section('content')
-<div class="max-w-2xl">
-<form method="POST" action="{{ route('settings.update') }}">
-    @csrf @method('PUT')
+<div class="space-y-5">
+    <header class="max-w-3xl">
+        <p class="text-xs font-semibold uppercase tracking-[.14em] text-indigo-400">Sistem</p>
+        <h2 class="mt-1 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">Pengaturan</h2>
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Pilih bagian yang ingin Anda kelola.</p>
+    </header>
 
-    {{-- General --}}
-    <div class="card mb-6">
-        <div class="card-header">
-            <h2 class="card-title">Umum</h2>
-            <p class="card-subtitle">Konfigurasi dasar aplikasi</p>
-        </div>
-        <div class="p-6 space-y-5">
-            @foreach($settings->get('general', collect()) as $s)
-            <div>
-                <label class="form-label">{{ $s->label }}</label>
-                <input type="text" name="settings[{{ $s->key }}]"
-                       value="{{ old('settings.'.$s->key, $s->value) }}"
-                       class="form-input">
-                @if($s->description)
-                <p class="text-xs text-slate-400 mt-1 dark:text-slate-500">{{ $s->description }}</p>
-                @endif
-            </div>
-            @endforeach
-        </div>
-    </div>
+    <section class="grid gap-4 md:grid-cols-2" aria-label="Menu pengaturan">
+        <a href="{{ route('operators.index') }}" class="settings-hub-card group">
+            <span class="settings-hub-icon text-cyan-300 bg-cyan-400/10" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            <span class="settings-hub-copy">
+                <strong>Operator</strong>
+                <span>Kelola akun operator dan hak akses ke panel.</span>
+            </span>
+            <svg class="settings-hub-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
 
-    {{-- RADIUS --}}
-    <div class="card mb-6">
-        <div class="card-header">
-            <h2 class="card-title">RADIUS & Monitoring</h2>
-            <p class="card-subtitle">Konfigurasi rekonsiliasi sesi stale</p>
-        </div>
-        <div class="p-6 space-y-5">
-            @foreach($settings->get('radius', collect()) as $s)
-            <div>
-                <label class="form-label">{{ $s->label }}</label>
-                <input type="number" name="settings[{{ $s->key }}]"
-                       value="{{ old('settings.'.$s->key, $s->value) }}"
-                       min="5" max="1440" class="form-input w-40">
-                @if($s->description)
-                <p class="text-xs text-slate-400 mt-1 dark:text-slate-500">{{ $s->description }}</p>
-                @endif
-            </div>
-            @endforeach
-            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 dark:bg-amber-950/30 dark:border-amber-800">
-                <p class="text-amber-800 text-sm font-semibold mb-1 dark:text-amber-200">Rekomendasi Konfigurasi NAS</p>
-                <p class="text-amber-700 text-xs dark:text-amber-300">Aktifkan Interim-Update di MikroTik: <code class="bg-amber-100 px-1 rounded dark:bg-amber-900/40">RADIUS > Incoming > set interim-update=1m</code>. Threshold stale sebaiknya 2× interval Interim-Update.</p>
-            </div>
-        </div>
-    </div>
-
-    {{-- Billing --}}
-    <div class="card mb-6">
-        <div class="card-header">
-            <h2 class="card-title">Billing</h2>
-            <p class="card-subtitle">Konfigurasi invoice dan isolir otomatis</p>
-        </div>
-        <div class="p-6 space-y-5">
-            @foreach($settings->get('billing', collect()) as $s)
-            <div>
-                @if($s->type === 'boolean')
-                <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="hidden" name="settings[{{ $s->key }}]" value="0">
-                    <input type="checkbox" name="settings[{{ $s->key }}]" value="1"
-                           class="w-4 h-4 rounded accent-indigo-600"
-                           {{ $s->value ? 'checked' : '' }}>
-                    <span class="form-label mb-0">{{ $s->label }}</span>
-                </label>
-                @else
-                <label class="form-label">{{ $s->label }}</label>
-                <input type="number" name="settings[{{ $s->key }}]"
-                       value="{{ old('settings.'.$s->key, $s->value) }}"
-                       min="1" max="30" class="form-input w-32">
-                @endif
-                @if($s->description)
-                <p class="text-xs text-slate-400 mt-1 dark:text-slate-500">{{ $s->description }}</p>
-                @endif
-            </div>
-            @endforeach
-        </div>
-    </div>
-
-    <div class="flex gap-3">
-        <button type="submit" class="btn-primary">Simpan Pengaturan</button>
-    </div>
-</form>
+        <a href="{{ route('settings.doku.index') }}" class="settings-hub-card group">
+            <span class="settings-hub-icon text-emerald-300 bg-emerald-400/10" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h3"/></svg>
+            </span>
+            <span class="settings-hub-copy">
+                <strong>Pembayaran DOKU</strong>
+                <span>Atur koneksi gateway, kredensial, dan kanal Virtual Account.</span>
+            </span>
+            <svg class="settings-hub-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+    </section>
 </div>
 @endsection

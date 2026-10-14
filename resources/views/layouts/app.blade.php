@@ -91,9 +91,9 @@
 
             @if($role === 'superuser')
                 <p class="section-divider">Sistem</p>
-                <x-nav-item route="operators.index" icon="user-check">Operator</x-nav-item>
-                <x-nav-item route="settings.index" icon="settings">Pengaturan Sistem</x-nav-item>
-                <x-nav-item route="settings.doku.index" icon="credit-card">Pembayaran DOKU</x-nav-item>
+                @php($settingsMenuActive = request()->routeIs('operators.*', 'settings.doku.*'))
+                @php($settingsMenuActive = $settingsMenuActive || request()->routeIs('settings.index'))
+                <x-nav-item route="settings.index" icon="settings" :active="$settingsMenuActive">Pengaturan</x-nav-item>
             @endif
         </nav>
 

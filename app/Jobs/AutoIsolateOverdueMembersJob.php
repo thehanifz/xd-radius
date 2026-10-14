@@ -23,6 +23,7 @@ class AutoIsolateOverdueMembersJob implements ShouldQueue
         if (! $autoIsolate) return;
 
         $overdueInvoices = BillingInvoice::where('status', 'overdue')
+            ->forCurrentMembers()
             ->with('member')
             ->get();
 

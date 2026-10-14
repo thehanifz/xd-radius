@@ -21,7 +21,8 @@ class BillingInvoice extends Model
 
     public function member(): BelongsTo
     {
-        return $this->belongsTo(Member::class);
+        // Keep historical invoices linked to members that were soft-deleted.
+        return $this->belongsTo(Member::class)->withTrashed();
     }
 
     public function payments(): HasMany
@@ -64,4 +65,9 @@ class BillingInvoice extends Model
     public function scopePending($q)  { return $q->where('status', 'pending'); }
     public function scopeOverdue($q)  { return $q->where('status', 'overdue'); }
     public function scopePaid($q)     { return $q->where('status', 'paid'); }
+
+    public function scopeForCurrentMembers($query)
+    {
+        return $query->whereHas('member', fn ($memberQuery) => $memberQuery->whereNull('members.deleted_at'));
+    }
 }

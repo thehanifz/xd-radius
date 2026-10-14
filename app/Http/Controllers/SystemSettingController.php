@@ -11,9 +11,7 @@ class SystemSettingController extends Controller
     public function index()
     {
         Gate::authorize('superuser-only');
-
-        $settings = SystemSetting::orderBy('group')->orderBy('key')->get()->groupBy('group');
-        return view('settings.index', compact('settings'));
+        return view('settings.index');
     }
 
     public function update(Request $request)

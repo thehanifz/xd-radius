@@ -6,7 +6,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         Download PDF
     </a>
-    @if(in_array($invoice->status, ['pending','overdue']))
+    @if(in_array($invoice->status, ['pending','overdue']) && $invoice->member && ! $invoice->member->trashed())
     <a href="{{ route('billing.pay.form', $invoice) }}" class="btn-primary">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         Catat Bayar
@@ -36,8 +36,8 @@
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-semibold mb-1">Invoice #{{ $invoice->id }}</p>
-                    <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">{{ $invoice->member->username }}</h2>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{{ $invoice->member->plan->name ?? '-' }}</p>
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">{{ $invoice->member?->username ?? 'Member #' . $invoice->member_id . ' tidak tersedia' }}</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{{ $invoice->member?->plan?->name ?? '-' }}@if($invoice->member?->trashed()) · Arsip@endif</p>
                 </div>
                 <span class="badge {{ $invoice->status_badge_class }} text-sm px-3 py-1">{{ $invoice->status_label }}</span>
             </div>
@@ -74,7 +74,7 @@
     </div>
 
     {{-- DOKU payment --}}
-    @if(in_array($invoice->status, ['pending','overdue']))
+    @if(in_array($invoice->status, ['pending','overdue']) && $invoice->member && ! $invoice->member->trashed())
     <div class="card">
         <div class="card-header">
             <h3 class="card-title">Pembayaran DOKU</h3>

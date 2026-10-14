@@ -77,10 +77,13 @@
                     @foreach($invoices as $invoice)
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                         <td class="px-5 py-3.5">
-                            @if($invoice->member)
+                            @if($invoice->member && ! $invoice->member->trashed())
                                 <a href="{{ route('members.show', $invoice->member) }}" class="font-medium text-slate-800 dark:text-slate-100 hover:text-indigo-600">{{ $invoice->member->username }}</a>
+                            @elseif($invoice->member)
+                                <span class="font-medium text-slate-600 dark:text-slate-300">{{ $invoice->member->username }}</span>
+                                <span class="ml-1 text-[10px] text-slate-400">Arsip</span>
                             @else
-                                <span class="font-medium text-slate-500 dark:text-slate-400">Member tidak tersedia</span>
+                                <span class="font-medium text-slate-500 dark:text-slate-400">Member #{{ $invoice->member_id }} tidak tersedia</span>
                             @endif
                             <p class="text-xs text-slate-400 dark:text-slate-500">{{ $invoice->member?->plan?->name ?? '-' }}</p>
                         </td>
@@ -99,7 +102,7 @@
                                 <a href="{{ route('billing.show', $invoice) }}" class="text-slate-400 dark:text-slate-500 hover:text-indigo-600 transition-colors" title="Detail">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                 </a>
-                                @if(in_array($invoice->status, ['pending','overdue']))
+                                @if(in_array($invoice->status, ['pending','overdue']) && $invoice->member && ! $invoice->member->trashed())
                                 <a href="{{ route('billing.pay.form', $invoice) }}" class="text-slate-400 dark:text-slate-500 hover:text-green-600 transition-colors" title="Catat Bayar">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                                 </a>

@@ -37,8 +37,8 @@ class BillingController extends Controller
         $members  = Member::orderBy('username')->get(['id', 'username']);
 
         $stats = [
-            'pending' => BillingInvoice::where('status', 'pending')->count(),
-            'overdue' => BillingInvoice::where('status', 'overdue')->count(),
+            'pending' => BillingInvoice::forCurrentMembers()->where('status', 'pending')->count(),
+            'overdue' => BillingInvoice::forCurrentMembers()->where('status', 'overdue')->count(),
             'paid'    => BillingInvoice::where('status', 'paid')->count(),
         ];
 
@@ -105,6 +105,11 @@ class BillingController extends Controller
     public function payForm(BillingInvoice $billing)
     {
         $billing->load('member');
+        if (! $billing->member || $billing->member->trashed()) {
+            return redirect()->route('billing.show', $billing)
+                ->with('error', 'Invoice milik member arsip hanya disimpan sebagai riwayat.');
+        }
+
         return view('billing.pay', ['invoice' => $billing]);
     }
 
@@ -122,9 +127,22 @@ class BillingController extends Controller
         ]);
 
         if ($request->boolean('renew')) {
+            $billing->loadMissing('member');
+            if (! $billing->member || $billing->member->trashed()) {
+                return back()->withErrors([
+                    'renew' => 'Perpanjangan otomatis hanya tersedia untuk member yang masih aktif di sistem.',
+                ])->withInput();
+            }
+
             $this->billing->renewMember($billing->member, $billing, $data);
             return redirect()->route('members.show', $billing->member)
                 ->with('success', "Member {$billing->member->username} berhasil diperpanjang.");
+        }
+
+        $billing->loadMissing('member');
+        if (! $billing->member || $billing->member->trashed()) {
+            return redirect()->route('billing.show', $billing)
+                ->with('error', 'Invoice milik member arsip hanya disimpan sebagai riwayat.');
         }
 
         $this->billing->recordPayment($billing, $data);
@@ -135,6 +153,12 @@ class BillingController extends Controller
 
     public function createDokuPayment(Request $request, BillingInvoice $billing)
     {
+        $billing->loadMissing('member');
+        if (! $billing->member || $billing->member->trashed()) {
+            return redirect()->route('billing.show', $billing)
+                ->with('error', 'Invoice milik member arsip hanya disimpan sebagai riwayat.');
+        }
+
         $data = $request->validate([
             'method' => ['required', 'in:va,qris'],
         ]);
@@ -187,7 +211,7 @@ class BillingController extends Controller
     {
         $billing->load(['member.plan', 'payments', 'paymentAttempts', 'member.paymentAccounts']);
         $pdf = Pdf::loadView('billing.pdf', ['invoice' => $billing]);
-        $filename = 'invoice-' . $billing->member->username
+        $filename = 'invoice-' . ($billing->member?->username ?? 'member-' . $billing->member_id)
             . '-' . $billing->period_start->format('Y-m')
             . '.pdf';
         return $pdf->download($filename);

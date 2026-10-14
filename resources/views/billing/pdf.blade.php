@@ -48,11 +48,11 @@
         <div class="info-grid">
             <div class="info-item">
                 <label>Member</label>
-                <p>{{ $invoice->member->username }}</p>
+                <p>{{ $invoice->member?->username ?? 'Member #' . $invoice->member_id . ' tidak tersedia' }}</p>
             </div>
             <div class="info-item">
                 <label>Paket</label>
-                <p>{{ $invoice->member->plan->name ?? '-' }}</p>
+                <p>{{ $invoice->member?->plan?->name ?? '-' }}</p>
             </div>
             <div class="info-item">
                 <label>Periode Tagihan</label>

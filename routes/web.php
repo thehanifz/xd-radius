@@ -100,7 +100,6 @@ Route::middleware('auth')->group(function () {
 
     // ─── FreeRADIUS Management ───────────────────────────────────────────────
     Route::get('/settings/freeradius', [FreeRadiusController::class, 'index'])->name('freeradius.index');
-    Route::post('/settings/freeradius/setup', [FreeRadiusController::class, 'setup'])->name('freeradius.setup');
     Route::post('/settings/freeradius/reconcile', [FreeRadiusController::class, 'reconcile'])->name('freeradius.reconcile');
 
     // ─── Routers / NAS ───────────────────────────────────────────────────────

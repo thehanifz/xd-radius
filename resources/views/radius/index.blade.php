@@ -5,12 +5,8 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-semibold">FreeRADIUS Management</h1>
-            <p class="text-sm text-slate-500">Setup, configure, health check, dan reconciliation.</p>
+            <p class="text-sm text-slate-500">Pemeriksaan kesehatan dan sinkronisasi konfigurasi.</p>
         </div>
-        <form method="POST" action="{{ route('freeradius.setup') }}">
-            @csrf
-            <button class="px-4 py-2 rounded bg-indigo-600 text-white">Setup / Re-setup</button>
-        </form>
     </div>
 
     @if(session('success'))<div class="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">{{ session('success') }}</div>@endif

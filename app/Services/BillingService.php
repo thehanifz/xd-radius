@@ -136,6 +136,7 @@ class BillingService
     public function markOverdue(): int
     {
         return BillingInvoice::query()
+            ->forCurrentMembers()
             ->where('status', 'pending')
             ->where('due_date', '<', now()->toDateString())
             ->update(['status' => 'overdue']);
