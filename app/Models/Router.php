@@ -26,6 +26,13 @@ class Router extends Model
         'location',
         'is_active',
         'last_connection_status',
+        'last_ping_status',
+        'last_ping_at',
+        'last_ping_latency_ms',
+        'last_ping_error',
+        'last_api_status',
+        'last_api_at',
+        'last_api_error',
         'last_connected_at',
         'last_connection_message',
         'routeros_version',
@@ -42,6 +49,9 @@ class Router extends Model
         'is_active'         => 'boolean',
         'radius_enabled'    => 'boolean',
         'last_connected_at' => 'datetime',
+        'last_ping_at' => 'datetime',
+        'last_ping_latency_ms' => 'decimal:2',
+        'last_api_at' => 'datetime',
         'radius_last_synced_at' => 'datetime',
     ];
 
@@ -81,11 +91,36 @@ class Router extends Model
 
     public function getConnectionStatusLabelAttribute(): string
     {
-        return match ($this->last_connection_status) {
-            'ok'    => 'Terhubung',
-            'error' => 'Gagal',
-            default => 'Belum diuji',
-        };
+        if (! $this->last_ping_at) return 'Belum diuji';
+        if ($this->last_ping_status === 'error') return 'Tidak terhubung';
+        if (! $this->ping_is_fresh) return 'Data usang';
+
+        return $this->last_ping_status === 'ok' ? 'Terhubung' : 'Belum diuji';
+    }
+
+    public function getPingIsFreshAttribute(): bool
+    {
+        return $this->last_ping_at?->greaterThanOrEqualTo(now()->subMinutes(3)) ?? false;
+    }
+
+    public function getConnectionHealthyAttribute(): bool
+    {
+        return $this->ping_is_fresh && $this->last_ping_status === 'ok';
+    }
+
+    public function getPingStatusLabelAttribute(): string
+    {
+        if (! $this->last_ping_at) return 'Belum diuji';
+        if (! $this->ping_is_fresh) return 'Data usang';
+
+        return $this->last_ping_status === 'ok' ? 'Terjangkau' : 'Gagal';
+    }
+
+    public function getApiStatusLabelAttribute(): string
+    {
+        if (! $this->last_api_at) return 'Belum diuji';
+
+        return $this->last_api_status === 'ok' ? 'Berfungsi' : 'Gagal';
     }
 
     public function getConnectionResourceAttribute(): array
@@ -122,11 +157,11 @@ class Router extends Model
 
     public function getConnectionStatusColorAttribute(): string
     {
-        return match ($this->last_connection_status) {
-            'ok'    => 'green',
-            'error' => 'red',
-            default => 'gray',
-        };
+        if ($this->connection_healthy) return 'green';
+        if ($this->last_ping_status === 'error') return 'red';
+        if ($this->last_ping_at) return 'amber';
+
+        return 'gray';
     }
 
     // --- Scopes ---
@@ -134,5 +169,13 @@ class Router extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeConnectionHealthy($query)
+    {
+        $freshAfter = now()->subMinutes(3);
+
+        return $query->where('last_ping_status', 'ok')
+            ->where('last_ping_at', '>=', $freshAfter);
     }
 }

@@ -75,14 +75,18 @@ class DashboardController extends Controller
             'attention' => 0,
         ];
         $dashboardRouters = collect();
-        $activeRouters = Router::active();
+        // Match the operational status shown in the router list: both the
+        // router and its FreeRADIUS NAS entry must be enabled.
+        $activeRouters = Router::query()
+            ->where('is_active', true)
+            ->where('radius_enabled', true);
         $routerStats['total'] = (clone $activeRouters)->count();
-        $routerStats['connected'] = (clone $activeRouters)->where('last_connection_status', 'ok')->count();
+        $routerStats['connected'] = (clone $activeRouters)->connectionHealthy()->count();
         $routerStats['attention'] = $routerStats['total'] - $routerStats['connected'];
 
         if ($isSuperUser) {
             $dashboardRouters = (clone $activeRouters)
-                ->orderByRaw("CASE WHEN last_connection_status = 'error' THEN 0 WHEN last_connection_status = 'ok' THEN 1 ELSE 2 END")
+                ->orderByRaw("CASE WHEN last_ping_status = 'error' THEN 0 WHEN last_ping_status = 'ok' THEN 1 ELSE 2 END")
                 ->orderBy('name')
                 ->limit(5)
                 ->get();

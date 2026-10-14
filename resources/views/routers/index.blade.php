@@ -33,6 +33,7 @@
                         <th class="text-left px-4 py-3 font-medium text-slate-600">IP ADDRESS</th>
                         <th class="text-left px-4 py-3 font-medium text-slate-600">PORT</th>
                         <th class="text-left px-4 py-3 font-medium text-slate-600">LOKASI</th>
+                        <th class="text-left px-4 py-3 font-medium text-slate-600">API</th>
                         <th class="text-left px-4 py-3 font-medium text-slate-600">KONEKSI</th>
                         <th class="text-left px-4 py-3 font-medium text-slate-600">STATUS</th>
                         <th class="px-4 py-3"></th>
@@ -49,21 +50,26 @@
                         <td class="px-4 py-3 font-mono text-slate-600">{{ $router->ip_address }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $router->api_port }}</td>
                         <td class="px-4 py-3 text-slate-500">{{ $router->location ?? '-' }}</td>
+                        @php
+                            $apiColor = match(true) {
+                                ! $router->last_api_at => 'bg-slate-100 text-slate-500',
+                                $router->last_api_status === 'ok' => 'bg-green-100 text-green-700',
+                                default => 'bg-red-100 text-red-700',
+                            };
+                            $connectionColor = match($router->connection_status_color) {
+                                'green' => 'bg-green-100 text-green-700',
+                                'red' => 'bg-red-100 text-red-700',
+                                'amber' => 'bg-amber-100 text-amber-700',
+                                default => 'bg-slate-100 text-slate-500',
+                            };
+                        @endphp
                         <td class="px-4 py-3">
-                            @php
-                                $connColor = match($router->last_connection_status) {
-                                    'ok'    => 'bg-green-100 text-green-700',
-                                    'error' => 'bg-red-100 text-red-700',
-                                    default => 'bg-slate-100 text-slate-500',
-                                };
-                            @endphp
-                            <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $connColor }}">
-                                {{ $router->connection_status_label }}
-                            </span>
-                            @if($router->last_connected_at)
-                                <p class="text-[10px] text-slate-400 mt-0.5">{{ $router->last_connected_at->diffForHumans() }}</p>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $apiColor }}">{{ $router->api_status_label }}</span>
+                            @if($router->last_api_at)
+                                <p class="text-[10px] text-slate-400 mt-0.5">{{ $router->last_api_at->diffForHumans() }}</p>
                             @endif
                         </td>
+                        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $connectionColor }}">{{ $router->connection_status_label }}</span></td>
                         <td class="px-4 py-3">
                             <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $router->is_active && $router->radius_enabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' }}">
                                 {{ $router->is_active && $router->radius_enabled ? 'Aktif' : 'Nonaktif' }}
@@ -118,7 +124,11 @@
                         </div>
                     </div>
                     <div class="flex items-center justify-between gap-3 mt-3">
-                        <span class="text-xs {{ $router->last_connection_status === 'ok' ? 'text-green-600' : ($router->last_connection_status === 'error' ? 'text-red-600' : 'text-slate-400') }}">{{ $router->connection_status_label }}</span>
+                        <div class="text-xs text-slate-500">
+                            <span class="{{ $router->last_api_status === 'ok' ? 'text-green-600' : ($router->last_api_status === 'error' ? 'text-red-600' : 'text-slate-400') }}">API: {{ $router->api_status_label }}</span>
+                            <span class="mx-1">·</span>
+                            <span class="{{ $router->connection_healthy ? 'text-green-600' : ($router->last_ping_at && $router->ping_is_fresh ? 'text-red-600' : 'text-slate-400') }}">Koneksi: {{ $router->connection_status_label }}</span>
+                        </div>
                         <span class="text-xs font-semibold text-blue-600">Detail →</span>
                     </div>
                 </a>

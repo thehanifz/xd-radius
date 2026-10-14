@@ -88,7 +88,7 @@
             </div>
             <div class="dashboard-router-list">
                 @forelse($dashboardRouters as $router)
-                    @php($routerConnected = $router->last_connection_status === 'ok')
+                    @php($routerConnected = $router->connection_healthy)
                     <a href="{{ route('routers.show', $router) }}" class="dashboard-router-row">
                         <span class="dashboard-session-dot {{ $routerConnected ? '' : 'is-stale' }}"></span>
                         <span class="dashboard-router-copy"><strong>{{ $router->name }}</strong><small>{{ $router->ip_address }} · {{ $router->location ?: 'Lokasi belum diisi' }}</small></span>

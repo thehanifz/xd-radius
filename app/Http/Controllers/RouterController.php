@@ -63,10 +63,10 @@ class RouterController extends Controller
         $result = $connectionService->test($router);
 
         if (! $result['ok']) {
-            return back()->with('error', "Koneksi ke {$router->name} gagal: {$result['message']}");
+            return back()->with('error', "Tes API ke {$router->name} gagal: {$result['message']}");
         }
 
-        return back()->with('success', "Koneksi {$router->name} berhasil. RouterOS {$result['version']}");
+        return back()->with('success', "Tes API {$router->name} berhasil. RouterOS {$result['version']}");
     }
 
     public function edit(Router $router)

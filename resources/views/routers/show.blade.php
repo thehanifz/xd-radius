@@ -4,9 +4,9 @@
 @section('topbar-actions')
     <form method="POST" action="{{ route('routers.test-connection', $router) }}" class="inline">
         @csrf
-        <button type="submit" class="btn-secondary" title="Uji koneksi RouterOS API">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <span class="hidden sm:inline">Test Koneksi</span><span class="sm:hidden">Test</span>
+        <button type="submit" class="btn-secondary" title="Uji login dan query RouterOS API">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M12 4v16"/><circle cx="12" cy="12" r="9"/></svg>
+            <span class="hidden sm:inline">Tes API</span><span class="sm:hidden">API</span>
         </button>
     </form>
     <a href="{{ route('routers.edit', $router) }}" class="btn-secondary">
@@ -27,7 +27,7 @@
 <div class="router-page max-w-4xl space-y-5">
 
     {{-- Ringkasan resource --}}
-    @if($router->last_connection_status === 'ok')
+    @if($router->last_api_status === 'ok')
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div class="card p-4"><p class="stat-label">RouterOS</p><p class="font-semibold text-slate-800 mt-1">{{ $router->routeros_version ?? '-' }}</p></div>
         <div class="card p-4"><p class="stat-label">CPU</p><p class="font-semibold text-slate-800 mt-1">{{ $router->connection_cpu_load ?? '-' }}{{ $router->connection_cpu_load !== null ? '%' : '' }}</p></div>
@@ -92,27 +92,38 @@
     {{-- Status Koneksi --}}
     <div class="card">
         <div class="card-header">
-            <h3 class="font-semibold text-slate-700 text-sm">Status Koneksi API</h3>
+            <h3 class="font-semibold text-slate-700 text-sm">Pemeriksaan Koneksi</h3>
         </div>
         <div class="card-body">
-            @php
-                $connColor = match($router->last_connection_status) {
-                    'ok'    => 'bg-green-50 border-green-200 text-green-800',
-                    'error' => 'bg-red-50 border-red-200 text-red-800',
-                    default => 'bg-slate-50 border-slate-200 text-slate-600',
-                };
-            @endphp
-            <div class="px-4 py-3 rounded-lg border {{ $connColor }} text-sm">
-                <p class="font-medium">{{ $router->connection_status_label }}</p>
-                @if($router->last_connection_error)
-                    <p class="mt-1 font-mono text-xs opacity-75">{{ $router->last_connection_error }}</p>
-                @endif
+            <div class="grid gap-3 sm:grid-cols-2">
+                <div class="rounded-lg border px-4 py-3 {{ $router->last_ping_status === 'ok' && $router->ping_is_fresh ? 'border-green-200 bg-green-50 text-green-800' : ($router->last_ping_status === 'error' && $router->ping_is_fresh ? 'border-red-200 bg-red-50 text-red-800' : 'border-slate-200 bg-slate-50 text-slate-600') }}">
+                    <p class="text-xs font-semibold uppercase tracking-wide">Ping · 2 paket</p>
+                    <p class="mt-1 text-sm font-medium">
+                        {{ $router->ping_status_label }}
+                        @if($router->last_ping_status === 'ok' && $router->ping_is_fresh && $router->last_ping_latency_ms !== null)
+                            · {{ $router->last_ping_latency_ms }} ms
+                        @endif
+                    </p>
+                    @if($router->last_ping_at)
+                        <p class="mt-1 text-xs opacity-70">{{ $router->last_ping_at->diffForHumans() }}</p>
+                    @endif
+                    @if($router->last_ping_error)
+                        <p class="mt-1 break-words font-mono text-xs opacity-75">{{ $router->last_ping_error }}</p>
+                    @endif
+                </div>
+                <div class="rounded-lg border px-4 py-3 {{ $router->last_api_status === 'ok' ? 'border-green-200 bg-green-50 text-green-800' : ($router->last_api_status === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-slate-200 bg-slate-50 text-slate-600') }}">
+                    <p class="text-xs font-semibold uppercase tracking-wide">RouterOS API</p>
+                    <p class="mt-1 text-sm font-medium">{{ $router->api_status_label }}</p>
+                    @if($router->last_api_at)
+                        <p class="mt-1 text-xs opacity-70">{{ $router->last_api_at->diffForHumans() }}</p>
+                    @endif
+                    @if($router->last_api_error)
+                        <p class="mt-1 break-words font-mono text-xs opacity-75">{{ $router->last_api_error }}</p>
+                    @endif
+                </div>
             </div>
-
-            <p class="text-xs text-slate-400 mt-3">
-                Koneksi uji otomatis akan tersedia saat fitur Multi-NAS diaktifkan.
-                Pastikan API MikroTik diaktifkan di IP → Services → API.
-            </p>
+            <p class="mt-3 text-xs text-slate-500">Status koneksi: <strong>{{ $router->connection_status_label }}</strong>. Ping otomatis berjalan setiap menit; hasil berumur lebih dari 3 menit ditandai usang.</p>
+            <p class="text-xs text-slate-400 mt-2">Tes API hanya berjalan saat tombol Tes API ditekan. Tes ini memeriksa login dan membaca resource router.</p>
         </div>
     </div>
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Router;
+use Symfony\Component\Process\Process;
 use RouterOS\Client;
 use RouterOS\Query;
 
@@ -112,6 +113,8 @@ class RouterConnectionService
 
     public function test(Router $router): array
     {
+        $testedAt = now();
+
         try {
             $client = new Client([
                 'host' => $router->ip_address,
@@ -125,9 +128,9 @@ class RouterConnectionService
             $resource = $response[0] ?? [];
 
             $router->forceFill([
-                'last_connection_status' => 'ok',
-                'last_connected_at' => now(),
-                'last_connection_error' => null,
+                'last_api_status' => 'ok',
+                'last_api_at' => $testedAt,
+                'last_api_error' => null,
                 'routeros_version' => $resource['version'] ?? $router->routeros_version,
                 'last_connection_message' => json_encode([
                     'board' => $resource['board-name'] ?? null,
@@ -137,6 +140,7 @@ class RouterConnectionService
                     'total_memory' => isset($resource['total-memory']) ? (int) $resource['total-memory'] : null,
                 ]),
             ])->save();
+            $this->updateAggregateStatus($router);
 
             return [
                 'ok' => true,
@@ -149,14 +153,76 @@ class RouterConnectionService
             ];
         } catch (\Throwable $e) {
             $router->forceFill([
-                'last_connection_status' => 'error',
-                'last_connection_error' => $e->getMessage(),
+                'last_api_status' => 'error',
+                'last_api_at' => $testedAt,
+                'last_api_error' => $e->getMessage(),
             ])->save();
+            $this->updateAggregateStatus($router);
 
             return [
                 'ok' => false,
                 'message' => $e->getMessage(),
             ];
         }
+    }
+
+    public function ping(Router $router): array
+    {
+        $testedAt = now();
+
+        try {
+            $process = new Process(['ping', '-n', '-c', '2', '-W', '2', $router->ip_address]);
+            $process->setTimeout(6);
+            $process->run();
+
+            $output = trim($process->getOutput() . "\n" . $process->getErrorOutput());
+            $ok = $process->isSuccessful();
+            $latency = null;
+
+            if ($ok && preg_match('/=\s*[\d.]+\/([\d.]+)\/[\d.]+/', $output, $match)) {
+                $latency = (float) $match[1];
+            } elseif ($ok && preg_match_all('/time[=<]([\d.]+)\s*ms/i', $output, $matches) && count($matches[1]) > 0) {
+                $latency = array_sum(array_map('floatval', $matches[1])) / count($matches[1]);
+            }
+
+            $error = $ok ? null : ($output !== '' ? mb_substr($output, 0, 2000) : 'Router tidak membalas ping.');
+            $router->forceFill([
+                'last_ping_status' => $ok ? 'ok' : 'error',
+                'last_ping_at' => $testedAt,
+                'last_ping_latency_ms' => $latency,
+                'last_ping_error' => $error,
+            ])->save();
+            $this->updateAggregateStatus($router);
+
+            return [
+                'ok' => $ok,
+                'latency_ms' => $latency,
+                'message' => $error,
+            ];
+        } catch (\Throwable $e) {
+            $router->forceFill([
+                'last_ping_status' => 'error',
+                'last_ping_at' => $testedAt,
+                'last_ping_latency_ms' => null,
+                'last_ping_error' => $e->getMessage(),
+            ])->save();
+            $this->updateAggregateStatus($router);
+
+            return ['ok' => false, 'latency_ms' => null, 'message' => $e->getMessage()];
+        }
+    }
+
+    private function updateAggregateStatus(Router $router): void
+    {
+        $router->refresh();
+        $pingFresh = $router->last_ping_at?->greaterThanOrEqualTo(now()->subMinutes(3)) ?? false;
+        $healthy = $pingFresh && $router->last_ping_status === 'ok';
+        $failed = $pingFresh && $router->last_ping_status !== 'ok';
+
+        $router->forceFill([
+            'last_connection_status' => $healthy ? 'ok' : ($failed ? 'error' : null),
+            'last_connection_error' => $router->last_ping_error,
+            'last_connected_at' => $healthy ? now() : $router->last_connected_at,
+        ])->save();
     }
 }

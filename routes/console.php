@@ -9,6 +9,8 @@ use App\Jobs\GenerateOverdueInvoicesJob;
 use App\Jobs\AutoIsolateOverdueMembersJob;
 use App\Jobs\ReconcileExpiredMembersJob;
 use App\Jobs\Radius\DetectDriftJob;
+use App\Jobs\ProbeRouterConnectionJob;
+use App\Models\Router;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -21,6 +23,13 @@ Schedule::job(new SyncFirstLoginAtJob)->everyMinute()->name('sync-first-login');
 
 // Rekonsiliasi sesi stale di radacct — setiap 15 menit
 Schedule::job(new ReconcileStaleSessionsJob)->everyFifteenMinutes()->name('reconcile-stale-sessions');
+
+// Monitor router reachability with two ICMP packets once per minute.
+Schedule::call(function () {
+    Router::active()->pluck('id')->each(
+        fn ($routerId) => ProbeRouterConnectionJob::dispatch((int) $routerId)
+    );
+})->everyMinute()->name('probe-active-routers')->withoutOverlapping();
 
 // Expire member dan putus sesi aktif — setiap menit
 Schedule::job(new ReconcileExpiredMembersJob)->everyMinute()->name('reconcile-expired-members');
