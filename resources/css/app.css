@@ -1128,3 +1128,123 @@ a.dashboard-list-title:hover { color: var(--color-primary); }
 :root[data-theme="dark"] .login-form-panel .text-slate-500 { color: var(--app-text-muted) !important; }
 :root[data-theme="dark"] .onboarding-notice { background-color: rgba(49, 46, 129, .25) !important; border-color: #373d68 !important; }
 :root[data-theme="dark"] .onboarding-notice .text-indigo-700 { color: #c7d2fe !important; }
+
+
+/* Phase 11: Stitch-inspired voucher page foundation. Scoped to avoid changing other modules. */
+.voucher-console { min-width: 0; }
+.voucher-page-heading { padding: .25rem 0 .5rem; }
+.voucher-eyebrow { color: var(--app-text-muted); font-size: .68rem; font-weight: 800; letter-spacing: .16em; }
+.voucher-primary-action { color: #fff; background: linear-gradient(135deg, #6558e8 0%, #4f46e5 100%); box-shadow: 0 8px 18px rgba(79, 70, 229, .18); }
+.voucher-primary-action:hover { background: linear-gradient(135deg, #5748df 0%, #4338ca 100%); transform: translateY(-1px); }
+.voucher-metric-card { background: var(--app-surface); border-color: var(--app-border); box-shadow: 0 2px 8px rgba(15, 23, 42, .025); transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.voucher-metric-card:hover { border-color: rgba(99, 102, 241, .35); box-shadow: 0 8px 22px rgba(15, 23, 42, .055); transform: translateY(-1px); }
+.voucher-metric-icon { background: #eef2ff; color: #4f46e5; }
+.voucher-metric-emerald .voucher-metric-icon { background: #d1fae5; color: #047857; }
+.voucher-metric-blue .voucher-metric-icon { background: #dbeafe; color: #1d4ed8; }
+.voucher-metric-amber .voucher-metric-icon { background: #fef3c7; color: #b45309; }
+:root[data-theme="dark"] .voucher-metric-card { background: var(--app-surface); border-color: var(--app-border); box-shadow: none; }
+:root[data-theme="dark"] .voucher-metric-card .text-slate-900 { color: var(--app-text) !important; }
+:root[data-theme="dark"] .voucher-metric-card .text-slate-500,
+:root[data-theme="dark"] .voucher-page-heading .text-slate-500,
+:root[data-theme="dark"] .voucher-console > section > .text-slate-500 { color: var(--app-text-muted) !important; }
+:root[data-theme="dark"] .voucher-metric-icon { background: rgba(99, 102, 241, .2); color: #c7d2fe; }
+:root[data-theme="dark"] .voucher-metric-emerald .voucher-metric-icon { background: rgba(16, 185, 129, .16); color: #6ee7b7; }
+:root[data-theme="dark"] .voucher-metric-blue .voucher-metric-icon { background: rgba(59, 130, 246, .16); color: #93c5fd; }
+:root[data-theme="dark"] .voucher-metric-amber .voucher-metric-icon { background: rgba(245, 158, 11, .16); color: #fcd34d; }
+@media (prefers-reduced-motion: reduce) { .voucher-metric-card, .voucher-primary-action { transition: none; } .voucher-metric-card:hover, .voucher-primary-action:hover { transform: none; } }
+
+
+/* Dashboard + navigation refinement: structured like the NOC reference while
+   keeping every navigation target tied to a real Laravel route. */
+.app-sidebar {
+  width: 17.25rem;
+  max-width: 88vw;
+}
+
+.app-sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--app-text-muted) 35%, transparent) transparent;
+}
+
+.app-sidebar-nav .section-divider {
+  margin: 1.15rem .25rem .35rem;
+  padding: .35rem .5rem .25rem;
+  color: var(--app-text-muted);
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.app-sidebar-nav .sidebar-nav-item {
+  min-height: 2.55rem;
+  padding-top: .62rem;
+  padding-bottom: .62rem;
+  border-radius: .55rem;
+  font-size: .79rem;
+}
+
+.app-sidebar-nav > .sidebar-nav-item:first-child {
+  margin-bottom: .55rem;
+}
+
+.app-sidebar .app-brand-subtitle {
+  letter-spacing: .035em;
+}
+
+:root[data-theme="dark"] .app-sidebar-nav .section-divider {
+  color: #7f8da3;
+}
+
+:root[data-theme="dark"] .app-sidebar-nav .sidebar-nav-item.is-active {
+  color: #67e8f9;
+  background: rgba(76, 215, 246, .09);
+  border-color: rgba(76, 215, 246, .22);
+  box-shadow: inset 2px 0 0 #4cd7f6;
+}
+
+:root[data-theme="dark"] .app-sidebar-nav .sidebar-nav-icon-active,
+:root[data-theme="dark"] .app-sidebar-nav .sidebar-nav-indicator {
+  color: #67e8f9;
+  background-color: #4cd7f6;
+}
+
+.dashboard-section-title {
+  letter-spacing: -.025em;
+}
+
+.dashboard-stat-card,
+.dashboard-resource-card,
+.dashboard-billing-card,
+.dashboard-panel {
+  border-radius: .65rem;
+}
+
+.dashboard-stat-card {
+  position: relative;
+  box-shadow: none;
+}
+
+.dashboard-stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: color-mix(in srgb, var(--color-primary) 68%, transparent);
+  opacity: .8;
+}
+
+:root[data-theme="dark"] .dashboard-stat-card,
+:root[data-theme="dark"] .dashboard-resource-card,
+:root[data-theme="dark"] .dashboard-billing-card,
+:root[data-theme="dark"] .dashboard-panel {
+  background: #171f2d;
+  border-color: #303c50;
+}
+
+@media (max-width: 1023px) {
+  .app-sidebar {
+    width: 17.25rem;
+  }
+}

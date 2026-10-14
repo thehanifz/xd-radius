@@ -46,7 +46,7 @@
 
     {{-- SIDEBAR --}}
     <aside id="sidebar"
-        class="app-sidebar flex flex-col w-64 flex-shrink-0 transition-transform duration-300 ease-in-out
+        class="app-sidebar flex flex-col w-64 xl:w-[17.25rem] flex-shrink-0 transition-transform duration-300 ease-in-out
                lg:translate-x-0 -translate-x-full fixed lg:static inset-y-0 z-40">
 
         <div class="flex items-center gap-3 px-5 h-16 border-b border-white/5 flex-shrink-0">
@@ -60,38 +60,40 @@
             </div>
             <div>
                 <span class="text-white font-bold text-sm tracking-wide">RadiusManager</span>
-                <p class="text-slate-500 text-[10px] leading-none mt-0.5">Management Panel</p>
+                <p class="app-brand-subtitle text-slate-500 text-[10px] leading-none mt-0.5">ISP &amp; NOC Gateway</p>
             </div>
         </div>
 
-        <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        <nav class="app-sidebar-nav flex-1 px-3 py-4 overflow-y-auto" aria-label="Navigasi utama">
             @php $role = auth('app')->user()?->role; @endphp
 
             <x-nav-item route="dashboard" icon="home">Dashboard</x-nav-item>
 
-            <p class="section-divider">Voucher</p>
-            <x-nav-item route="vouchers.index" icon="ticket">Daftar Voucher</x-nav-item>
-            <x-nav-item route="vouchers.create" icon="layers">Generate Batch</x-nav-item>
-
-            <p class="section-divider">Member</p>
-            <x-nav-item route="members.index" icon="users">Daftar Member</x-nav-item>
-            <x-nav-item route="billing.index" icon="receipt">Billing & Tagihan</x-nav-item>
+            <p class="section-divider">Infrastruktur</p>
+            @if($role === 'superuser')
+                <x-nav-item route="routers.index" icon="server">Router / NAS</x-nav-item>
+            @endif
 
             <p class="section-divider">Monitoring</p>
             <x-nav-item route="online.index" icon="activity">User Online</x-nav-item>
 
-            <p class="section-divider">Manajemen</p>
+            <p class="section-divider">Manajemen Akses</p>
+            <x-nav-item route="members.index" icon="users">Daftar Member</x-nav-item>
             <x-nav-item route="plans.index" icon="package">Paket Internet</x-nav-item>
+            <x-nav-item route="vouchers.index" icon="ticket">Daftar Voucher</x-nav-item>
+            <x-nav-item route="vouchers.create" icon="layers">Generate Batch</x-nav-item>
+
+            <p class="section-divider">Keuangan</p>
+            <x-nav-item route="billing.index" icon="receipt">Billing & Tagihan</x-nav-item>
+            @if($role === 'superuser')
+                <x-nav-item route="reports.index" icon="bar-chart-2">Laporan Bulanan</x-nav-item>
+            @endif
 
             @if($role === 'superuser')
-            <p class="section-divider">Laporan</p>
-            <x-nav-item route="reports.index" icon="bar-chart-2">Laporan Bulanan</x-nav-item>
-
-            <p class="section-divider">Sistem</p>
-            <x-nav-item route="routers.index" icon="server">Router / NAS</x-nav-item>
-            <x-nav-item route="operators.index" icon="user-check">Operator</x-nav-item>
-            <x-nav-item route="settings.index" icon="settings">Pengaturan Sistem</x-nav-item>
-            <x-nav-item route="settings.doku.index" icon="credit-card">Pembayaran DOKU</x-nav-item>
+                <p class="section-divider">Sistem</p>
+                <x-nav-item route="operators.index" icon="user-check">Operator</x-nav-item>
+                <x-nav-item route="settings.index" icon="settings">Pengaturan Sistem</x-nav-item>
+                <x-nav-item route="settings.doku.index" icon="credit-card">Pembayaran DOKU</x-nav-item>
             @endif
         </nav>
 

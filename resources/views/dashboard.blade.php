@@ -119,7 +119,7 @@
         <div class="dashboard-section-heading">
             <div>
                 <p class="dashboard-section-kicker">Finance & attention</p>
-                <h3 id="dashboard-billing-heading" class="dashboard-section-title">Billing overview</h3>
+                <h3 id="dashboard-billing-heading" class="dashboard-section-title">Keuangan & perhatian</h3>
             </div>
         </div>
         <div class="dashboard-billing-grid">

@@ -9,26 +9,52 @@
 @endsection
 
 @section('content')
-<div class="voucher-console space-y-5">
-<div id="voucher-kpi-strip" class="card overflow-hidden">
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-x divide-y lg:divide-y-0 divide-slate-100">
+<div class="voucher-console space-y-6">
+    <section class="voucher-page-heading flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div class="max-w-2xl">
+            <p class="voucher-eyebrow">OPERASIONAL RADIUS <span class="mx-2">/</span> VOUCHER &amp; PLANS</p>
+            <h1 class="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Manajemen Voucher</h1>
+            <p class="mt-2 text-sm sm:text-base text-slate-500">Kelola batch, pantau status voucher, dan cetak kredensial pelanggan dari satu tempat.</p>
+        </div>
+        <a href="{{ route('vouchers.create') }}" class="voucher-primary-action inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Buat Batch Voucher
+        </a>
+    </section>
+
+    <section id="voucher-kpi-strip" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4" aria-label="Ringkasan voucher">
         @php
             $voucherKpis = [
-                ['key' => 'available', 'label' => 'Tersedia', 'value' => $voucherStats['available']],
-                ['key' => 'used', 'label' => 'Digunakan', 'value' => $voucherStats['used']],
-                ['key' => 'expired', 'label' => 'Expired', 'value' => $voucherStats['expired']],
-                ['key' => 'isolated', 'label' => 'Isolir', 'value' => $voucherStats['isolated']],
-                ['key' => 'total', 'label' => 'Total', 'value' => $voucherStats['total']],
+                ['key' => 'total', 'label' => 'Total Voucher', 'value' => $voucherStats['total'], 'note' => 'Semua batch', 'tone' => 'indigo', 'icon' => 'grid'],
+                ['key' => 'available', 'label' => 'Tersedia', 'value' => $voucherStats['available'], 'note' => 'Siap digunakan', 'tone' => 'emerald', 'icon' => 'check'],
+                ['key' => 'used', 'label' => 'Digunakan', 'value' => $voucherStats['used'], 'note' => 'Sudah login', 'tone' => 'blue', 'icon' => 'activity'],
+                ['key' => 'expired', 'label' => 'Expired', 'value' => $voucherStats['expired'], 'note' => 'Masa aktif berakhir', 'tone' => 'amber', 'icon' => 'clock'],
             ];
         @endphp
         @foreach($voucherKpis as $kpi)
-        <div class="px-4 py-2.5 flex items-center justify-between gap-3 min-h-[54px]">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ $kpi['label'] }}</span>
-            <span id="voucher-kpi-{{ $kpi['key'] }}" class="text-lg font-bold text-slate-800 tabular-nums">{{ number_format($kpi['value']) }}</span>
-        </div>
+        <article class="voucher-metric-card voucher-metric-{{ $kpi['tone'] }} rounded-2xl border p-5 sm:p-5">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ $kpi['label'] }}</p>
+                    <p id="voucher-kpi-{{ $kpi['key'] }}" class="mt-3 text-3xl font-bold tracking-tight text-slate-900 tabular-nums">{{ number_format($kpi['value']) }}</p>
+                    <p class="mt-1 text-xs text-slate-500">{{ $kpi['note'] }}</p>
+                </div>
+                <span class="voucher-metric-icon inline-flex h-11 w-11 items-center justify-center rounded-xl">
+                    @if($kpi['icon'] === 'grid')
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                    @elseif($kpi['icon'] === 'check')
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6 9 17l-5-5"/><circle cx="12" cy="12" r="9"/></svg>
+                    @elseif($kpi['icon'] === 'activity')
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+                    @else
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    @endif
+                </span>
+            </div>
+        </article>
         @endforeach
-    </div>
-</div>
+        <p class="col-span-full text-xs text-slate-500">Voucher diisolir: <strong class="font-semibold text-slate-700">{{ number_format($voucherStats['isolated']) }}</strong></p>
+    </section>
 
 
     {{-- Filter --}}
