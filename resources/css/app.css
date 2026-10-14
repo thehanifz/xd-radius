@@ -915,19 +915,16 @@ a.dashboard-list-title:hover { color: var(--color-primary); }
    Theme-aware monitoring UI; existing routes, data, and live polling retained.
 =========================== */
 .online-page { color: var(--app-text); }
-.online-topbar-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; }
-.online-live-indicator { display: inline-flex; align-items: center; gap: .45rem; color: var(--app-text-muted); font-size: .72rem; white-space: nowrap; }
-.online-live-separator { color: var(--app-border); }
-.online-live-dot { display: inline-block; flex: 0 0 auto; width: .45rem; height: .45rem; border-radius: 999px; background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.12); }
-.online-live-dot.is-warning { background: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,.12); }
-.online-page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
 .online-eyebrow { margin: 0 0 .35rem; color: var(--color-primary); font-size: .66rem; font-weight: 800; letter-spacing: .13em; }
 .online-heading { margin: 0; color: var(--app-text); font-size: clamp(1.35rem, 2vw, 1.75rem); font-weight: 750; letter-spacing: -.035em; line-height: 1.25; }
 .online-subheading { margin: .4rem 0 0; color: var(--app-text-muted); font-size: .8rem; line-height: 1.55; }
-.online-heading-meta { display: flex; align-items: flex-end; flex-direction: column; gap: .4rem; }
-.online-live-pill { display: inline-flex; align-items: center; gap: .5rem; padding: .38rem .65rem; border: 1px solid #bbf7d0; border-radius: 999px; color: #166534; background: #f0fdf4; font-size: .7rem; font-weight: 700; white-space: nowrap; }
-.online-live-pill .online-live-dot { width: .4rem; height: .4rem; }
-.online-refresh-note { color: var(--app-text-muted); font-size: .68rem; }
+.online-type-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }
+.online-type-tab { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: .75rem; padding: .8rem 1rem; border: 1px solid var(--app-border); border-radius: .7rem; color: var(--app-text-muted); background: var(--app-surface); font-size: .77rem; font-weight: 700; transition: border-color .15s ease, color .15s ease, background .15s ease; }
+.online-type-tab:hover { border-color: var(--color-primary); color: var(--app-text); }
+.online-type-tab strong { flex: 0 0 auto; padding: .2rem .45rem; border-radius: .35rem; color: inherit; background: var(--app-surface-muted); font-size: .68rem; font-variant-numeric: tabular-nums; }
+.online-type-tab.is-active { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-light); }
+.online-type-tab-voucher.is-active { border-color: #4f46e5; color: #4338ca; background: #eef2ff; }
+.online-type-tab-member.is-active { border-color: #0891b2; color: #0e7490; background: #ecfeff; }
 .online-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; }
 .online-stat-card { min-width: 0; padding: 1rem 1.1rem; border: 1px solid var(--app-border); border-radius: .85rem; background: var(--app-surface); }
 .online-stat-topline { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
@@ -956,7 +953,7 @@ a.dashboard-list-title:hover { color: var(--color-primary); }
 .online-cell-muted { color: var(--app-text-muted); font-size: .75rem; white-space: nowrap; }
 .online-type-pill, .online-status-pill { display: inline-flex; align-items: center; gap: .35rem; padding: .28rem .48rem; border-radius: .4rem; font-size: .65rem; font-weight: 750; white-space: nowrap; }
 .online-type-pill.is-voucher { color: #4338ca; background: #eef2ff; }
-.online-type-pill.is-member { color: #6d28d9; background: #f3e8ff; }
+.online-type-pill.is-member { color: #0e7490; background: #cffafe; }
 .online-status-pill > span { width: .35rem; height: .35rem; border-radius: 999px; background: currentColor; }
 .online-status-pill.is-online { color: #15803d; background: #dcfce7; }
 .online-status-pill.is-stale { color: #a16207; background: #fef3c7; }
@@ -968,11 +965,12 @@ a.dashboard-list-title:hover { color: var(--color-primary); }
 .online-empty-state > span:last-child { font-size: .73rem; }
 .online-empty-icon { display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; margin-bottom: .25rem; border-radius: .75rem; color: var(--app-text-muted); background: var(--app-surface-muted); font-size: 1.5rem; }
 .online-pagination { padding: 1rem 1.2rem; border-top: 1px solid var(--app-border); }
-:root[data-theme="dark"] .online-live-pill { color: #bbf7d0; background: #142b23; border-color: #285a43; }
 :root[data-theme="dark"] .online-stat-active .online-stat-icon { color: #a7f3d0; background: #19392f; }
 :root[data-theme="dark"] .online-stat-stale .online-stat-icon { color: #fde68a; background: #30291a; }
 :root[data-theme="dark"] .online-type-pill.is-voucher { color: #c7d2fe; background: #28294a; }
-:root[data-theme="dark"] .online-type-pill.is-member { color: #ddd6fe; background: #33294b; }
+:root[data-theme="dark"] .online-type-pill.is-member { color: #a5f3fc; background: #164e63; }
+:root[data-theme="dark"] .online-type-tab-voucher.is-active { color: #c7d2fe; background: #28294a; }
+:root[data-theme="dark"] .online-type-tab-member.is-active { color: #a5f3fc; background: #123447; }
 :root[data-theme="dark"] .online-status-pill.is-online { color: #bbf7d0; background: #19392f; }
 :root[data-theme="dark"] .online-status-pill.is-stale { color: #fde68a; background: #3b301b; }
 :root[data-theme="dark"] .online-traffic .upload { color: #a5f3fc; }
@@ -980,8 +978,8 @@ a.dashboard-list-title:hover { color: var(--color-primary); }
 :root[data-theme="dark"] .online-table tbody tr:hover { background: var(--app-table-hover); }
 @media (max-width: 900px) { .online-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
-  .online-page-heading { align-items: flex-start; flex-direction: column; }
-  .online-heading-meta { align-items: flex-start; }
+  .online-type-tabs { grid-template-columns: 1fr; gap: .4rem; }
+  .online-type-tab { padding: .7rem .8rem; }
   .online-stats-grid { gap: .6rem; }
   .online-stat-card { padding: .85rem; }
   .online-stat-footnote { min-height: 2em; }
@@ -989,8 +987,6 @@ a.dashboard-list-title:hover { color: var(--color-primary); }
   .online-filter-field { min-width: 100%; }
   .online-filter-actions { width: 100%; }
   .online-filter-actions > * { flex: 1; }
-  .online-topbar-actions { gap: .45rem; }
-  .online-live-indicator { font-size: .65rem; }
 }
 
 

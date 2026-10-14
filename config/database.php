@@ -95,6 +95,7 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => 'prefer',
+            'timezone' => env('DB_TIMEZONE', env('APP_TIMEZONE', 'Asia/Jakarta')),
         ],
 
         'radius' => [
@@ -110,6 +111,7 @@ return [
             'prefix_indexes' => true,
             'search_path' => env('RADIUS_DB_SEARCH_PATH', 'public'),
             'sslmode' => env('RADIUS_DB_SSLMODE', env('DB_SSLMODE', 'prefer')),
+            'timezone' => env('RADIUS_DB_TIMEZONE', env('DB_TIMEZONE', env('APP_TIMEZONE', 'Asia/Jakarta'))),
         ],
 
         'sqlsrv' => [

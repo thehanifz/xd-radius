@@ -57,14 +57,26 @@ Bagian ini **tidak berubah** — tetap dilakukan manual di sisi MikroTik, karena
 
 `secret` di atas harus **sama** dengan `radius_secret` yang diisi pada halaman **Router / NAS** di aplikasi — nilai ini yang disinkronkan otomatis ke tabel `nas` oleh `FreeRadiusNasManager` setiap kali router dibuat/diubah/dihapus, tanpa perlu insert manual ke `nas` lagi.
 
-Aktifkan Interim-Update accounting (rekomendasi: setiap 1–5 menit):
+Samakan timezone PostgreSQL untuk koneksi FreeRADIUS supaya timestamp accounting baru ditulis sebagai waktu Jakarta. Kolom `radacct` bertipe `timestamp without time zone`, sehingga nilainya sendiri tidak menyimpan offset UTC:
+
+```sql
+ALTER ROLE radius_user SET timezone TO 'Asia/Jakarta';
+```
+
+Setelah itu restart FreeRADIUS agar pool koneksi database dibuka ulang. Laravel menggunakan `APP_TIMEZONE=Asia/Jakarta`; bila koneksi PostgreSQL Laravel memakai role berbeda, set juga `DB_TIMEZONE=Asia/Jakarta` dan `RADIUS_DB_TIMEZONE=Asia/Jakarta` di `.env`, lalu jalankan `php artisan optimize:clear`.
+
+Aktifkan RADIUS Interim-Update agar byte counter sesi aktif terus diperbarui (rekomendasi: setiap 5 menit):
 
 ```
-/ip hotspot profile set [find] interim-update=5m
-/ppp profile set [find] interim-update=5m
+/ppp aaa set accounting=yes interim-update=5m
+/ip hotspot profile set [find] radius-accounting=yes radius-interim-update=5m
 ```
 
-> Interim-Update diperlukan agar rekonsiliasi sesi stale di Laravel Scheduler (`ReconcileStaleSessionsJob`) bekerja akurat.
+> Perintah PPP mengatur interval di `/ppp aaa`, bukan di `/ppp profile`. RouterOS menyimpan byte dari sudut pandang pelanggan: `Acct-Output-Octets` adalah upload pelanggan dan `Acct-Input-Octets` adalah download. Nilai `radacct` untuk sesi aktif akan tetap 0 sampai router mengirim Accounting Interim-Update; setelah interval diaktifkan, tunggu satu interval atau sambungkan ulang sesi untuk melihat nilainya.
+>
+> Interim-Update juga diperlukan agar rekonsiliasi sesi stale di Laravel Scheduler (`ReconcileStaleSessionsJob`) bekerja akurat.
+
+Tombol **Tes API** di halaman detail router menerapkan pengaturan accounting yang sama melalui RouterOS API: accounting PPP diaktifkan, dan interval accounting 5 menit diterapkan ke semua profil HotSpot. Akun API router harus memiliki izin menulis konfigurasi. Jika penerapan gagal, UI menampilkan kegagalan tes agar perubahan yang belum berhasil tidak dianggap selesai.
 
 ## Troubleshooting (Referensi — Jika Pipeline Gagal)
 

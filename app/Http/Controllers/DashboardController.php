@@ -75,6 +75,7 @@ class DashboardController extends Controller
             'attention' => 0,
         ];
         $dashboardRouters = collect();
+        $routerNames = Router::query()->pluck('name', 'ip_address');
         // Match the operational status shown in the router list: both the
         // router and its FreeRADIUS NAS entry must be enabled.
         $activeRouters = Router::query()
@@ -99,6 +100,7 @@ class DashboardController extends Controller
             'onlineSessions',
             'routerStats',
             'dashboardRouters',
+            'routerNames',
             'isSuperUser'
         ));
     }

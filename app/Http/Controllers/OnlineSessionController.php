@@ -25,6 +25,8 @@ class OnlineSessionController extends Controller
                 'upload' => Radacct::formatBytes($data['totalUpload']),
                 'download' => Radacct::formatBytes($data['totalDownload']),
             ],
+            'typeCounts' => $data['typeCounts'],
+            'resultCount' => $data['sessions']->total(),
             'rows' => view('online.partials.rows', $data)->render(),
             'page' => $data['sessions']->currentPage(),
             'last_page' => $data['sessions']->lastPage(),
@@ -39,7 +41,7 @@ class OnlineSessionController extends Controller
         if ($request->filled('type')) {
             if ($request->type === 'voucher') {
                 $query->whereExists(fn($q) => $q->from('vouchers')->whereColumn('vouchers.username', 'radacct.username'));
-            } elseif ($request->type === 'member') {
+            } elseif (in_array($request->type, ['member', 'pppoe'], true)) {
                 $query->whereExists(fn($q) => $q->from('members')->whereColumn('members.username', 'radacct.username'));
             }
         }
@@ -57,19 +59,34 @@ class OnlineSessionController extends Controller
         $sessions = $query->paginate(50)->withQueryString();
         $voucherUsers = Voucher::whereIn('username', $sessions->pluck('username')->unique())
             ->pluck('username')->flip();
-        $routers = Router::active()->orderBy('name')->get();
+        $routerNames = Router::query()
+            ->whereNotNull('ip_address')
+            ->pluck('name', 'ip_address');
         $nasIps = Radacct::whereNull('acctstoptime')
             ->select('nasipaddress')->distinct()->orderBy('nasipaddress')->pluck('nasipaddress');
+        $nasOptions = $nasIps->map(fn ($ip) => [
+            'ip' => $ip,
+            'name' => $routerNames->get($ip, 'MikroTik tidak terdaftar'),
+        ]);
 
         $activeQuery = Radacct::whereNull('acctstoptime');
+        $typeCounts = [
+            'all' => (clone $activeQuery)->count(),
+            'voucher' => (clone $activeQuery)->whereExists(
+                fn($q) => $q->from('vouchers')->whereColumn('vouchers.username', 'radacct.username')
+            )->count(),
+            'member' => (clone $activeQuery)->whereExists(
+                fn($q) => $q->from('members')->whereColumn('members.username', 'radacct.username')
+            )->count(),
+        ];
         $totalActive = (clone $activeQuery)->where(fn($q) => $q->where('is_stale', false)->orWhereNull('is_stale'))->count();
         $totalStale = (clone $activeQuery)->where('is_stale', true)->count();
         $totalUpload = (clone $activeQuery)->sum('acctoutputoctets');
         $totalDownload = (clone $activeQuery)->sum('acctinputoctets');
 
         return compact(
-            'sessions', 'routers', 'nasIps', 'totalActive', 'totalStale',
-            'totalUpload', 'totalDownload', 'voucherUsers'
+            'sessions', 'routerNames', 'nasOptions', 'totalActive', 'totalStale',
+            'totalUpload', 'totalDownload', 'voucherUsers', 'typeCounts'
         );
     }
 

@@ -7,7 +7,7 @@
 <tr class="online-session-row {{ $isStale ? 'is-stale' : '' }}">
     <td><span class="online-username">{{ $s->username }}</span></td>
     <td><span class="online-type-pill {{ $isVoucher ? 'is-voucher' : 'is-member' }}">{{ $type }}</span></td>
-    <td><span class="online-mono">{{ $s->nasipaddress }}</span></td>
+    <td><span class="online-cell-muted">{{ $routerNames->get($s->nasipaddress, 'MikroTik tidak terdaftar') }}</span></td>
     <td><span class="online-mono">{{ $s->framedipaddress ?? '-' }}</span></td>
     <td><span class="online-cell-muted">{{ $s->acctstarttime?->format('d/m H:i') ?? '-' }}</span></td>
     <td><span class="online-cell-muted">{{ $s->duration }}</span></td>

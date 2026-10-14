@@ -127,6 +127,11 @@ class RouterConnectionService
             $response = $client->query('/system/resource/print')->read();
             $resource = $response[0] ?? [];
 
+            // Keep RADIUS accounting counters current for both PPP and HotSpot
+            // sessions. The test-API action is the explicit trigger for this
+            // RouterOS configuration, so no background polling writes settings.
+            $this->configureRadiusAccounting($client);
+
             $router->forceFill([
                 'last_api_status' => 'ok',
                 'last_api_at' => $testedAt,
@@ -163,6 +168,45 @@ class RouterConnectionService
                 'ok' => false,
                 'message' => $e->getMessage(),
             ];
+        }
+    }
+
+    private function configureRadiusAccounting(Client $client): void
+    {
+        // /ppp/aaa is a singleton settings menu in RouterOS, not a list item
+        // with an ID. Apply its fields directly as in the CLI `set` command.
+        $this->runRouterConfigCommand($client,
+            (new Query('/ppp/aaa/set'))
+                ->equal('accounting', 'yes')
+                ->equal('interim-update', '5m')
+        );
+
+        $hotspotProfiles = $client->query('/ip/hotspot/profile/print')->read();
+        foreach ($hotspotProfiles as $profile) {
+            if (! isset($profile['.id'])) {
+                continue;
+            }
+
+            $this->runRouterConfigCommand($client,
+                (new Query('/ip/hotspot/profile/set'))
+                    ->equal('.id', $profile['.id'])
+                    ->equal('radius-accounting', 'yes')
+                    ->equal('radius-interim-update', '5m')
+            );
+        }
+    }
+
+    private function runRouterConfigCommand(Client $client, Query $query): void
+    {
+        $response = $client->query($query)->read(false);
+
+        if (in_array('!trap', $response, true) || in_array('!fatal', $response, true)) {
+            $message = collect($response)
+                ->first(fn ($word) => is_string($word) && str_starts_with($word, '=message='));
+
+            throw new \RuntimeException($message
+                ? substr($message, strlen('=message='))
+                : 'RouterOS menolak perubahan konfigurasi accounting.');
         }
     }
 

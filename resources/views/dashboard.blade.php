@@ -52,14 +52,14 @@
             <div class="dashboard-session-table-wrap">
                 <table class="dashboard-session-table">
                     <thead>
-                        <tr><th>Akun</th><th>IP address</th><th>NAS</th><th>Uptime</th><th>Traffic ↓ / ↑</th><th>Status</th></tr>
+                        <tr><th>Akun</th><th>IP address</th><th>MikroTik</th><th>Uptime</th><th>Traffic ↓ / ↑</th><th>Status</th></tr>
                     </thead>
                     <tbody>
                     @forelse($onlineSessions as $session)
                         <tr>
                             <td><span class="dashboard-session-dot {{ $session->is_stale ? 'is-stale' : '' }}"></span><span class="dashboard-session-user">{{ $session->username }}</span></td>
                             <td class="dashboard-session-mono">{{ $session->framedipaddress ?: '—' }}</td>
-                            <td class="dashboard-session-mono">{{ $session->nasipaddress ?: '—' }}</td>
+                            <td class="dashboard-session-mono">{{ $routerNames->get($session->nasipaddress, 'MikroTik tidak terdaftar') }}</td>
                             <td class="dashboard-session-mono">{{ $session->duration }}</td>
                             <td class="dashboard-session-traffic"><span>{{ $session->download_label }}</span><span>{{ $session->upload_label }}</span></td>
                             <td><span class="dashboard-session-status {{ $session->is_stale ? 'is-stale' : '' }}">{{ $session->is_stale ? 'Stale' : 'Online' }}</span></td>

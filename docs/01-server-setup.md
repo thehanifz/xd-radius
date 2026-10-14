@@ -10,6 +10,15 @@
 | PostgreSQL | 14+ (native atau Docker container) |
 | Composer | 2.x |
 
+Set timezone host ke Jakarta agar log dan service sistem memakai UTC+7:
+
+```bash
+sudo timedatectl set-timezone Asia/Jakarta
+timedatectl
+```
+
+Laravel juga memakai `APP_TIMEZONE=Asia/Jakarta`; timezone PostgreSQL FreeRADIUS dijelaskan di [`02-freeradius-setup.md`](./02-freeradius-setup.md).
+
 ## Cara Setup (Direkomendasikan): `setup.sh`
 
 Sejak revisi ini, seluruh pengecekan dan instalasi prasyarat server dikonsolidasikan ke satu script: **`setup.sh`** di root repository. Jangan lagi menginstall paket satu-satu secara manual — gunakan mode `check` dan `install` di bawah ini.

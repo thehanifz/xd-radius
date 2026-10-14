@@ -139,9 +139,11 @@
                         <line x1="3" y1="18" x2="21" y2="18"/>
                     </svg>
                 </button>
-                <div class="min-w-0">
-                    <h1 class="text-sm font-bold text-slate-800 tracking-tight truncate">@yield('title', 'Dashboard')</h1>
-                </div>
+                @unless($__env->hasSection('hide-topbar-title'))
+                    <div class="min-w-0">
+                        <h1 class="text-sm font-bold text-slate-800 tracking-tight truncate">@yield('title', 'Dashboard')</h1>
+                    </div>
+                @endunless
             </div>
             <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 max-w-[62vw] sm:max-w-none overflow-x-auto scrollbar-hide">
                 <label class="theme-control flex items-center gap-2" for="theme-preference">
