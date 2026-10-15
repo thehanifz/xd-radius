@@ -12,6 +12,7 @@ sudo freeradius -XC
 sudo systemctl status freeradius
 docker ps --filter name=xd-radius-postgres
 php artisan freeradius:health-check
+php artisan app:configure-jakarta-timezone   # pastikan timezone DB tetap Asia/Jakarta
 ```
 
 Jika pipeline gagal, baca pesan terminal dan log servicenya:

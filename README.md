@@ -10,7 +10,7 @@ RadiusManager adalah panel manajemen jaringan untuk ISP dan RT/RW Net. Aplikasi 
 | Member | Paket internet, masa aktif, serta isolir layanan |
 | Billing | Invoice, pencatatan pembayaran, dan PDF |
 | Monitoring | Sesi online, accounting, serta deteksi sesi stale |
-| Router / NAS | Kelola MikroTik, tes koneksi, dan sinkronisasi FreeRADIUS |
+| Router / NAS | Kelola MikroTik, tes koneksi, probe status, dan sinkronisasi FreeRADIUS |
 | Operator | Akun operator dengan hak akses |
 | Laporan | Laporan bulanan dan PDF |
 
@@ -50,6 +50,8 @@ sudo ./setup.sh check
 ```
 
 Bootstrap mengelola tiga proses pada `ecosystem.config.cjs` dengan PM2: `xd-radius-app`, `xd-radius-queue`, dan `xd-radius-scheduler`. PM2 memulihkan proses setelah reboot melalui `pm2-root.service`.
+
+Mode `check` memvalidasi semua prasyarat termasuk PHP, Node.js (≥18), Composer, PM2, Docker, PostgreSQL, FreeRADIUS, dan permission direktori — tanpa mengubah apapun di server:
 
 ### Hubungkan MikroTik
 

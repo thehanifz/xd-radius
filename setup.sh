@@ -146,7 +146,14 @@ check_node() {
   say ""
   say "[NODE / NPM]"
   if command_exists node; then
-    ok "Node.js $(node -v 2>/dev/null | sed 's/^v//')"
+    local nodever nodemaj
+    nodever="$(node -v 2>/dev/null | sed 's/^v//')"
+    nodemaj="$(printf '%s' "$nodever" | cut -d. -f1)"
+    if [ "${nodemaj:-0}" -ge 18 ] 2>/dev/null; then
+      ok "Node.js $nodever (>= 18)"
+    else
+      fail "Node.js ${nodever:-unknown} (< 18 required)"
+    fi
   else
     fail "Node.js not installed."
   fi
@@ -155,6 +162,38 @@ check_node() {
     ok "npm $(npm -v 2>/dev/null)"
   else
     fail "npm not installed."
+  fi
+}
+
+check_pm2() {
+  say ""
+  say "[PM2]"
+  if command_exists pm2; then
+    ok "PM2 $(pm2 --version 2>/dev/null | tail -n1)"
+    if pm2 describe xd-radius-app >/dev/null 2>&1; then
+      ok "PM2 xd-radius-app process registered"
+    else
+      warn "PM2 installed but xd-radius-app not running yet (run setup to start)."
+    fi
+  else
+    warn "PM2 not installed. Install via: npm install -g pm2"
+  fi
+}
+
+check_docker() {
+  say ""
+  say "[DOCKER]"
+  if ! command_exists docker; then
+    warn "Docker not installed."
+    return
+  fi
+  local dver
+  dver="$(docker --version 2>/dev/null | sed -E 's/Docker version ([^,]+).*/\1/')"
+  ok "Docker $dver"
+  if systemctl is-active --quiet docker 2>/dev/null; then
+    ok "Docker daemon is active"
+  else
+    warn "Docker daemon is not active (run: systemctl start docker)"
   fi
 }
 
@@ -304,6 +343,8 @@ run_preflight() {
   check_php
   check_composer
   check_node
+  check_pm2
+  check_docker
   check_postgres
   check_freeradius
   check_application
@@ -397,6 +438,8 @@ apt_install_missing() {
   command_exists npm || packages+=(npm)
   command_exists psql || packages+=(postgresql-client)
   command_exists sudo || packages+=(sudo)
+  command_exists freeradius || packages+=(freeradius freeradius-postgresql)
+  command_exists docker || packages+=(docker.io)
 
   for ext in "${php_ext_missing[@]}"; do
     case "$ext" in
@@ -964,6 +1007,7 @@ PY
   if ! grep -q '^APP_KEY=base64:' "$ROOT/.env"; then run php "$ARTISAN" key:generate --force || die "Unable to generate APP_KEY."; fi
   run npm ci --no-audit --no-fund || die "npm dependency installation failed."
   run npm run build || die "Frontend asset build failed."
+  run php "$ARTISAN" storage:link --force || die "Unable to create public storage symlink."
   install -d -o www-data -g www-data -m 0775 "$ROOT/storage" "$ROOT/bootstrap/cache"
   run chown -R www-data:www-data "$ROOT/storage" "$ROOT/bootstrap/cache"
   run php "$ARTISAN" optimize:clear || die "Unable to clear Laravel caches."

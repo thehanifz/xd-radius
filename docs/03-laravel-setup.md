@@ -128,20 +128,17 @@ File: `config/auth.php`
 | `operator` | `EnsureOperator` | Semua user login bisa akses (superuser + operator) |
 | `active` | `EnsureUserIsActive` | Cek user aktif, logout jika dinonaktifkan |
 
-### Default Superuser (Seeder Awal)
-| Field | Value |
-|---|---|
-| Name | Super Administrator |
-| Email | admin@radius.local |
-| Password | RadiusAdmin@2026 |
-| Role | superuser |
+### Pembuatan Superuser (Kondisi Saat Ini)
 
-> ⚠️ **Ganti password setelah login pertama!** Kredensial ini adalah nilai seeder default — jangan dipakai di instalasi produksi tanpa diganti.
+> ⚠️ **Credential default di bawah ini sudah TIDAK berlaku.** Seeder lama (`SuperUserSeeder` dengan email `admin@radius.local` / password `RadiusAdmin@2026`) sudah dihapus dari kodebase. Jangan mencoba login dengan credential tersebut — akun tidak akan ditemukan.
 
-Untuk membuat ulang superuser:
+Superuser kini dibuat secara **interaktif** melalui artisan command yang merupakan bagian dari `setup.sh`:
+
 ```bash
-php artisan db:seed --class=SuperUserSeeder
+php artisan app:create-superuser
 ```
+
+Command ini meminta username, email, dan password secara interaktif (password diminta dua kali untuk verifikasi). Password disimpan sebagai hash di database — **tidak pernah tersimpan sebagai teks biasa di `.env`**. Pada setup fresh, command ini dijalankan otomatis oleh `setup.sh`.
 
 ---
 

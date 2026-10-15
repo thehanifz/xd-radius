@@ -22,8 +22,9 @@ Jika akun dinonaktifkan, login dan sesi aktif akan ditolak.
    - IP/FQDN, port API, username, dan password API.
    - RADIUS shared secret yang sama dengan konfigurasi RADIUS di MikroTik.
 5. Setelah router disimpan, sistem otomatis menjadwalkan sinkronisasi ke FreeRADIUS (status `pending` → `in_sync`/`failed`). Buka `/settings/freeradius` untuk memantau status sinkronisasi ini — tidak perlu edit tabel `nas` atau restart FreeRADIUS secara manual lagi.
-6. Aktifkan Interim Update pada MikroTik, misalnya setiap 1–5 menit. Set threshold stale minimal dua kali interval tersebut.
-7. Buat paket layanan sebelum membuat voucher atau member.
+6. Gunakan tombol **Probe Koneksi** di halaman detail router untuk memverifikasi bahwa server dapat menjangkau API MikroTik. Status probe (`probe_status`) ditampilkan di daftar dan detail router; nilai yang mungkin: `unknown`, `online`, `offline`. Probe dijadwalkan otomatis oleh `ProbeRouterConnectionJob` dan dapat dijalankan manual dari UI.
+7. Aktifkan Interim Update pada MikroTik, misalnya setiap 1–5 menit. Set threshold stale minimal dua kali interval tersebut.
+8. Buat paket layanan sebelum membuat voucher atau member.
 
 ## 3. Menambah paket
 
@@ -133,6 +134,7 @@ Setelah deploy kode baru:
 composer install --no-dev --optimize-autoloader
 npm ci
 npm run build
+php artisan storage:link --force
 php artisan migrate --force
 php artisan optimize
 php artisan queue:restart
@@ -140,6 +142,8 @@ pm2 restart ecosystem.config.cjs
 ```
 
 Jika deploy menyertakan perubahan pada management plane FreeRADIUS (service/job baru di bawah `app/Services/Radius` atau `app/Jobs/Radius`), jalankan `php artisan freeradius:setup` setelah migrasi untuk memastikan konfigurasi FreeRADIUS ikut disinkronkan ulang.
+
+Jika deploy mengubah timezone atau konfigurasi koneksi PostgreSQL, jalankan `php artisan app:configure-jakarta-timezone` untuk memastikan parameter timezone pada koneksi database tetap benar.
 
 Sebelum deploy, backup PostgreSQL dan pastikan migration telah diuji pada salinan database. Periksa juga endpoint `/up`, status proses PM2, `/settings/freeradius` (Health harus tetap `Healthy/Ready`), dan failed jobs setelah deploy.
 
