@@ -1,97 +1,41 @@
 # 01 — Server Setup
 
-## Environment
+## Instalasi server baru
 
-| Komponen | Detail |
-|---|---|
-| OS | Debian GNU/Linux 12 (Bookworm) / Armbian jammy (teruji) |
-| Platform | LXC Container di Proxmox, atau server ARM/x86 sejenis |
-| PHP | 8.2.x |
-| PostgreSQL | 14+ (native atau Docker container) |
-| Composer | 2.x |
-
-Set timezone host ke Jakarta agar log dan service sistem memakai UTC+7:
+Untuk instalasi baru, `setup.sh` memasang dan mengonfigurasi aplikasi dari satu perintah:
 
 ```bash
-sudo timedatectl set-timezone Asia/Jakarta
-timedatectl
+sudo git clone https://github.com/thehanifz/xd-radius.git /opt/xd-radius
+cd /opt/xd-radius
+sudo bash setup.sh
 ```
 
-Laravel juga memakai `APP_TIMEZONE=Asia/Jakarta`; timezone PostgreSQL FreeRADIUS dijelaskan di [`02-freeradius-setup.md`](./02-freeradius-setup.md).
+Script mendeteksi PostgreSQL lokal, lalu menawarkan setiap instance yang ditemukan atau pembuatan instance PostgreSQL baru dalam Docker. Deteksi mencakup cluster native (`pg_lsclusters`), container PostgreSQL Docker (termasuk port host yang dipublikasikan maupun IP jaringan container), dan endpoint TCP lokal pada port 5432–5499. Server PostgreSQL remote tidak dicari otomatis. Jika tidak ada instance lokal terdeteksi, instance Docker baru dibuat otomatis. Jika menggunakan instance lama, script membuat role/database aplikasi baru dan tidak mengubah role/database yang telah ada. Komponen yang disiapkan otomatis:
 
-## Cara Setup (Direkomendasikan): `setup.sh`
+- PHP 8.2+, ekstensi PHP, Composer, Node.js/npm, PostgreSQL client, dan FreeRADIUS dengan modul PostgreSQL. Server PostgreSQL native tidak dipasang otomatis.
+- Instance PostgreSQL baru (jika dipilih) berjalan di Docker dengan volume persisten dan hanya dipublikasikan ke localhost. Container tanpa port publik dapat dipakai lewat IP jaringan Docker apabila IP tersebut dapat dijangkau dari host.
+- `.env`, `APP_KEY`, kredensial database acak, database aplikasi/RADIUS, serta timezone `Asia/Jakarta`.
+- Dependency Composer/npm, asset production (`npm run build`), migration Laravel, dan schema FreeRADIUS.
+- Konfigurasi SQL FreeRADIUS, privileged helper, kunci RSA DOKU, akun superadmin, dan proses PM2 untuk aplikasi, queue, serta scheduler.
 
-Sejak revisi ini, seluruh pengecekan dan instalasi prasyarat server dikonsolidasikan ke satu script: **`setup.sh`** di root repository. Jangan lagi menginstall paket satu-satu secara manual — gunakan mode `check` dan `install` di bawah ini.
+Untuk cluster native, provisioning memakai akun sistem `postgres`. Untuk container Docker, setup membaca kredensial admin dari environment container atau meminta kredensial bila tidak tersedia. Database dan role bernama `xd_radius` harus belum ada; jika salah satunya sudah ada, proses berhenti tanpa mengubahnya.
 
-### 1. Cek Prasyarat (tanpa mengubah apa pun)
+Target bootstrap adalah **Debian 12, Ubuntu 24.04+, atau Armbian Ubuntu Jammy** dengan systemd dan akses internet. Jalankan sebagai root. Aplikasi dibuka pada IP server yang terdeteksi, port `8000`; RADIUS menggunakan UDP `1812` (authentication) dan `1813` (accounting). Pastikan firewall memperbolehkan port yang dibutuhkan.
+
+Password database dibuat otomatis dan dicatat di `.env` dengan permission terbatas untuk `root:www-data`. Password superadmin diminta secara interaktif dan disimpan sebagai hash di database, bukan sebagai teks biasa di `.env`.
+
+## Pemeriksaan dan layanan
 
 ```bash
-cd /path/ke/xd-radius
-chmod +x setup.sh
-./setup.sh check
+sudo ./setup.sh check
+pm2 status
+systemctl status pm2-root freeradius
+docker ps --filter name=xd-radius-postgres
+pm2 logs xd-radius-app
 ```
 
-Script ini memvalidasi: OS, PHP 8.2+ beserta ekstensi wajib (`pdo`, `pdo_pgsql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, `fileinfo`, `curl`, `zip`, `intl`), Composer, Node.js/npm, PostgreSQL client + server (native atau Docker), FreeRADIUS binary + versi + validasi config, file aplikasi (`artisan`, `composer.lock`), dan privilege `sudo` untuk user `www-data`.
+`check` hanya memeriksa prasyarat. Bootstrap menjalankan ketiga proses yang tercantum di `ecosystem.config.cjs` melalui PM2 dan memulihkan proses saat reboot. Bootstrap `setup` menolak `.env` yang sudah memiliki `APP_KEY` tetapi tidak dibuat oleh bootstrap ini, untuk melindungi kredensial dan data instalasi lama. Untuk update aplikasi yang sudah berjalan, gunakan prosedur deploy pada [`05-operational-guide.md`](./05-operational-guide.md), bukan bootstrap fresh.
 
-Contoh output yang sehat:
+Setelah instalasi, ubah `APP_URL` bila aplikasi akan diakses melalui domain atau Cloudflare Tunnel, kemudian jalankan `php artisan config:cache` dan restart `xd-radius-app`.
 
-```
-Summary
--------
-  OK   : 18
-  WARN : 0
-  FAIL : 0
-
-  [OK] Environment passed prerequisite validation.
-```
-
-Kalau ada `[WARN] freeradius.service exists but is not active`, jalankan `sudo systemctl start freeradius` lalu `./setup.sh check` ulang sebelum lanjut — jangan lanjut ke tahap berikutnya selama masih ada `FAIL`.
-
-### 2. Install Paket yang Belum Ada (jika ada FAIL)
-
-```bash
-sudo ./setup.sh install
-```
-
-Mode ini menjalankan `check` lagi, menampilkan daftar paket apt yang akan dipasang, lalu meminta konfirmasi `[y/N]` sebelum benar-benar menjalankan `apt-get install`. Gunakan `--yes` untuk skip konfirmasi (misalnya di script CI/provisioning otomatis):
-
-```bash
-sudo ./setup.sh install --yes
-```
-
-Instalasi otomatis hanya didukung di Debian/Ubuntu (`apt-get`). Untuk distribusi lain, `setup.sh` akan menampilkan `[FAIL] Automatic installation is currently supported only on Debian/Ubuntu.` — instal manual sesuai daftar paket yang ditampilkan.
-
-## PostgreSQL — Native atau Docker
-
-`setup.sh check` mendeteksi PostgreSQL baik yang berjalan native (systemd service) maupun sebagai container Docker. Kalau Anda punya lebih dari satu container PostgreSQL di server yang sama (misalnya dipakai aplikasi lain seperti n8n), **pastikan `.env` Anda mengarah ke container/port yang benar-benar diperuntukkan untuk xd-radius**, jangan sampai tertukar.
-
-### Membuat Role dan Database (Manual, di Luar `setup.sh`)
-
-`setup.sh` **tidak** membuat PostgreSQL role/user — ini tetap langkah manual karena menyangkut kredensial admin database Anda. Yang otomatis dibuat oleh aplikasi (lewat `RadiusDatabaseBootstrapper` saat `setup.sh setup` dijalankan) hanyalah **database** RADIUS, dan itu pun hanya jika role yang dipakai punya privilege `CREATEDB`.
-
-Jika Anda memakai PostgreSQL via Docker:
-
-```bash
-docker exec -it <nama-container-postgres> psql -U <admin_user> -d <database_admin>
-```
-
-```sql
-CREATE USER radius_user WITH PASSWORD 'ganti-dengan-password-kuat' CREATEDB;
--- CREATEDB opsional: hanya perlu jika Anda ingin xd-radius membuat database secara otomatis.
--- Jika tidak diberi CREATEDB, buat database secara manual:
-CREATE DATABASE radius_db OWNER radius_user;
-GRANT ALL PRIVILEGES ON DATABASE radius_db TO radius_user;
-\q
-```
-
-Verifikasi koneksi:
-
-```bash
-PGPASSWORD='ganti-dengan-password-kuat' psql -h 127.0.0.1 -p <port> -U radius_user -d radius_db -c "SELECT version();"
-```
-
-> ⚠️ **Catatan Keamanan:** Jangan commit password asli ke repository. Isi kredensial ini ke `.env` (`RADIUS_DB_USERNAME`, `RADIUS_DB_PASSWORD`, `RADIUS_DB_HOST`, `RADIUS_DB_PORT`, `RADIUS_DB_DATABASE`) sebelum menjalankan `setup.sh setup`.
-
-## Langkah Berikutnya
-
-Setelah `./setup.sh check` bersih dan role/database PostgreSQL siap, lanjut ke [`02-freeradius-setup.md`](./02-freeradius-setup.md) untuk menjalankan `sudo ./setup.sh setup`.
+Lihat [`02-freeradius-setup.md`](./02-freeradius-setup.md) untuk integrasi MikroTik dan [`04-cloudflare-tunnel.md`](./04-cloudflare-tunnel.md) untuk publikasi melalui tunnel.

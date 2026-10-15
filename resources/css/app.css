@@ -1122,8 +1122,6 @@ a.dashboard-list-title:hover { color: var(--color-primary); }
 :root[data-theme="dark"] .login-form-panel .text-slate-800,
 :root[data-theme="dark"] .login-form-panel .text-slate-900 { color: var(--app-text) !important; }
 :root[data-theme="dark"] .login-form-panel .text-slate-500 { color: var(--app-text-muted) !important; }
-:root[data-theme="dark"] .onboarding-notice { background-color: rgba(49, 46, 129, .25) !important; border-color: #373d68 !important; }
-:root[data-theme="dark"] .onboarding-notice .text-indigo-700 { color: #c7d2fe !important; }
 
 
 /* Phase 11: Stitch-inspired voucher page foundation. Scoped to avoid changing other modules. */

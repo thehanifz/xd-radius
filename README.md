@@ -1,312 +1,103 @@
-# 📡 RadiusManager — xd-radius
+# RadiusManager — xd-radius
 
-**RadiusManager** adalah panel manajemen jaringan hotspot berbasis web yang dibangun di atas Laravel 11 + FreeRADIUS + PostgreSQL. Dirancang untuk ISP kecil dan RT/RW Net yang membutuhkan manajemen voucher, member, billing, dan monitoring sesi secara terpusat.
+RadiusManager adalah panel manajemen jaringan untuk ISP dan RT/RW Net. Aplikasi dibangun dengan Laravel 11 dan terintegrasi dengan FreeRADIUS, PostgreSQL, serta MikroTik RouterOS.
 
----
-
-## ✨ Fitur Utama
+## Fitur
 
 | Modul | Fitur |
 |---|---|
-| **Voucher** | Generate batch, cetak kartu, expire otomatis |
-| **Member** | Paket internet, masa aktif, toggle isolir |
-| **Billing** | Invoice otomatis, pembayaran, PDF |
-| **Monitoring** | Sesi online real-time, deteksi stale session |
-| **Router / NAS** | Manajemen MikroTik, sync ke FreeRADIUS otomatis |
-| **Operator** | Multi-user dengan role Superuser / Operator |
-| **Laporan** | Laporan bulanan, export PDF |
-| **Pengaturan** | Nama app, SSID, threshold, billing config |
+| Voucher | Generate batch, cetak kartu, dan masa berlaku |
+| Member | Paket internet, masa aktif, serta isolir layanan |
+| Billing | Invoice, pencatatan pembayaran, dan PDF |
+| Monitoring | Sesi online, accounting, serta deteksi sesi stale |
+| Router / NAS | Kelola MikroTik, tes koneksi, dan sinkronisasi FreeRADIUS |
+| Operator | Akun operator dengan hak akses |
+| Laporan | Laporan bulanan dan PDF |
 
----
+## Arsitektur
 
-## 🏗️ Arsitektur
+- **MikroTik** mengirim autentikasi dan accounting ke FreeRADIUS pada port UDP 1812/1813.
+- **FreeRADIUS** membaca data autentikasi dan menulis accounting ke PostgreSQL.
+- **Laravel** menyediakan panel web dan mengelola data aplikasi serta konfigurasi NAS.
+- PostgreSQL dapat memakai satu database atau koneksi database terpisah untuk aplikasi dan FreeRADIUS. Atur koneksi `DB_*` dan `RADIUS_DB_*` pada `.env` sesuai deployment.
 
-```
-MikroTik (NAS)
-  │
-  ├──► FreeRADIUS :1812/:1813   ← Auth & Accounting
-  │         │
-  │         └── Baca: radcheck, radreply, nas
-  │         └── Tulis: radacct, radpostauth
-  │
-  └──► ◄── xd-radius (Laravel) ← Web Management Panel
-                │
-                └── PostgreSQL (satu DB, dua schema)
-```
+## Instalasi satu perintah
 
-- **FreeRADIUS** menangani semua autentikasi dan accounting
-- **xd-radius** mengelola data user, billing, dan konfigurasi
-- **MikroTik** dikonfigurasi sebagai RADIUS client dan dikontrol via RouterOS API untuk CoA
+Untuk server baru, clone repository lalu jalankan `setup.sh`. Script mendeteksi cluster PostgreSQL native dan container Docker yang ada, lalu memberi pilihan memakai salah satunya atau membuat instance PostgreSQL baru di Docker. Jika tidak ada instance terdeteksi, setup otomatis menyiapkan PostgreSQL Docker baru. Pada pilihan instance yang sudah ada, script membuat database dan role khusus aplikasi tanpa mengambil alih database/role yang sudah ada. Setelah itu script membuat `.env` serta `APP_KEY`, memasang dependency aplikasi, mengonfigurasi FreeRADIUS, menjalankan migration dan build frontend, membuat superadmin, lalu mengaktifkan service web, queue, dan scheduler.
 
----
-
-## ⚙️ Kebutuhan Sistem
-
-| Komponen | Versi Minimum |
-|---|---|
-| PHP | 8.2+ |
-| Laravel | 11.x |
-| PostgreSQL | 14+ |
-| FreeRADIUS | 3.x |
-| Composer | 2.x |
-| Node.js | 18+ (untuk asset build) |
-
----
-
-## 🚀 Instalasi
-
-### 1. Clone Repository
+Target otomatis adalah **Debian 12, Ubuntu 24.04+, atau Armbian berbasis Ubuntu Jammy** dengan systemd dan koneksi internet. Jalankan sebagai root (atau gunakan `sudo`).
 
 ```bash
-git clone https://github.com/thehanifz/xd-radius.git
-cd xd-radius
+sudo git clone https://github.com/thehanifz/xd-radius.git /opt/xd-radius
+cd /opt/xd-radius
+sudo bash setup.sh
 ```
 
-### 2. Install Dependencies
+Saat setup, pilih instance PostgreSQL yang ingin digunakan, atau pilih PostgreSQL baru di Docker. Jika instance yang dipilih belum aktif, setup akan mencoba menyalakannya. Untuk PostgreSQL baru, container memakai volume Docker persisten dan port localhost kosong yang dipilih otomatis. Masukkan email/username dan password superadmin saat diminta. Password diminta dua kali untuk verifikasi; nama tampilan dibuat dari username. Password disimpan sebagai hash di database. Password database aplikasi dibuat otomatis dan disimpan di `.env`; password login superadmin tidak disimpan sebagai teks biasa di `.env`.
+
+Setelah selesai, buka alamat IP server yang ditampilkan setup pada port `8000`. RADIUS menerima autentikasi dan accounting pada UDP `1812` dan `1813`. Pastikan firewall jaringan mengizinkan port yang diperlukan.
+
+Setup otomatis mengonfigurasi aplikasi untuk alamat IP lokal yang terdeteksi. Jika akan diakses memakai domain atau Cloudflare Tunnel, sesuaikan `APP_URL` di `.env` setelah instalasi, lalu jalankan `php artisan config:cache` dan restart service aplikasi.
+
+Setup menyediakan web server bawaan Laravel pada port 8000 agar instalasi langsung dapat dibuka. Untuk deployment publik permanen, gunakan reverse proxy HTTPS atau Cloudflare Tunnel sesuai [panduan tunnel](docs/04-cloudflare-tunnel.md).
+
+### Instalasi ulang / server yang sudah berisi data
+
+Bootstrap dibuat untuk clone baru. Bila `.env` sudah berisi `APP_KEY` tetapi bukan `.env` yang sebelumnya dibuat bootstrap, script berhenti agar tidak menimpa database/kredensial yang ada. Pada instalasi lama, gunakan `check` untuk diagnosis dan ikuti langkah update di [Panduan Operasional](docs/05-operational-guide.md); jangan gunakan bootstrap fresh.
 
 ```bash
-composer install
-npm install && npm run build
+sudo ./setup.sh check
 ```
 
-### 3. Konfigurasi Environment
+Bootstrap mengelola tiga proses pada `ecosystem.config.cjs` dengan PM2: `xd-radius-app`, `xd-radius-queue`, dan `xd-radius-scheduler`. PM2 memulihkan proses setelah reboot melalui `pm2-root.service`.
+
+### Hubungkan MikroTik
+
+Tambahkan router melalui menu **Router / NAS**. Setelah itu konfigurasikan RADIUS pada MikroTik dengan IP server, shared secret, port autentikasi `1812`, dan port accounting `1813`. Tombol **Tes API** di detail router juga menerapkan accounting PPP dan HotSpot dengan interim update 5 menit. Lihat [panduan FreeRADIUS dan MikroTik](docs/02-freeradius-setup.md) untuk detail.
+
+## Alur penggunaan
+
+1. Buat paket layanan.
+2. Generate dan cetak voucher, atau tambahkan member.
+3. Pantau sesi di **User Online** dan tagihan di **Billing & Tagihan**.
+4. Gunakan **Laporan Bulanan** untuk ringkasan operasional.
+
+## Perintah operasional
 
 ```bash
-cp .env.example .env
-php artisan key:generate
-```
+# Status proses aplikasi
+pm2 status
+systemctl status pm2-root
 
-Edit `.env`, sesuaikan konfigurasi database:
-
-```env
-APP_NAME=RadiusManager
-APP_URL=http://your-domain.com
-
-DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
-DB_PORT=5433
-DB_DATABASE=radius_db
-DB_USERNAME=radius_user
-DB_PASSWORD=your_password
-```
-
-> ⚠️ **Pastikan** database yang digunakan **sama** dengan yang dikonfigurasi di FreeRADIUS (`radius_db`), agar tabel `radcheck`, `radacct`, `nas`, dll dapat diakses bersama.
-
-### 4. Migrasi Database
-
-```bash
-php artisan migrate
-php artisan db:seed --class=SystemSettingSeeder
-```
-
-### 5. Setup Sudoers untuk Auto-Restart FreeRADIUS
-
-Agar xd-radius dapat restart FreeRADIUS otomatis setelah perubahan router/NAS
-(diperlukan `restart` bukan `reload` agar SQL clients ter-load ulang via `generate_sql_clients`):
-
-```bash
-echo "www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart freeradius" \
-  | sudo tee /etc/sudoers.d/freeradius-restart
-chmod 440 /etc/sudoers.d/freeradius-restart
-```
-
-> ⚠️ Hapus file lama jika ada: `sudo rm -f /etc/sudoers.d/freeradius-reload`
-
-### 6. Konfigurasi FreeRADIUS (baca NAS dari database)
-
-Pastikan di `/etc/freeradius/3.0/mods-enabled/sql`:
-
-```
-read_clients = yes
-client_table = "nas"
-```
-
-Dan `radius_db` mengarah ke database yang sama dengan xd-radius.
-
-### 7. Queue Worker (opsional, untuk job scheduler)
-
-```bash
-php artisan queue:work --daemon
-```
-
-Atau gunakan Supervisor. Scheduler dijalankan via cron:
-
-```bash
-* * * * * cd /path/to/xd-radius && php artisan schedule:run >> /dev/null 2>&1
-```
-
-### 8. Web Server
-
-Arahkan document root ke `/public`. Contoh Nginx:
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /var/www/xd-radius/public;
-
-    add_header X-Frame-Options "SAMEORIGIN";
-    index index.php;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-}
-```
-
----
-
-## 🔧 Setup Awal (Onboarding)
-
-### Langkah 1 — Buat Akun Super Administrator
-
-Buka browser ke:
-```
-https://your-domain.com/setup
-```
-
-Isi nama, email, dan password untuk akun Superuser pertama.
-
-### Langkah 2 — Pengaturan Sistem
-
-Masuk ke **Pengaturan Sistem** (`/settings`) dan sesuaikan:
-
-| Key | Keterangan |
-|---|---|
-| `app_name` | Nama aplikasi (tampil di header & PDF) |
-| `ssid_name` | Nama WiFi yang dicetak di voucher |
-| `stale_threshold_minutes` | Menit sebelum sesi dianggap stale (default: 30) |
-| `invoice_days_before` | H-N generate invoice sebelum expire (default: 7) |
-| `overdue_isolate_auto` | Auto isolir member overdue (default: off) |
-
-### Langkah 3 — Tambah Router / NAS
-
-Masuk ke **Router / NAS** (`/routers/create`) dan isi:
-
-**Kredensial RouterOS API** (untuk CoA & kontrol MikroTik):
-- IP Address MikroTik
-- API Port (default: `8728`)
-- Username & Password API
-
-**RADIUS Shared Secret** (untuk autentikasi FreeRADIUS):
-- Isi secret yang sama persis dengan yang akan diisi di MikroTik
-
-Setelah simpan, xd-radius otomatis:
-1. Insert/update tabel `nas` di PostgreSQL
-2. Restart FreeRADIUS agar SQL clients ter-load ulang
-
-### Langkah 4 — Konfigurasi MikroTik
-
-Di **Winbox** → **Radius** → **Add**:
-
-| Field | Value |
-|---|---|
-| Service | `hotspot` (dan/atau `ppp`) |
-| Address | IP server FreeRADIUS |
-| Secret | Secret yang diisi di xd-radius |
-| Authentication Port | `1812` |
-| Accounting Port | `1813` |
-| Timeout | `3000` ms |
-
-Aktifkan RADIUS di **Hotspot** → **Server Profiles** → centang **Use RADIUS**.
-
----
-
-## 📋 Contoh Penggunaan
-
-### Generate Voucher
-
-1. Buat **Paket Internet** dulu di `/plans/create`
-   - Nama paket, harga, masa aktif (hari), batas data/kecepatan
-2. Buka `/vouchers/create`
-3. Pilih paket, isi jumlah voucher, prefix kode
-4. Klik **Generate** → voucher otomatis masuk `radcheck`
-5. Cetak via tombol **Print Batch**
-
-### Tambah Member Pascabayar
-
-1. Buka `/members/create`
-2. Isi nama, username RADIUS, paket, tanggal aktif
-3. Simpan → user otomatis masuk `radcheck` & `radreply`
-4. Invoice akan dibuat otomatis H-7 sebelum expire
-
-### Monitoring Sesi Online
-
-Buka `/online` → tampil semua sesi aktif dari `radacct`:
-- Username, IP, NAS, durasi, upload/download
-- Sesi yang tidak update lebih dari `stale_threshold_minutes` ditandai **Diduga Putus**
-
-### Laporan Bulanan
-
-Buka `/reports/monthly` → pilih bulan/tahun → tampil:
-- Total pendapatan, jumlah member aktif, voucher terjual
-- Export PDF siap cetak
-
----
-
-## 🔒 Role & Akses
-
-| Role | Akses |
-|---|---|
-| **Superuser** | Semua fitur termasuk Operator, Router, Pengaturan |
-| **Operator** | Voucher, Member, Billing, Monitoring, Laporan |
-
----
-
-## 📅 Scheduled Jobs
-
-| Job | Jadwal | Fungsi |
-|---|---|---|
-| `ReconcileStaleSessionsJob` | Setiap 5 menit | Tandai sesi stale |
-| `ReconcileExpiredMembersJob` | Setiap menit | Expire member dan putus sesi aktif |
-| `GenerateOverdueInvoicesJob` | Setiap hari 08:00 | Generate invoice jatuh tempo |
-| `AutoIsolateOverdueMembersJob` | Setiap hari 02:00 | Isolir member overdue (jika aktif) |
-| `SyncFirstLoginAtJob` | Setiap jam | Sinkronisasi first login member |
-
----
-
-## 🛠️ Perintah Berguna
-
-```bash
-# Clear semua cache
-php artisan config:clear && php artisan cache:clear && php artisan view:clear
-
-# Cek status migration
+# Periksa migration
 php artisan migrate:status
 
-# Jalankan scheduler manual
+# Jalankan scheduler satu kali
 php artisan schedule:run
 
-# Cek semua route
-php artisan route:list
-
-# Tail log aplikasi
+# Lihat log Laravel
 tail -f storage/logs/laravel.log
+
+# Lihat log aplikasi
+pm2 logs xd-radius-app
 ```
 
----
+Dokumentasi lengkap:
 
-## 📦 Tech Stack
+- [Server Setup](docs/01-server-setup.md)
+- [FreeRADIUS + PostgreSQL](docs/02-freeradius-setup.md)
+- [Panduan Operasional](docs/05-operational-guide.md)
+- [Cloudflare Tunnel](docs/04-cloudflare-tunnel.md)
 
-- **Backend**: Laravel 11, PHP 8.2
-- **Frontend**: Tailwind CSS (via CDN), Blade Templates
-- **Database**: PostgreSQL 14+
-- **AAA Server**: FreeRADIUS 3.x
-- **Activity Log**: spatie/laravel-activitylog
-- **PDF**: barryvdh/laravel-dompdf
+## Tech stack
 
----
+- Laravel 11, PHP 8.2+
+- Blade, Tailwind CSS
+- PostgreSQL 14+
+- FreeRADIUS 3.x
+- MikroTik RouterOS API
+- DomPDF dan Spatie Activity Log
 
-## 📄 Lisensi
+## Lisensi
 
-MIT License — bebas digunakan dan dimodifikasi.
-
----
-
-> Dibuat untuk kebutuhan manajemen jaringan RT/RW Net & ISP lokal Indonesia 🇮🇩
+MIT License.

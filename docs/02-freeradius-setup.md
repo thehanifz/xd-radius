@@ -1,42 +1,27 @@
 # 02 — FreeRADIUS + PostgreSQL Setup
 
-## Cara Setup (Direkomendasikan): `setup.sh setup`
+## Instalasi dan konfigurasi otomatis
 
-Sejak revisi ini, seluruh proses install schema FreeRADIUS, konfigurasi SQL module, symlink, validasi, dan restart service **tidak lagi dilakukan manual**. Semuanya dijalankan otomatis lewat:
+Di server baru, proses berikut sudah menjadi bagian dari `sudo bash setup.sh` (lihat [`01-server-setup.md`](./01-server-setup.md)). Script memasang FreeRADIUS, memilih PostgreSQL native/Docker yang tersedia atau membuat container PostgreSQL baru, mengimpor schema sebelum migration Laravel, menjalankan `freeradius:setup`, memvalidasi konfigurasi, dan memeriksa health check.
+
+Untuk diagnosis setelah instalasi, gunakan:
 
 ```bash
-sudo ./setup.sh setup
+sudo ./setup.sh check
+sudo freeradius -XC
+sudo systemctl status freeradius
+docker ps --filter name=xd-radius-postgres
+php artisan freeradius:health-check
 ```
 
-Pastikan sebelum menjalankan ini:
+Jika pipeline gagal, baca pesan terminal dan log servicenya:
 
-1. `./setup.sh check` sudah lolos tanpa `FAIL` (lihat [`01-server-setup.md`](./01-server-setup.md)).
-2. `.env` sudah berisi variabel `RADIUS_DB_*` yang benar (host, port, database, username, password sesuai role PostgreSQL yang sudah dibuat).
-3. FreeRADIUS package sudah terinstall (`apt install freeradius freeradius-postgresql` — atau lewat `sudo ./setup.sh install` jika terdeteksi `FAIL` pada tahap check).
+```bash
+journalctl -u freeradius -n 100 --no-pager
+tail -n 100 storage/logs/laravel.log
+```
 
-### Apa yang Terjadi di Balik `setup.sh setup`
-
-Mode `setup` menjalankan orkestrasi 7 langkah:
-
-1. **Preflight** — jalankan ulang seluruh pengecekan `check`.
-2. **Privileged helper** — memasang `scripts/xd-radius-freeradius-privileged` ke `/usr/local/sbin/xd-radius-freeradius`, membuat direktori staging `/var/lib/xd-radius-freeradius/staging` (owner `www-data`), dan menulis entri sudoers scoped di `/etc/sudoers.d/xd-radius-freeradius`. Helper ini divalidasi langsung (`visudo -cf` + test invoke sebagai `www-data`) sebelum lanjut.
-3. **Migrasi database Laravel** — `php artisan migrate --force`, lalu verifikasi tidak ada migration yang masih `Pending`.
-4. **Cek konektivitas RADIUS DB** — memastikan koneksi Laravel bernama `radius` (didefinisikan di `config/database.php`, terpisah dari koneksi aplikasi utama) benar-benar bisa diakses.
-5. **`FreeRadiusSetupService::run()`** — service Laravel ini yang menggantikan seluruh langkah manual lama:
-   - Deteksi environment FreeRADIUS (binary, versi, config dir).
-   - `RadiusDatabaseBootstrapper::ensureDatabase()` — cek/buat database RADIUS (jika privilege `CREATEDB` tersedia).
-   - Bootstrap schema vendor PostgreSQL dari `{config_dir}/mods-config/sql/main/postgresql/schema.sql` (persis file yang dulu di-import manual via `psql -f`), plus kolom ekstensi `radacct.is_stale` dan `radacct.stale_detected_at`.
-   - `FreeRadiusConfigurationPipeline::run('SETUP')` — backup config → generate `mods-enabled/sql_app`, `mods-available/sql` (dialect, driver, `radius_db`, `read_clients=yes`), buat symlink `mods-enabled/sql` → validasi (`freeradius -XC`) → sinkronisasi tabel `nas` → reload/restart FreeRADIUS → health check 6 kriteria.
-6. **Validasi konfigurasi** — `freeradius -XC` dijalankan sekali lagi sebagai konfirmasi akhir.
-7. **Verifikasi service & health check aplikasi** — `systemctl is-active freeradius` dan `FreeRadiusHealthChecker::check()` (service aktif, config valid, database reachable, SQL module bisa query, tabel wajib ada, listener port 1812/1813 terbuka).
-
-Setiap langkah kritikal (backup, generate, validate, apply, NAS sync, health check) tercatat di **audit trail** (`activity_log` dan tabel `radius_management_operations`) — bisa dilihat di halaman `/settings/freeradius` pada aplikasi.
-
-### Jika `setup.sh setup` Gagal
-
-Baca pesan error yang ditampilkan — script akan `die` dengan pesan spesifik di langkah mana ia berhenti (contoh: `RADIUS database connection failed`, `FreeRADIUS setup service failed`, `FreeRADIUS service is not healthy`). Karena pipeline melakukan backup sebelum apply dan rollback otomatis saat validasi/health check gagal, **konfigurasi FreeRADIUS yang sudah berjalan sebelumnya tidak akan rusak** — kegagalan berarti perubahan baru belum diterapkan, bukan sistem lama ikut rusak.
-
-Untuk debug lebih detail, jalankan manual salah satu langkah lewat `artisan tinker`, misalnya:
+Konfigurasi FreeRADIUS memakai backup dan rollback saat validasi atau health check gagal. Bootstrap fresh menolak `.env` yang sudah dikonfigurasi agar tidak mengganti database instalasi lama. Untuk debug health check lebih rinci:
 
 ```bash
 php artisan tinker --execute='dd(app(\App\Services\Radius\FreeRadiusHealthChecker::class)->check());'
@@ -57,13 +42,7 @@ Bagian ini **tidak berubah** — tetap dilakukan manual di sisi MikroTik, karena
 
 `secret` di atas harus **sama** dengan `radius_secret` yang diisi pada halaman **Router / NAS** di aplikasi — nilai ini yang disinkronkan otomatis ke tabel `nas` oleh `FreeRadiusNasManager` setiap kali router dibuat/diubah/dihapus, tanpa perlu insert manual ke `nas` lagi.
 
-Samakan timezone PostgreSQL untuk koneksi FreeRADIUS supaya timestamp accounting baru ditulis sebagai waktu Jakarta. Kolom `radacct` bertipe `timestamp without time zone`, sehingga nilainya sendiri tidak menyimpan offset UTC:
-
-```sql
-ALTER ROLE radius_user SET timezone TO 'Asia/Jakarta';
-```
-
-Setelah itu restart FreeRADIUS agar pool koneksi database dibuka ulang. Laravel menggunakan `APP_TIMEZONE=Asia/Jakarta`; bila koneksi PostgreSQL Laravel memakai role berbeda, set juga `DB_TIMEZONE=Asia/Jakarta` dan `RADIUS_DB_TIMEZONE=Asia/Jakarta` di `.env`, lalu jalankan `php artisan optimize:clear`.
+Bootstrap `sudo bash setup.sh` menyetel timezone host, Laravel, koneksi PostgreSQL, serta default timezone database RADIUS ke `Asia/Jakarta` (UTC+7). Setup akan memuat ulang FreeRADIUS agar koneksi baru memakai timezone tersebut. Kolom `radacct` bertipe `timestamp without time zone`, jadi nilai lama tidak menyimpan offset UTC dan tidak digeser oleh setup.
 
 Aktifkan RADIUS Interim-Update agar byte counter sesi aktif terus diperbarui (rekomendasi: setiap 5 menit):
 
@@ -80,15 +59,15 @@ Tombol **Tes API** di halaman detail router menerapkan pengaturan accounting yan
 
 ## Troubleshooting (Referensi — Jika Pipeline Gagal)
 
-Tabel ini dipertahankan sebagai referensi untuk memahami *root cause* jika `setup.sh setup` melaporkan gagal di langkah FreeRADIUS:
+Tabel ini dipertahankan sebagai referensi untuk memahami *root cause* jika bootstrap melaporkan gagal di langkah FreeRADIUS:
 
 | Error | Penyebab | Solusi |
 |---|---|---|
-| `server does not support SSL, but SSL was required` | `RADIUS_DB_SSLMODE` di `.env` diset `verify-full`/`require` padahal PostgreSQL lokal tidak pakai SSL | Set `RADIUS_DB_SSLMODE=disable` atau `prefer` di `.env`, lalu jalankan ulang `sudo ./setup.sh setup` |
+| `server does not support SSL, but SSL was required` | `RADIUS_DB_SSLMODE` di `.env` diset `verify-full`/`require` padahal PostgreSQL lokal tidak pakai SSL | Set `RADIUS_DB_SSLMODE=disable` atau `prefer` di `.env`, jalankan `php artisan config:clear`, lalu `php artisan freeradius:setup` |
 | `fe_sendauth: no password supplied` (saat debug manual via `psql`) | psql CLI tidak mendapat password | Gunakan `PGPASSWORD='...' psql ...` saat debug manual |
 | `Access-Reject` saat test autentikasi | User tidak ada di `radcheck`, atau voucher/member belum tersinkron | Pastikan pembuatan voucher/member lewat aplikasi (bukan insert manual), cek `MemberService`/`VoucherService` |
 | FreeRADIUS hang di debug mode manual | Normal behavior (daemon) | Gunakan `timeout 10 freeradius -X` untuk debug manual, bukan indikasi bug |
-| `Privileged helper verification failed` saat `setup.sh setup` | `www-data` tidak bisa `sudo -n` ke helper | Cek `sudo -n -u www-data sudo -n /usr/local/sbin/xd-radius-freeradius is-active freeradius` manual, pastikan tidak ada `requiretty` di sudoers global |
+| `Privileged helper verification failed` saat bootstrap | `www-data` tidak bisa `sudo -n` ke helper | Cek `sudo -n -u www-data sudo -n /usr/local/sbin/xd-radius-freeradius is-active freeradius` manual, pastikan tidak ada `requiretty` di sudoers global |
 
 ### Test Autentikasi Manual (Opsional, untuk Debug)
 
@@ -191,4 +170,4 @@ Recommended test profile:
 
 ## Langkah Berikutnya
 
-Setelah `sudo ./setup.sh setup` sukses dan health check `Healthy/Ready`, lanjut ke [`04-cloudflare-tunnel.md`](./04-cloudflare-tunnel.md) untuk expose aplikasi, atau langsung ke [`05-operational-guide.md`](./05-operational-guide.md) untuk mulai konfigurasi router/paket/voucher dari UI.
+Setelah `sudo bash setup.sh` sukses dan health check `Healthy/Ready`, lanjut ke [`04-cloudflare-tunnel.md`](./04-cloudflare-tunnel.md) untuk expose aplikasi, atau langsung ke [`05-operational-guide.md`](./05-operational-guide.md) untuk mulai konfigurasi router/paket/voucher dari UI.

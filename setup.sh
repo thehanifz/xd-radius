@@ -8,7 +8,7 @@ set -o pipefail
 #   ./setup.sh                 -> full setup (default)
 #   ./setup.sh setup           -> full setup
 #   ./setup.sh check           -> prerequisite check only
-#   ./setup.sh install         -> install missing OS packages, then re-check
+#   ./setup.sh install         -> install project OS packages, then re-check
 #   ./setup.sh setup --yes     -> full setup without confirmation
 #
 # This script intentionally does not call another project setup script.
@@ -68,6 +68,34 @@ check_os() {
 
   command_exists systemctl && ok "systemd available" || fail "systemd not available"
   command_exists sudo && ok "sudo available" || fail "sudo not available"
+}
+
+check_host_timezone() {
+  say ""
+  say "[TIMEZONE]"
+
+  if ! command_exists timedatectl; then
+    warn "timedatectl unavailable; setup mode will attempt to set the host timezone directly."
+    return
+  fi
+
+  local timezone
+  timezone="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
+  if [ "$timezone" = "Asia/Jakarta" ]; then
+    ok "Host timezone is Asia/Jakarta (UTC+7)"
+  else
+    warn "Host timezone is ${timezone:-unknown}; setup mode will set Asia/Jakarta (UTC+7)."
+  fi
+
+  local key value
+  for key in APP_TIMEZONE DB_TIMEZONE RADIUS_DB_TIMEZONE; do
+    value="$(sed -n "s/^${key}=//p" "$ROOT/.env" 2>/dev/null | head -n1 | tr -d '\"' || true)"
+    if [ "$value" = "Asia/Jakarta" ]; then
+      ok "$key is Asia/Jakarta"
+    else
+      warn "$key is ${value:-unset}; setup mode will set Asia/Jakarta (UTC+7)."
+    fi
+  done
 }
 
 check_php() {
@@ -272,6 +300,7 @@ run_preflight() {
   say "Mode: CHECK / VALIDATE (no host changes)"
 
   check_os
+  check_host_timezone
   check_php
   check_composer
   check_node
@@ -296,6 +325,56 @@ run_preflight() {
   say ""
   say "  [OK] Environment passed prerequisite validation."
   return 0
+}
+
+set_timezone_env() {
+  local env_file="$ROOT/.env"
+  [ -f "$env_file" ] || die ".env not found. Copy .env.example to .env and configure database credentials first."
+
+  local key
+  for key in APP_TIMEZONE DB_TIMEZONE RADIUS_DB_TIMEZONE; do
+    if grep -q "^${key}=" "$env_file"; then
+      sed -i "s#^${key}=.*#${key}=Asia/Jakarta#" "$env_file"
+    else
+      printf '\n%s=Asia/Jakarta\n' "$key" >> "$env_file"
+    fi
+  done
+}
+
+ensure_jakarta_timezone() {
+  require_root
+
+  say ""
+  say "[TIMEZONE] Configure Asia/Jakarta (UTC+7)"
+  set_timezone_env
+  chown root:www-data "$ROOT/.env"
+  chmod 0640 "$ROOT/.env"
+
+  if command_exists timedatectl; then
+    if timedatectl set-timezone Asia/Jakarta; then
+      local timezone
+      timezone="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
+      [ "$timezone" = "Asia/Jakarta" ] || die "Host timezone verification failed: ${timezone:-unknown}."
+    else
+      warn "timedatectl could not update this container; applying the zoneinfo link directly."
+      [ -e /usr/share/zoneinfo/Asia/Jakarta ] || die "Asia/Jakarta timezone data is missing."
+      ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime \
+        || die "Unable to set /etc/localtime to Asia/Jakarta."
+      printf 'Asia/Jakarta\n' > /etc/timezone \
+        || die "Unable to write /etc/timezone."
+    fi
+  else
+    [ -e /usr/share/zoneinfo/Asia/Jakarta ] || die "Asia/Jakarta timezone data is missing."
+    ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime \
+      || die "Unable to set /etc/localtime to Asia/Jakarta."
+    printf 'Asia/Jakarta\n' > /etc/timezone \
+      || die "Unable to write /etc/timezone."
+  fi
+
+  [ "$(date +%z)" = "+0700" ] || die "Host timezone verification failed: expected UTC+7, got $(date +%z)."
+
+  run php "$ARTISAN" optimize:clear || die "Unable to clear Laravel cached configuration after setting timezone."
+  ok "Host, Laravel, and PostgreSQL connection timezone set to Asia/Jakarta"
 }
 
 apt_install_missing() {
@@ -351,7 +430,7 @@ apt_install_missing() {
     return 1
   }
 
-  run apt-get update
+  run apt-get update || die "apt-get update failed."
   # shellcheck disable=SC2086
   run apt-get install -y $unique_packages
 }
@@ -397,6 +476,8 @@ ensure_doku_keypair() {
     else
       printf '\nDOKU_PRIVATE_KEY_PATH=/etc/xd-radius/doku/private.key\n' >> "$env_file"
     fi
+    chown root:www-data "$env_file"
+    chmod 0640 "$env_file"
   fi
 }
 
@@ -433,6 +514,8 @@ EOF
     else
       printf 'FREERADIUS_PRIVILEGED_HELPER=/usr/local/sbin/xd-radius-freeradius\n' >> "$env_file"
     fi
+    chown root:www-data "$env_file"
+    chmod 0640 "$env_file"
   fi
 
   sudo -u www-data sudo -n "$helper_dst" is-active freeradius >/dev/null \
@@ -447,75 +530,465 @@ run_setup() {
   require_root
   [ -f "$ARTISAN" ] || die "Laravel artisan not found: $ARTISAN"
   [ -f "$ROOT/composer.json" ] || die "composer.json not found: $ROOT"
-  [ -d "$ROOT/vendor" ] || die "vendor/ not found. Run composer install first."
   cd "$ROOT" || die "Cannot enter project root: $ROOT"
 
-  say ""
-  say "[1/8] Server prerequisite preflight"
-  run_preflight || die "Prerequisite validation failed."
-
-  say ""
-  say "[2/8] FreeRADIUS privileged helper"
+  bootstrap_fresh_server
+  ensure_jakarta_timezone
   install_privileged_helper
-
-  say ""
-  say "[3/8] DOKU RSA key pair"
   ensure_doku_keypair
 
-  say ""
-  say "[4/8] Laravel database migration"
+  say "[Laravel] Database migrations"
+  local radius_schema=""
+  for candidate in /etc/freeradius/3.0/mods-config/sql/main/postgresql/schema.sql /etc/freeradius/mods-config/sql/main/postgresql/schema.sql; do
+    if [ -f "$candidate" ]; then radius_schema="$candidate"; break; fi
+  done
+  [ -n "$radius_schema" ] || die "FreeRADIUS PostgreSQL schema not found."
+  local radius_db_password radius_db_host radius_db_port radius_db_user radius_db_name
+  radius_db_password="$(sed -n 's/^RADIUS_DB_PASSWORD=//p' "$ROOT/.env" | head -n1)"
+  radius_db_host="$(sed -n 's/^RADIUS_DB_HOST=//p' "$ROOT/.env" | head -n1)"
+  radius_db_port="$(sed -n 's/^RADIUS_DB_PORT=//p' "$ROOT/.env" | head -n1)"
+  radius_db_user="$(sed -n 's/^RADIUS_DB_USERNAME=//p' "$ROOT/.env" | head -n1)"
+  radius_db_name="$(sed -n 's/^RADIUS_DB_DATABASE=//p' "$ROOT/.env" | head -n1)"
+  if ! env PGPASSWORD="$radius_db_password" psql -h "$radius_db_host" -p "$radius_db_port" -U "$radius_db_user" -d "$radius_db_name" -tAc "SELECT to_regclass('public.radacct')" | grep -q radacct; then
+    env PGPASSWORD="$radius_db_password" psql -h "$radius_db_host" -p "$radius_db_port" -U "$radius_db_user" -d "$radius_db_name" -v ON_ERROR_STOP=1 -f "$radius_schema" >/dev/null \
+      || die "Unable to create FreeRADIUS tables before Laravel migrations."
+  fi
   run php "$ARTISAN" migrate --force || die "Laravel migration failed."
+  run php "$ARTISAN" app:configure-jakarta-timezone || die "Unable to configure PostgreSQL timezone."
 
-  say ""
-  say "Verifying migration state..."
-  local migration_output
-  migration_output="$(php "$ARTISAN" migrate:status 2>&1)"
-  printf '%s\n' "$migration_output"
-  if printf '%s\n' "$migration_output" | grep -Eq '\bPending\b'; then
-    die "There are still pending Laravel migrations after migrate --force."
-  fi
-
-  say ""
-  say "[5/8] RADIUS database connectivity"
-  php "$ARTISAN" tinker --execute='
-try {
-    DB::connection("radius")->getPdo();
-    echo "RADIUS_DB_OK\n";
-} catch (\Throwable $e) {
-    fwrite(STDERR, "RADIUS_DB_FAILED: ".$e->getMessage()."\n");
-    exit(1);
-}
-' || die "RADIUS database connection failed."
-
-  say ""
-  say "[6/8] FreeRADIUS setup service"
+  say "[FreeRADIUS] Configure SQL module and schema"
   run php "$ARTISAN" freeradius:setup || die "FreeRADIUS setup service failed."
+  run systemctl restart freeradius || die "Unable to restart FreeRADIUS."
+  run freeradius -XC || die "FreeRADIUS configuration validation failed."
+  systemctl is-active --quiet freeradius || die "FreeRADIUS service is not active."
+  run php "$ARTISAN" freeradius:health-check || die "FreeRADIUS health check failed."
+
+  say "[Superadmin] Create the first login"
+  run php "$ARTISAN" app:create-superuser || die "Superadmin account creation failed."
+  install_application_services
+
+  local server_ip
+  server_ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  say ""
+  say "[OK] xd-radius is ready at http://${server_ip:-SERVER_IP}:8000"
+  say "RADIUS: UDP 1812/1813"
+  say "Superadmin password is stored as a hash in PostgreSQL, never as plaintext in .env."
+}
+
+PG_INSTANCE_KIND=()
+PG_INSTANCE_LABEL=()
+PG_INSTANCE_PORT=()
+PG_INSTANCE_HOST=()
+PG_INSTANCE_STATE=()
+PG_INSTANCE_CONTAINER=()
+
+detect_postgres_instances() {
+  PG_INSTANCE_KIND=(); PG_INSTANCE_LABEL=(); PG_INSTANCE_PORT=(); PG_INSTANCE_HOST=(); PG_INSTANCE_STATE=(); PG_INSTANCE_CONTAINER=()
+  local seen_ports=" " version cluster port status owner datadir logfile name image mapped_port mapped_address probe_port container_ip network_mode
+
+  if command_exists pg_lsclusters; then
+    while read -r version cluster port status owner datadir logfile; do
+      [ -n "${version:-}" ] || continue
+      PG_INSTANCE_KIND+=(native)
+      PG_INSTANCE_LABEL+=("PostgreSQL cluster ${version}/${cluster} (${status})")
+      PG_INSTANCE_PORT+=("$port")
+      PG_INSTANCE_HOST+=(127.0.0.1)
+      PG_INSTANCE_STATE+=("$status")
+      PG_INSTANCE_CONTAINER+=("")
+      seen_ports+="${port} "
+    done < <(pg_lsclusters --no-header 2>/dev/null || true)
+  fi
+
+  if command_exists docker && docker info >/dev/null 2>&1; then
+    while IFS='|' read -r name image; do
+      [[ "${image,,}" == *postgres* ]] || continue
+      mapped_address="$(docker port "$name" 5432/tcp 2>/dev/null | head -n1 || true)"
+      mapped_port="$(printf '%s' "$mapped_address" | awk -F: '{print $NF}')"
+      mapped_address="${mapped_address%:*}"
+      case "$mapped_address" in 0.0.0.0|::|'[::]'|127.*) mapped_address=127.0.0.1 ;; esac
+      if [ -z "$mapped_port" ]; then
+        mapped_port=5432
+        network_mode="$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$name" 2>/dev/null || true)"
+        if [ "$network_mode" = host ]; then
+          mapped_address=127.0.0.1
+        else
+          container_ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$name" 2>/dev/null || true)"
+        fi
+        if [ -n "$container_ip" ]; then
+          mapped_address="$container_ip"
+        fi
+      fi
+      PG_INSTANCE_KIND+=(docker)
+      PG_INSTANCE_LABEL+=("Docker ${name} (${image}${mapped_port:+, host port ${mapped_port}}${mapped_port:-, port not published})")
+      PG_INSTANCE_PORT+=("$mapped_port")
+      PG_INSTANCE_HOST+=("${mapped_address:-127.0.0.1}")
+      PG_INSTANCE_STATE+=("$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || printf unknown)")
+      PG_INSTANCE_CONTAINER+=("$name")
+      [ -n "$mapped_port" ] && seen_ports+="${mapped_port} "
+    done < <(docker ps -a --format '{{.Names}}|{{.Image}}' 2>/dev/null || true)
+  fi
+
+  if command_exists pg_isready; then
+    for probe_port in {5432..5499}; do
+      [[ "$seen_ports" == *" ${probe_port} "* ]] && continue
+      if pg_isready -h 127.0.0.1 -p "$probe_port" -q >/dev/null 2>&1; then
+        PG_INSTANCE_KIND+=(tcp)
+        PG_INSTANCE_LABEL+=("PostgreSQL terdeteksi di 127.0.0.1:${probe_port} (TCP)")
+        PG_INSTANCE_PORT+=("$probe_port")
+        PG_INSTANCE_HOST+=(127.0.0.1)
+        PG_INSTANCE_STATE+=(online)
+        PG_INSTANCE_CONTAINER+=("")
+      fi
+    done
+  fi
+}
+
+start_native_postgres_port() {
+  local requested_port="$1" version cluster port status owner datadir logfile
+  command_exists pg_lsclusters || die "Tidak menemukan utilitas pg_lsclusters untuk cluster native."
+  while read -r version cluster port status owner datadir logfile; do
+    [ "$port" = "$requested_port" ] || continue
+    if [ "$status" != online ]; then
+      run pg_ctlcluster "$version" "$cluster" start || die "Tidak bisa menyalakan cluster PostgreSQL ${version}/${cluster}."
+    fi
+    return 0
+  done < <(pg_lsclusters --no-header 2>/dev/null || true)
+  die "Cluster PostgreSQL native pada port ${requested_port} tidak ditemukan lagi."
+}
+
+choose_postgres_instance() {
+  DB_BACKEND="docker-new"; DB_PORT=""; DB_CONTAINER=""; DB_HOST="127.0.0.1"
+  if command_exists docker && command_exists systemctl; then
+    systemctl enable --now docker >/dev/null 2>&1 || true
+  fi
+  detect_postgres_instances
+  local count="${#PG_INSTANCE_KIND[@]}" choice index
+
+  if [ "$count" -eq 0 ]; then
+    say "Tidak ada PostgreSQL lokal yang terdeteksi. Menyiapkan PostgreSQL baru dalam Docker."
+    return
+  fi
 
   say ""
-  say "[7/8] FreeRADIUS configuration validation"
-  if command_exists freeradius; then
-    run freeradius -XC || die "FreeRADIUS configuration validation failed."
-  elif command_exists radiusd; then
-    run radiusd -XC || die "FreeRADIUS configuration validation failed."
+  say "PostgreSQL yang terdeteksi:"
+  for ((index=0; index<count; index++)); do
+    printf '  %d) %s\n' "$((index + 1))" "${PG_INSTANCE_LABEL[$index]}"
+  done
+  printf '  N) Buat PostgreSQL baru dalam Docker (terisolasi)\n'
+
+  if [ "$ASSUME_YES" = true ]; then
+    choice="N"
   else
-    die "FreeRADIUS binary not found."
+    read -r -p "Pilih nomor instance yang dipakai, atau N untuk membuat baru [N]: " choice
+    choice="${choice:-N}"
   fi
 
-  say ""
-  say "[8/8] FreeRADIUS service / health verification"
-  if ! systemctl is-active --quiet freeradius; then
-    systemctl status freeradius --no-pager || true
-    journalctl -u freeradius -n 50 --no-pager || true
-    die "FreeRADIUS service is not healthy."
+  case "${choice,,}" in
+    n|new|baru)
+      DB_BACKEND="docker-new"
+      ;;
+    *)
+      [[ "$choice" =~ ^[0-9]+$ ]] || die "Pilihan PostgreSQL tidak valid."
+      index=$((choice - 1))
+      [ "$index" -ge 0 ] && [ "$index" -lt "$count" ] || die "Nomor instance PostgreSQL tidak tersedia."
+      DB_BACKEND="${PG_INSTANCE_KIND[$index]}"
+      DB_HOST="${PG_INSTANCE_HOST[$index]}"
+      DB_PORT="${PG_INSTANCE_PORT[$index]}"
+      DB_CONTAINER="${PG_INSTANCE_CONTAINER[$index]}"
+      if [ "${PG_INSTANCE_STATE[$index]}" != online ] && [ "${PG_INSTANCE_STATE[$index]}" != running ]; then
+        if [ "$DB_BACKEND" = native ]; then
+          start_native_postgres_port "$DB_PORT"
+        elif [ "$DB_BACKEND" = docker ]; then
+          run docker start "$DB_CONTAINER" || die "Tidak bisa menyalakan container PostgreSQL yang dipilih."
+        else
+          die "Instance PostgreSQL yang dipilih tidak aktif."
+        fi
+      fi
+      if [ "$DB_BACKEND" = docker ] && [ -z "$DB_HOST" ]; then
+        DB_HOST="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$DB_CONTAINER" 2>/dev/null || true)"
+        [ -n "$DB_HOST" ] || die "Container ${DB_CONTAINER} tidak mempublikasikan port PostgreSQL dan tidak memiliki IP jaringan Docker yang dapat dijangkau host."
+      fi
+      ;;
+  esac
+
+  if [ "$DB_BACKEND" = docker-new ]; then
+    install_new_postgres_container
   fi
-  ok "freeradius.service active"
+}
 
-  run php "$ARTISAN" freeradius:health-check || die "Application FreeRADIUS health check failed."
+wait_for_postgres_instance() {
+  local attempt
+  for attempt in {1..60}; do
+    pg_isready -h "$DB_HOST" -p "$DB_PORT" -q >/dev/null 2>&1 && return 0
+    sleep 2
+  done
+  die "PostgreSQL yang dipilih tidak menerima koneksi di ${DB_HOST}:${DB_PORT}. Periksa port/listen_addresses dan firewall lokal."
+}
 
-  say ""
-  say "=================================="
-  say "[OK] xd-radius setup completed successfully."
-  say "=================================="
+install_new_postgres_container() {
+  require_root
+  if ! command_exists docker; then
+    run env DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io || die "Instalasi Docker gagal."
+  fi
+  run systemctl enable --now docker || die "Docker daemon tidak dapat dijalankan."
+
+  local candidate name_in_use root_password db_volume volume_exists
+  DB_PORT=""
+  for candidate in {5432..5499}; do
+    if ! python3 -c 'import socket,sys; s=socket.socket(); s.bind(("127.0.0.1", int(sys.argv[1]))); s.close()' "$candidate" >/dev/null 2>&1; then
+      continue
+    fi
+    DB_PORT="$candidate"
+    break
+  done
+  [ -n "$DB_PORT" ] || die "Tidak ada port PostgreSQL kosong pada rentang 5432-5499."
+
+  DB_CONTAINER="xd-radius-postgres"
+  name_in_use="$(docker ps -a --filter "name=^/${DB_CONTAINER}$" --format '{{.Names}}' | head -n1)"
+  if [ -n "$name_in_use" ]; then DB_CONTAINER="xd-radius-postgres-$(date +%s)"; fi
+  DB_VOLUME="xd-radius-postgres-data"
+  volume_exists="$(docker volume ls -q --filter "name=^${DB_VOLUME}$" | head -n1)"
+  if [ -n "$volume_exists" ]; then DB_VOLUME="xd-radius-postgres-data-$(date +%s)"; fi
+  root_password="$(openssl rand -hex 32)"
+  say "Membuat container PostgreSQL 16 pada 127.0.0.1:${DB_PORT} dengan volume persisten."
+  docker volume create "$DB_VOLUME" >/dev/null || die "Tidak bisa membuat volume PostgreSQL."
+  docker run -d --name "$DB_CONTAINER" --restart unless-stopped \
+    -e POSTGRES_PASSWORD="$root_password" \
+    -p "127.0.0.1:${DB_PORT}:5432" \
+    -v "${DB_VOLUME}:/var/lib/postgresql/data" \
+    postgres:16 >/dev/null || die "Container PostgreSQL tidak dapat dibuat."
+  local attempt
+  for attempt in {1..60}; do
+    if docker exec "$DB_CONTAINER" pg_isready -U postgres >/dev/null 2>&1; then break; fi
+    sleep 2
+  done
+  docker exec "$DB_CONTAINER" pg_isready -U postgres >/dev/null 2>&1 || die "PostgreSQL Docker tidak menjadi siap."
+  DB_BACKEND="docker-new"
+  DB_HOST="127.0.0.1"
+}
+
+pg_admin_psql() {
+  local database="$1"; shift
+  case "$DB_BACKEND" in
+    native)
+      sudo -u postgres psql -h /var/run/postgresql -p "$DB_PORT" -d "$database" -v ON_ERROR_STOP=1 "$@"
+      ;;
+    docker|docker-new)
+      docker exec -e "PGPASSWORD=${PG_ADMIN_PASSWORD:-}" "$DB_CONTAINER" psql -U "${PG_ADMIN_USER:-postgres}" -d "$database" -v ON_ERROR_STOP=1 "$@"
+      ;;
+    tcp)
+      PGPASSWORD="$PG_ADMIN_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$PG_ADMIN_USER" -d "$database" -v ON_ERROR_STOP=1 "$@"
+      ;;
+  esac
+}
+
+provision_postgres_database() {
+  local db_name="$1" db_user="$2" db_password="$3" recovery="${4:-false}" exists
+  if [ "$DB_BACKEND" = docker ] && [ -z "${PG_ADMIN_USER:-}" ]; then
+    local container_env
+    container_env="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$DB_CONTAINER" 2>/dev/null || true)"
+    PG_ADMIN_USER="$(printf '%s\n' "$container_env" | sed -n -e 's/^POSTGRES_USER=//p' -e 's/^POSTGRESQL_USERNAME=//p' | head -n1)"
+    PG_ADMIN_PASSWORD="$(printf '%s\n' "$container_env" | sed -n -e 's/^POSTGRES_PASSWORD=//p' -e 's/^POSTGRESQL_PASSWORD=//p' | head -n1)"
+    [ -n "$PG_ADMIN_USER" ] || PG_ADMIN_USER=postgres
+    if [ -z "$PG_ADMIN_PASSWORD" ]; then
+      read -r -s -p "Password administrator PostgreSQL: " PG_ADMIN_PASSWORD; printf '\n'
+    fi
+  fi
+  if [ "$DB_BACKEND" = tcp ] && [ -z "${PG_ADMIN_USER:-}" ]; then
+    read -r -p "User administrator PostgreSQL: " PG_ADMIN_USER
+    read -r -s -p "Password administrator PostgreSQL: " PG_ADMIN_PASSWORD; printf '\n'
+  fi
+  if ! exists="$(pg_admin_psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='${db_user}'" 2>/dev/null | tr -d '[:space:]')"; then
+    if [ "$DB_BACKEND" = docker ]; then
+      read -r -p "User administrator PostgreSQL dalam container [${PG_ADMIN_USER:-postgres}]: " input_admin_user
+      PG_ADMIN_USER="${input_admin_user:-${PG_ADMIN_USER:-postgres}}"
+      read -r -s -p "Password administrator PostgreSQL: " PG_ADMIN_PASSWORD; printf '\n'
+      exists="$(pg_admin_psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='${db_user}'" 2>/dev/null | tr -d '[:space:]')" \
+        || die "Akses admin ke container PostgreSQL gagal."
+    else
+      die "Tidak bisa mengakses instance PostgreSQL terpilih dengan akun admin."
+    fi
+  fi
+  if [ "$recovery" != creating ] && [ -n "$exists" ]; then
+    die "Role '${db_user}' sudah ada di instance terpilih; setup tidak akan mengganti password atau mengambil alih role tersebut."
+  fi
+  exists="$(pg_admin_psql postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${db_name}'" 2>/dev/null | tr -d '[:space:]')" \
+    || die "Tidak bisa memeriksa database pada instance PostgreSQL terpilih."
+  if [ "$recovery" != creating ] && [ -n "$exists" ]; then
+    die "Database '${db_name}' sudah ada di instance terpilih; setup tidak akan mengadopsi atau mengubahnya."
+  fi
+  if [ -z "$(pg_admin_psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='${db_user}'" 2>/dev/null | tr -d '[:space:]')" ]; then
+    pg_admin_psql postgres -c "CREATE ROLE ${db_user} LOGIN CREATEDB PASSWORD '${db_password}'" >/dev/null \
+      || die "Tidak bisa membuat role aplikasi; pastikan akun admin memiliki hak CREATEROLE."
+  elif [ "$recovery" = creating ]; then
+    pg_admin_psql postgres -c "ALTER ROLE ${db_user} LOGIN CREATEDB PASSWORD '${db_password}'" >/dev/null \
+      || die "Tidak bisa memulihkan role aplikasi setup yang belum selesai."
+  fi
+  if [ -z "$(pg_admin_psql postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${db_name}'" 2>/dev/null | tr -d '[:space:]')" ]; then
+    pg_admin_psql postgres -c "CREATE DATABASE ${db_name} OWNER ${db_user}" >/dev/null \
+      || die "Tidak bisa membuat database aplikasi."
+  elif [ "$recovery" = creating ]; then
+    pg_admin_psql postgres -c "ALTER DATABASE ${db_name} OWNER TO ${db_user}" >/dev/null \
+      || die "Tidak bisa memulihkan database setup yang belum selesai."
+  fi
+}
+
+bootstrap_fresh_server() {
+  . /etc/os-release 2>/dev/null || true
+  case "${ID:-} ${ID_LIKE:-}" in *debian*|*ubuntu*) ;; *) die "One-command bootstrap supports Debian/Ubuntu and their Armbian derivatives." ;; esac
+  command_exists systemctl || die "systemd is required."
+  command_exists apt-get || die "apt-get is required."
+
+  say "[1/5] Install OS packages"
+  run apt-get update || die "apt-get update failed."
+  if [[ "${ID:-}" = ubuntu && "${VERSION_ID:-0}" < 24.04 ]] || \
+     [[ "${ID:-}" = armbian && " ${ID_LIKE:-} " == *" ubuntu "* && " ${VERSION_CODENAME:-} " == *" jammy "* ]]; then
+    run env DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common || die "Unable to install Ubuntu repository tools."
+    run env LC_ALL=C.UTF-8 add-apt-repository -y ppa:ondrej/php || die "Unable to add the PHP package repository."
+    run apt-get update || die "apt-get update after adding PHP repository failed."
+  fi
+  local nodesource_setup="/tmp/xd-radius-nodesource-setup.sh"
+  run curl -fsSL https://deb.nodesource.com/setup_20.x -o "$nodesource_setup" || die "Unable to download Node.js package setup."
+  run bash "$nodesource_setup" || die "Unable to configure Node.js package repository."
+  rm -f "$nodesource_setup"
+  run apt-get update || die "apt-get update after adding Node.js repository failed."
+  run env DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git unzip sudo openssl python3 \
+    php-cli php-fpm php-pgsql php-mbstring php-xml php-bcmath php-curl php-zip php-intl php-gd gnupg \
+    composer nodejs npm postgresql-client postgresql-common freeradius freeradius-postgresql \
+    || die "Installing system packages failed."
+  php -r 'exit(version_compare(PHP_VERSION, "8.2.0", ">=") ? 0 : 1)' || die "PHP 8.2+ is required; install a supported OS repository."
+  node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 18 ? 0 : 1)' || die "Node.js 18+ is required."
+  run systemctl enable --now freeradius || die "Unable to start FreeRADIUS."
+
+  local app_ip db_password db_name db_user app_url existing_env managed_bootstrap db_host db_port pg_mode pg_container
+  app_ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  [ -n "$app_ip" ] || app_ip="127.0.0.1"
+  existing_env=false
+  if [ -f "$ROOT/.env" ]; then existing_env=true; else
+    [ -f "$ROOT/.env.example" ] || die ".env.example is missing."
+    cp "$ROOT/.env.example" "$ROOT/.env"
+  fi
+  managed_bootstrap="$(sed -n 's/^XD_RADIUS_BOOTSTRAPPED=//p' "$ROOT/.env" | head -n1)"
+  if [ "$managed_bootstrap" = true ] || [ "$managed_bootstrap" = creating ]; then
+    db_name="$(sed -n 's/^DB_DATABASE=//p' "$ROOT/.env" | head -n1)"
+    db_user="$(sed -n 's/^DB_USERNAME=//p' "$ROOT/.env" | head -n1)"
+    db_password="$(sed -n 's/^DB_PASSWORD=//p' "$ROOT/.env" | head -n1)"
+    app_url="$(sed -n 's/^APP_URL=//p' "$ROOT/.env" | head -n1)"
+    db_host="$(sed -n 's/^DB_HOST=//p' "$ROOT/.env" | head -n1)"
+    db_port="$(sed -n 's/^DB_PORT=//p' "$ROOT/.env" | head -n1)"
+    pg_mode="$(sed -n 's/^XD_RADIUS_PG_MODE=//p' "$ROOT/.env" | head -n1)"
+    pg_container="$(sed -n 's/^XD_RADIUS_PG_CONTAINER=//p' "$ROOT/.env" | head -n1)"
+    [[ "$db_name" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ && "$db_user" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ && "$db_password" =~ ^[a-zA-Z0-9]+$ && "$db_port" =~ ^[0-9]+$ ]] \
+      || die "Generated database credentials in .env are invalid; refusing to modify the database."
+    [ -n "$app_url" ] || app_url="http://${app_ip}:8000"
+    [ -n "$db_host" ] && [ -n "$db_port" ] && [ -n "$pg_mode" ] || die "PostgreSQL backend settings in .env are incomplete."
+    DB_BACKEND="$pg_mode"; DB_HOST="$db_host"; DB_PORT="$db_port"; DB_CONTAINER="$pg_container"
+    case "$DB_BACKEND" in
+      docker|docker-new)
+        if ! command_exists docker; then
+          run env DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io || die "Instalasi Docker gagal."
+        fi
+        run systemctl enable --now docker || die "Docker daemon tidak dapat dijalankan."
+        [ -n "$DB_CONTAINER" ] || die "Nama container PostgreSQL tidak tercatat di .env."
+        [ "$(docker inspect -f '{{.State.Status}}' "$DB_CONTAINER" 2>/dev/null || true)" = running ] || run docker start "$DB_CONTAINER" || die "Container PostgreSQL bootstrap tidak dapat dijalankan."
+        local pg_attempt
+        for pg_attempt in {1..60}; do
+          docker exec "$DB_CONTAINER" pg_isready -U postgres >/dev/null 2>&1 && break
+          sleep 2
+        done
+        docker exec "$DB_CONTAINER" pg_isready -U postgres >/dev/null 2>&1 || die "PostgreSQL container belum siap menerima koneksi."
+        ;;
+      native)
+        start_native_postgres_port "$DB_PORT"
+        ;;
+      tcp)
+        PG_ADMIN_USER=""
+        ;;
+      *) die "Mode PostgreSQL tersimpan tidak dikenal: $DB_BACKEND" ;;
+    esac
+    wait_for_postgres_instance
+  else
+    managed_bootstrap=false
+    if [ "$existing_env" = true ] && grep -q '^APP_KEY=base64:' "$ROOT/.env"; then
+      die "A configured .env already exists. Refusing to replace its database credentials; use bootstrap only on a fresh clone/server."
+    fi
+    if [ "$existing_env" = true ] && { ! grep -q '^DB_CONNECTION=sqlite$' "$ROOT/.env" || ! grep -q '^DB_DATABASE=laravel$' "$ROOT/.env" || ! grep -q '^DB_USERNAME=root$' "$ROOT/.env"; }; then
+      die "Existing .env has custom database settings. Refusing to replace them during fresh bootstrap."
+    fi
+    app_url="http://${app_ip}:8000"
+    choose_postgres_instance
+    db_name="xd_radius"; db_user="xd_radius"; db_password="$(openssl rand -hex 24)"
+    db_host="${DB_HOST:-127.0.0.1}"; db_port="$DB_PORT"; pg_mode="$DB_BACKEND"; pg_container="$DB_CONTAINER"
+    wait_for_postgres_instance
+  fi
+  if [ "$DB_BACKEND" = tcp ] && [ -z "${PG_ADMIN_USER:-}" ]; then
+    read -r -p "User administrator PostgreSQL: " PG_ADMIN_USER
+    read -r -s -p "Password administrator PostgreSQL: " PG_ADMIN_PASSWORD; printf '\n'
+  fi
+  export SETUP_APP_URL="$app_url" SETUP_DB_NAME="$db_name" SETUP_DB_USER="$db_user" SETUP_DB_PASSWORD="$db_password" SETUP_DB_HOST="$db_host" SETUP_DB_PORT="$db_port" SETUP_PG_MODE="$pg_mode" SETUP_PG_CONTAINER="$pg_container" SETUP_BOOTSTRAP_STATE=creating
+  python3 - "$ROOT/.env" <<'PY' || die "Unable to create/update the Laravel environment file."
+import os, re, sys
+path = sys.argv[1]
+updates = {
+ 'APP_NAME':'RadiusManager','APP_ENV':'production','APP_DEBUG':'false','APP_URL':os.environ['SETUP_APP_URL'],'APP_TIMEZONE':'Asia/Jakarta',
+ 'DB_CONNECTION':'pgsql','DB_HOST':os.environ['SETUP_DB_HOST'],'DB_PORT':os.environ['SETUP_DB_PORT'],'DB_DATABASE':os.environ['SETUP_DB_NAME'],'DB_USERNAME':os.environ['SETUP_DB_USER'],'DB_PASSWORD':os.environ['SETUP_DB_PASSWORD'],'DB_TIMEZONE':'Asia/Jakarta',
+ 'SESSION_DRIVER':'database','QUEUE_CONNECTION':'database','CACHE_STORE':'database',
+ 'RADIUS_DB_CONNECTION':'pgsql','RADIUS_DB_HOST':os.environ['SETUP_DB_HOST'],'RADIUS_DB_PORT':os.environ['SETUP_DB_PORT'],'RADIUS_DB_DATABASE':os.environ['SETUP_DB_NAME'],'RADIUS_DB_USERNAME':os.environ['SETUP_DB_USER'],'RADIUS_DB_PASSWORD':os.environ['SETUP_DB_PASSWORD'],'RADIUS_DB_SSLMODE':'disable','RADIUS_DB_TIMEZONE':'Asia/Jakarta','FREERADIUS_USE_SUDO':'true','XD_RADIUS_BOOTSTRAPPED':os.environ['SETUP_BOOTSTRAP_STATE'],'XD_RADIUS_PG_MODE':os.environ['SETUP_PG_MODE'],'XD_RADIUS_PG_CONTAINER':os.environ['SETUP_PG_CONTAINER']}
+with open(path, encoding='utf-8') as f: lines=f.read().splitlines()
+seen=set(); out=[]
+for line in lines:
+ m=re.match(r'^([A-Za-z_][A-Za-z0-9_]*)=',line); key=m.group(1) if m else None
+ if key in updates:
+  if key not in seen: out.append(f'{key}={updates[key]}'); seen.add(key)
+ else: out.append(line)
+for key,value in updates.items():
+ if key not in seen: out.append(f'{key}={value}')
+with open(path,'w',encoding='utf-8') as f: f.write('\n'.join(out)+'\n')
+os.chmod(path,0o640)
+PY
+  unset SETUP_APP_URL SETUP_DB_NAME SETUP_DB_USER SETUP_DB_PASSWORD SETUP_DB_HOST SETUP_DB_PORT SETUP_PG_MODE SETUP_PG_CONTAINER SETUP_BOOTSTRAP_STATE || true
+  chown root:www-data "$ROOT/.env"
+  chmod 0640 "$ROOT/.env"
+  DB_BACKEND="$pg_mode"; DB_HOST="$db_host"; DB_PORT="$db_port"; DB_CONTAINER="$pg_container"
+  if [ "$managed_bootstrap" != true ]; then
+    say "Provision application database and role on selected PostgreSQL instance"
+    provision_postgres_database "$db_name" "$db_user" "$db_password" "$managed_bootstrap"
+    env PGPASSWORD="$db_password" psql -h "$db_host" -p "$db_port" -U "$db_user" -d "$db_name" -tAc 'SELECT 1' >/dev/null \
+      || die "Tidak bisa tersambung ke database baru melalui host/port yang dipilih."
+    sed -i 's/^XD_RADIUS_BOOTSTRAPPED=creating$/XD_RADIUS_BOOTSTRAPPED=true/' "$ROOT/.env"
+    chown root:www-data "$ROOT/.env"; chmod 0640 "$ROOT/.env"
+  fi
+
+  say "[3/5] Install PHP and Node dependencies; build frontend"
+  run env COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction || die "Composer dependency installation failed."
+  if ! grep -q '^APP_KEY=base64:' "$ROOT/.env"; then run php "$ARTISAN" key:generate --force || die "Unable to generate APP_KEY."; fi
+  run npm ci --no-audit --no-fund || die "npm dependency installation failed."
+  run npm run build || die "Frontend asset build failed."
+  install -d -o www-data -g www-data -m 0775 "$ROOT/storage" "$ROOT/bootstrap/cache"
+  run chown -R www-data:www-data "$ROOT/storage" "$ROOT/bootstrap/cache"
+  run php "$ARTISAN" optimize:clear || die "Unable to clear Laravel caches."
+  run php "$ARTISAN" config:cache || die "Unable to cache Laravel configuration."
+  ok "Packages, .env, PostgreSQL, Composer, and frontend build are ready"
+}
+
+install_application_services() {
+  run chown -R www-data:www-data "$ROOT/storage" "$ROOT/bootstrap/cache" || die "Unable to set Laravel runtime directory permissions."
+  local unit
+  for unit in xd-radius-app xd-radius-queue xd-radius-scheduler; do
+    if [ -f "/etc/systemd/system/${unit}.service" ]; then
+      systemctl disable --now "${unit}.service" >/dev/null 2>&1 || true
+      rm -f "/etc/systemd/system/${unit}.service"
+    fi
+  done
+  run systemctl daemon-reload
+  command_exists pm2 || run npm install --global pm2 || die "Unable to install PM2."
+  run pm2 startOrReload "$ROOT/ecosystem.config.cjs" --update-env || die "Unable to start the application, queue, and scheduler with PM2."
+  run pm2 save || die "Unable to save the PM2 process list."
+  run pm2 startup systemd -u root --hp /root || die "Unable to configure PM2 startup at boot."
+  run systemctl enable --now pm2-root.service || die "PM2 startup service did not start."
+  pm2 describe xd-radius-app >/dev/null 2>&1 || die "PM2 application process did not start."
+  run curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 2 http://127.0.0.1:8000/up >/dev/null || die "Laravel health endpoint did not become ready."
+  ok "PM2 application, queue, and scheduler processes enabled at boot"
 }
 
 run_install() {

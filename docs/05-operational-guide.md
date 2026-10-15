@@ -13,8 +13,8 @@ Jika akun dinonaktifkan, login dan sesi aktif akan ditolak.
 
 ## 2. Urutan setup pertama (superuser)
 
-0. **Prasyarat server & FreeRADIUS:** sebelum membuat akun superuser, pastikan administrator sudah menjalankan `./setup.sh check` dan `sudo ./setup.sh setup` di server (lihat [`01-server-setup.md`](./01-server-setup.md) dan [`02-freeradius-setup.md`](./02-freeradius-setup.md)). Tanpa langkah ini, FreeRADIUS belum terhubung ke database aplikasi dan router tidak akan bisa autentikasi meski data sudah dibuat di panel.
-1. Buka `/setup` dan buat akun superuser pertama.
+0. **Prasyarat server & FreeRADIUS:** pada server baru, administrator menjalankan bootstrap `sudo bash setup.sh` dari clone baru (lihat [`01-server-setup.md`](./01-server-setup.md) dan [`02-freeradius-setup.md`](./02-freeradius-setup.md)). Tanpa setup ini, FreeRADIUS belum tersambung ke database aplikasi.
+1. Buat akun superuser pertama dari terminal project dengan `php artisan app:create-superuser`. Halaman setup publik tidak tersedia.
 2. Login lalu buka **Pengaturan Sistem**.
 3. Isi nama aplikasi, SSID yang akan tercetak di voucher, threshold stale session, dan kebijakan isolir invoice overdue.
 4. Tambahkan router pada menu **Router / NAS**:
@@ -93,15 +93,15 @@ Halaman **`/settings/freeradius`** adalah pusat kendali management plane FreeRAD
 - **Health** — enam kriteria wajib: service aktif, config valid (`-XC`), database reachable, SQL module bisa query, tabel wajib (`radcheck`, `radreply`, `radacct`, `nas`) tersedia, listener port 1812/1813 terbuka. Semua harus `PASS` agar status keseluruhan `Healthy/Ready`.
 - **Configuration Reconciliation** — tombol **Run Reconciliation** menjalankan ulang pipeline Generate → Validate → Apply → Health Check tanpa perlu SSH, berguna setelah mengubah banyak router sekaligus atau setelah drift terdeteksi.
 
-### 9.2 Kapan menjalankan "Run Reconciliation" vs "Setup / Re-setup"
+### 9.2 Kapan menjalankan "Run Reconciliation"
 
 | Situasi | Aksi |
 |---|---|
 | Router baru ditambahkan/diubah/dihapus | Otomatis — sistem memicu `RunConfigurationJob` sendiri, tidak perlu aksi manual |
 | Status router `pending` terlalu lama atau `failed` | Klik **Run Reconciliation** di `/settings/freeradius` |
 | Drift terdeteksi (file config berubah manual, atau data `nas` tidak sesuai `routers`) | Periksa detail drift di audit trail, lalu **Run Reconciliation** setelah penyebab drift dipahami — jangan langsung timpa tanpa tahu sebabnya |
-| Server baru, FreeRADIUS belum pernah di-setup aplikasi ini | Klik **Setup / Re-setup**, atau jalankan `sudo ./setup.sh setup` dari terminal |
-| Upgrade/reinstall FreeRADIUS di level OS | Jalankan ulang `sudo ./setup.sh setup` dari terminal (bukan cukup tombol UI), karena ini melibatkan deteksi versi dan path config baru |
+| Server baru, FreeRADIUS belum pernah disiapkan | Jalankan `sudo bash setup.sh` dari terminal pada clone baru |
+| Upgrade/reinstall FreeRADIUS di level OS | Ikuti panduan upgrade FreeRADIUS dan validasi servicenya; bootstrap fresh menolak `.env` instalasi lama |
 
 ### 9.3 Audit trail
 
@@ -109,12 +109,11 @@ Setiap operasi (`SETUP`, `CONFIG_UPDATE`, `NAS_SYNC`, `VALIDATION`, `APPLY`, `RE
 
 ## 10. Operasional server (administrator)
 
-Cloudflare Tunnel meneruskan HTTPS publik ke Laravel pada `0.0.0.0:8000`. PM2 menjalankan aplikasi, worker, dan scheduler:
+Cloudflare Tunnel meneruskan HTTPS publik ke Laravel pada `0.0.0.0:8000`. PM2 mengelola aplikasi web, queue worker, dan scheduler sesuai `ecosystem.config.cjs`:
 
 ```bash
-pm2 start ecosystem.config.cjs
-pm2 save
 pm2 status
+systemctl status pm2-root
 ```
 
 Pastikan konfigurasi cloudflared memakai origin berikut:
@@ -137,12 +136,12 @@ npm run build
 php artisan migrate --force
 php artisan optimize
 php artisan queue:restart
-pm2 reload ecosystem.config.cjs --update-env
+pm2 restart ecosystem.config.cjs
 ```
 
-Jika deploy menyertakan perubahan pada management plane FreeRADIUS (service/job baru di bawah `app/Services/Radius` atau `app/Jobs/Radius`), jalankan juga `sudo ./setup.sh setup` setelah migrasi untuk memastikan konfigurasi FreeRADIUS ikut disinkronkan ulang — jangan hanya mengandalkan restart PM2.
+Jika deploy menyertakan perubahan pada management plane FreeRADIUS (service/job baru di bawah `app/Services/Radius` atau `app/Jobs/Radius`), jalankan `php artisan freeradius:setup` setelah migrasi untuk memastikan konfigurasi FreeRADIUS ikut disinkronkan ulang.
 
-Sebelum deploy, backup PostgreSQL dan pastikan migration telah diuji pada salinan database. Periksa juga endpoint `/up`, `pm2 status`, `/settings/freeradius` (Health harus tetap `Healthy/Ready`), dan failed jobs setelah deploy.
+Sebelum deploy, backup PostgreSQL dan pastikan migration telah diuji pada salinan database. Periksa juga endpoint `/up`, status proses PM2, `/settings/freeradius` (Health harus tetap `Healthy/Ready`), dan failed jobs setelah deploy.
 
 ## 11. Penanganan masalah cepat
 
@@ -151,7 +150,7 @@ Sebelum deploy, backup PostgreSQL dan pastikan migration telah diuji pada salina
 | Tidak bisa login | Status akun, URL HTTPS, cookie secure, dan log Laravel. |
 | User tidak bisa autentikasi | Username, `radcheck`, paket/group, shared secret NAS, dan log FreeRADIUS. Cek juga status `radius_sync_status` router terkait di `/settings/freeradius` — kalau `failed`/`pending`, autentikasi lewat router itu belum tentu berfungsi. |
 | Sesi online stale | Interim Update MikroTik, koneksi ke FreeRADIUS, dan threshold stale. |
-| Job tidak berjalan | `pm2 status`, tabel `jobs`/`failed_jobs`, serta log worker. |
+| Job tidak berjalan | `pm2 status`, `pm2 logs xd-radius-queue`, tabel `jobs`/`failed_jobs`, serta log worker. |
 | Router gagal dihubungi | IP/port/API credential, firewall router, dan hasil test connection. |
 | FreeRADIUS berstatus `Not Healthy` di `/settings/freeradius` | Lihat kriteria mana yang `FAIL` di panel Health, cocokkan dengan tabel troubleshooting di [`02-freeradius-setup.md`](./02-freeradius-setup.md), lalu klik **Run Reconciliation** setelah penyebabnya diperbaiki. |
 | Drift terdeteksi berulang | Periksa apakah ada perubahan manual via SSH ke file config FreeRADIUS atau tabel `nas` — hentikan kebiasaan itu, gunakan panel/`setup.sh` sebagai satu-satunya jalur yang didukung. |

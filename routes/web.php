@@ -5,7 +5,6 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DokuSettingsController;
 use App\Http\Controllers\MemberController;
-use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OnlineSessionController;
 use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PlanController;
@@ -19,10 +18,6 @@ use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicPaymentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DokuTokenController;
-
-// ─── Onboarding (sebelum auth) ───────────────────────────────────────────────
-Route::get('/setup',  [OnboardingController::class, 'show'])->name('onboarding.show');
-Route::post('/setup', [OnboardingController::class, 'store'])->name('onboarding.store');
 
 // ─── Isolir Page ─────────────────────────────────────────────────────────────
 Route::view('/isolir', 'isolir')->name('isolir');
