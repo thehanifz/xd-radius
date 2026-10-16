@@ -18,7 +18,7 @@ class MemberService
     {
         $plan = Plan::findOrFail($data['plan_id']);
 
-        return DB::transaction(function () use ($data, $plan) {
+        $member = DB::transaction(function () use ($data, $plan) {
             $activatedAt = !empty($data['activated_at']) ? Carbon::parse($data['activated_at'])->startOfDay() : now();
             $expiredAt = !empty($data['expired_at']) ? Carbon::parse($data['expired_at']) : $this->calcExpiry($activatedAt, $plan);
             if ($expiredAt->lte($activatedAt)) {
@@ -43,6 +43,15 @@ class MemberService
 
             return $member->load('plan');
         });
+
+        // Buat Virtual Account otomatis jika gateway pembayaran DOKU aktif
+        try {
+            app(PaymentService::class)->ensureReusableVas($member);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return $member;
     }
 
     public function update(Member $member, array $data): Member

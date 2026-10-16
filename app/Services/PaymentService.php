@@ -137,6 +137,10 @@ class PaymentService
      */
     public function ensureReusableVas(Member $member): array
     {
+        if (! config('doku.enabled')) {
+            return [];
+        }
+
         $channels = \App\Models\DokuVaChannel::forDoku()
             ->enabled()
             ->orderByDesc('is_default')

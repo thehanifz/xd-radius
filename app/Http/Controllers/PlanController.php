@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Plan;
+use App\Models\Radreply;
+use App\Services\QosService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
@@ -97,6 +99,36 @@ class PlanController extends Controller
         $data['duration_days'] = $this->legacyDurationDays($data['duration_value'], $data['duration_unit']);
 
         $plan->update($data);
+
+        if ($plan->type === 'member') {
+            // Update harga snapshot member agar sinkron dengan harga paket terbaru
+            $plan->members()->update([
+                'price_snapshot' => $plan->price,
+            ]);
+
+            // Jika rate limit atau kuota berubah, sinkronkan ke FreeRADIUS radreply
+            if ($plan->wasChanged(['mikrotik_rate_limit', 'data_quota_mb'])) {
+                try {
+                    $qos = app(QosService::class);
+                    $rateLimit = $qos->rateLimit($plan);
+                    $memberUsernames = $plan->members()->pluck('username');
+                    if ($memberUsernames->isNotEmpty()) {
+                        Radreply::whereIn('username', $memberUsernames)
+                            ->where('attribute', 'Mikrotik-Rate-Limit')
+                            ->update(['value' => $rateLimit]);
+
+                        if ($plan->data_quota_mb !== null) {
+                            $quotaBytes = (string) ((int) $plan->data_quota_mb * 1024 * 1024);
+                            Radreply::whereIn('username', $memberUsernames)
+                                ->where('attribute', 'Mikrotik-Total-Limit')
+                                ->update(['value' => $quotaBytes]);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+        }
 
         return redirect()->route('plans.index')
             ->with('success', "Paket '{$plan->name}' berhasil diperbarui.");

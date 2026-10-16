@@ -98,17 +98,23 @@
             <span class="card-title">Payment Account</span>
         </div>
         <div class="card-body">
-            @if($dokuVaChannels->isEmpty())
-                <div class="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
-                    Belum ada channel VA DOKU aktif. Konfigurasikan channel di Pengaturan → Pembayaran DOKU.
+            @if(!config('doku.enabled'))
+                <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                    Integrasi pembayaran DOKU belum diaktifkan. Aktifkan di
+                    <a href="{{ route('settings.doku.index') }}" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Pengaturan → Pembayaran DOKU</a>
+                    agar Virtual Account dibuat otomatis saat member didaftarkan atau dibuka.
+                </div>
+            @elseif($dokuVaChannels->isEmpty())
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
+                    Belum ada channel bank VA yang aktif. Aktifkan channel bank di
+                    <a href="{{ route('settings.doku.index') }}" class="font-semibold underline">Pengaturan → Pembayaran DOKU</a>.
                 </div>
             @endif
 
             @if(!empty($dokuVaSyncErrors))
-                <div class="mb-4 text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
-                    <p class="font-semibold">Sebagian Virtual Account belum berhasil dibuat otomatis.</p>
-                    <p class="mt-1">Sistem akan mencoba kembali saat halaman member dibuka lagi.</p>
-                    <ul class="list-disc ml-5 mt-2">
+                <div class="mt-3 text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-3.5">
+                    <p class="font-semibold">Sebagian Virtual Account belum berhasil dibuat otomatis:</p>
+                    <ul class="list-disc ml-5 mt-1.5 space-y-0.5">
                         @foreach($dokuVaSyncErrors as $syncError)
                             <li>{{ $syncError['channel'] }}: {{ $syncError['error'] }}</li>
                         @endforeach
@@ -116,9 +122,11 @@
                 </div>
             @endif
 
-            @if($member->paymentAccounts->isEmpty())
-                <p class="text-sm text-slate-500 dark:text-slate-400">Belum ada VA yang berhasil dibuat. Periksa konfigurasi channel DOKU atau buka kembali halaman ini untuk mencoba ulang.</p>
-            @else
+            @if($member->paymentAccounts->isEmpty() && config('doku.enabled') && $dokuVaChannels->isNotEmpty())
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Belum ada VA yang berhasil dibuat. Periksa konfigurasi kredensial / BIN channel DOKU lalu refresh halaman ini.</p>
+            @endif
+
+            @if($member->paymentAccounts->isNotEmpty())
                 <div class="space-y-3">
                     @foreach($member->paymentAccounts as $account)
                         <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

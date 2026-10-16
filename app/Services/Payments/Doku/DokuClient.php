@@ -20,12 +20,12 @@ class DokuClient
         $config = config('doku');
 
         if (! $config['enabled']) {
-            throw new DokuException('Integrasi DOKU belum diaktifkan. Set DOKU_ENABLED=true.');
+            throw new DokuException('Integrasi DOKU belum diaktifkan. Aktifkan di menu Pengaturan → Pembayaran DOKU.');
         }
 
         foreach (['client_id', 'secret_key'] as $key) {
             if (! filled($config[$key])) {
-                throw new DokuException('Konfigurasi DOKU belum lengkap: ' . strtoupper($key));
+                throw new DokuException('Konfigurasi DOKU belum lengkap: ' . strtoupper($key) . '. Lengkapi di Pengaturan → Pembayaran DOKU.');
             }
         }
 

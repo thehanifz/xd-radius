@@ -19,7 +19,17 @@ class DokuSettingsController extends Controller
         $keyStatus = $this->settings->keyStatus();
         $channels = DokuVaChannel::forDoku()->orderByDesc('is_default')->orderBy('name')->get();
 
-        return view('settings.doku', compact('setting', 'keyStatus', 'channels'));
+        $publicKeyContent = null;
+        if (! empty($keyStatus['public_path']) && is_readable($keyStatus['public_path'])) {
+            $publicKeyContent = @file_get_contents($keyStatus['public_path']) ?: null;
+        }
+
+        $host = request()->getHost();
+        $isLocalOrInsecure = filter_var($host, FILTER_VALIDATE_IP) !== false
+            || in_array($host, ['localhost', '127.0.0.1'], true)
+            || ! request()->isSecure();
+
+        return view('settings.doku', compact('setting', 'keyStatus', 'channels', 'publicKeyContent', 'isLocalOrInsecure'));
     }
 
     public function update(Request $request)
