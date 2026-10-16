@@ -51,21 +51,26 @@ class FreeRadiusConfigGenerator
 
     private function sqlAppModule(): string
     {
+        $c = config('database.connections.pgsql');
         $conn = sprintf(
             'host=%s port=%s dbname=%s user=%s password=%s sslmode=%s',
-            env('DB_HOST', '127.0.0.1'), env('DB_PORT', '5432'), env('DB_DATABASE', 'laravel'),
-            env('DB_USERNAME', 'root'), env('DB_PASSWORD', ''), env('DB_SSLMODE', 'prefer')
+            $c['host'] ?? '127.0.0.1', $c['port'] ?? '5432', $c['database'] ?? 'laravel',
+            $c['username'] ?? 'root', $c['password'] ?? '', $c['sslmode'] ?? 'prefer'
         );
         return "sql sql_app {\n    dialect = \"postgresql\"\n    driver = \"rlm_sql_postgresql\"\n    radius_db = \"" . addslashes($conn) . "\"\n    read_groups = no\n    read_profiles = no\n    read_clients = no\n}\n";
     }
 
     private function radiusConnectionString(): string
     {
+        $c = config('database.connections.radius');
         return sprintf(
             'host=%s port=%s dbname=%s user=%s password=%s sslmode=%s',
-            env('RADIUS_DB_HOST', env('DB_HOST', '127.0.0.1')), env('RADIUS_DB_PORT', env('DB_PORT', '5432')),
-            env('RADIUS_DB_DATABASE', env('DB_DATABASE', 'laravel')), env('RADIUS_DB_USERNAME', env('DB_USERNAME', 'root')),
-            env('RADIUS_DB_PASSWORD', env('DB_PASSWORD', '')), env('RADIUS_DB_SSLMODE', env('DB_SSLMODE', 'prefer'))
+            $c['host'] ?? config('database.connections.pgsql.host', '127.0.0.1'),
+            $c['port'] ?? config('database.connections.pgsql.port', '5432'),
+            $c['database'] ?? config('database.connections.pgsql.database', 'laravel'),
+            $c['username'] ?? config('database.connections.pgsql.username', 'root'),
+            $c['password'] ?? config('database.connections.pgsql.password', ''),
+            $c['sslmode'] ?? config('database.connections.pgsql.sslmode', 'prefer')
         );
     }
 

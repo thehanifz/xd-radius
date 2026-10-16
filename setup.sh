@@ -17,6 +17,17 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$SCRIPT_DIR"
 ARTISAN="$ROOT/artisan"
 
+# Auto-detect Node/PM2 from NVM environments (especially when invoked via sudo)
+if [ -d "/root/.nvm/versions/node" ]; then
+  for nvm_bin in /root/.nvm/versions/node/*/bin; do
+    [ -d "$nvm_bin" ] && export PATH="$PATH:$nvm_bin"
+  done
+elif [ -n "${NVM_DIR:-}" ] && [ -d "$NVM_DIR/versions/node" ]; then
+  for nvm_bin in "$NVM_DIR/versions/node"/*/bin; do
+    [ -d "$nvm_bin" ] && export PATH="$PATH:$nvm_bin"
+  done
+fi
+
 MODE="setup"
 ASSUME_YES=false
 FAIL_COUNT=0
@@ -261,12 +272,10 @@ check_freeradius() {
   version="$("$binary" -v 2>&1 | grep -Eo 'FreeRADIUS Version [0-9.]+' | head -n1 | sed 's/.*Version //' || true)"
   [ -n "$version" ] && ok "FreeRADIUS $version ($binary)" || warn "FreeRADIUS binary found but version could not be parsed."
 
-  if systemctl list-unit-files 2>/dev/null | grep -q '^freeradius\.service'; then
-    if systemctl is-active --quiet freeradius; then
-      ok "freeradius.service is active"
-    else
-      warn "freeradius.service exists but is not active."
-    fi
+  if systemctl is-active --quiet freeradius 2>/dev/null; then
+    ok "freeradius.service is active"
+  elif systemctl list-unit-files 2>/dev/null | grep -qi 'freeradius\.service' || [ -f /lib/systemd/system/freeradius.service ] || [ -f /etc/systemd/system/freeradius.service ]; then
+    warn "freeradius.service exists but is not active."
   else
     warn "freeradius.service not found."
   fi
@@ -318,7 +327,10 @@ check_privileges() {
   local web_user="www-data"
   if id "$web_user" >/dev/null 2>&1; then
     printf '       Likely web/PHP-FPM user: %s\n' "$web_user"
-    if sudo -u "$web_user" sudo -n true >/dev/null 2>&1; then
+    local helper="/usr/local/sbin/xd-radius-freeradius"
+    if [ -f "/etc/sudoers.d/xd-radius-freeradius" ] && { [ -x "$helper" ] || sudo -u "$web_user" sudo -n "$helper" is-active freeradius >/dev/null 2>&1; }; then
+      ok "www-data privileged helper sudo policy is active"
+    elif sudo -u "$web_user" sudo -n true >/dev/null 2>&1; then
       ok "sudo can execute as $web_user"
     else
       warn "sudo can execute as root, but www-data sudo capability is not configured yet."
@@ -414,7 +426,9 @@ ensure_jakarta_timezone() {
 
   [ "$(date +%z)" = "+0700" ] || die "Host timezone verification failed: expected UTC+7, got $(date +%z)."
 
-  run php "$ARTISAN" optimize:clear || die "Unable to clear Laravel cached configuration after setting timezone."
+  run php "$ARTISAN" config:clear || true
+  run php "$ARTISAN" route:clear || true
+  run php "$ARTISAN" view:clear || true
   ok "Host, Laravel, and PostgreSQL connection timezone set to Asia/Jakarta"
 }
 
@@ -435,7 +449,7 @@ apt_install_missing() {
   command_exists php || packages+=(php-cli php-fpm)
   command_exists composer || packages+=(composer)
   command_exists node || packages+=(nodejs)
-  command_exists npm || packages+=(npm)
+  command_exists npm || packages+=(nodejs)
   command_exists psql || packages+=(postgresql-client)
   command_exists sudo || packages+=(sudo)
   command_exists freeradius || packages+=(freeradius freeradius-postgresql)
@@ -598,6 +612,8 @@ run_setup() {
   fi
   run php "$ARTISAN" migrate --force || die "Laravel migration failed."
   run php "$ARTISAN" app:configure-jakarta-timezone || die "Unable to configure PostgreSQL timezone."
+  run php "$ARTISAN" optimize:clear || true
+  run php "$ARTISAN" config:cache || die "Unable to cache Laravel configuration."
 
   say "[FreeRADIUS] Configure SQL module and schema"
   run php "$ARTISAN" freeradius:setup || die "FreeRADIUS setup service failed."
@@ -649,7 +665,11 @@ detect_postgres_instances() {
       mapped_port="$(printf '%s' "$mapped_address" | awk -F: '{print $NF}')"
       mapped_address="${mapped_address%:*}"
       case "$mapped_address" in 0.0.0.0|::|'[::]'|127.*) mapped_address=127.0.0.1 ;; esac
-      if [ -z "$mapped_port" ]; then
+      local port_label
+      if [ -n "$mapped_port" ]; then
+        port_label=", host port ${mapped_port}"
+      else
+        port_label=", port not published"
         mapped_port=5432
         network_mode="$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$name" 2>/dev/null || true)"
         if [ "$network_mode" = host ]; then
@@ -662,7 +682,7 @@ detect_postgres_instances() {
         fi
       fi
       PG_INSTANCE_KIND+=(docker)
-      PG_INSTANCE_LABEL+=("Docker ${name} (${image}${mapped_port:+, host port ${mapped_port}}${mapped_port:-, port not published})")
+      PG_INSTANCE_LABEL+=("Docker ${name} (${image}${port_label})")
       PG_INSTANCE_PORT+=("$mapped_port")
       PG_INSTANCE_HOST+=("${mapped_address:-127.0.0.1}")
       PG_INSTANCE_STATE+=("$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || printf unknown)")
@@ -852,13 +872,18 @@ provision_postgres_database() {
       die "Tidak bisa mengakses instance PostgreSQL terpilih dengan akun admin."
     fi
   fi
-  if [ "$recovery" != creating ] && [ -n "$exists" ]; then
-    die "Role '${db_user}' sudah ada di instance terpilih; setup tidak akan mengganti password atau mengambil alih role tersebut."
-  fi
-  exists="$(pg_admin_psql postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${db_name}'" 2>/dev/null | tr -d '[:space:]')" \
-    || die "Tidak bisa memeriksa database pada instance PostgreSQL terpilih."
-  if [ "$recovery" != creating ] && [ -n "$exists" ]; then
-    die "Database '${db_name}' sudah ada di instance terpilih; setup tidak akan mengadopsi atau mengubahnya."
+  local db_exists
+  db_exists="$(pg_admin_psql postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${db_name}'" 2>/dev/null | tr -d '[:space:]' || true)"
+  if [ "$recovery" != creating ] && { [ -n "$exists" ] || [ -n "$db_exists" ]; }; then
+    if confirm "Role '${db_user}' atau database '${db_name}' sudah ada di instance terpilih. Hapus dan buat baru?"; then
+      say "Menghapus database dan role lama '${db_name}'..."
+      pg_admin_psql postgres -c "DROP DATABASE IF EXISTS ${db_name} WITH (FORCE)" >/dev/null 2>&1 \
+        || pg_admin_psql postgres -c "DROP DATABASE IF EXISTS ${db_name}" >/dev/null 2>&1 || true
+      pg_admin_psql postgres -c "DROP ROLE IF EXISTS ${db_user}" >/dev/null 2>&1 || true
+      exists=""
+    else
+      die "Setup dibatalkan karena role '${db_user}' atau database '${db_name}' sudah ada."
+    fi
   fi
   if [ -z "$(pg_admin_psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='${db_user}'" 2>/dev/null | tr -d '[:space:]')" ]; then
     pg_admin_psql postgres -c "CREATE ROLE ${db_user} LOGIN CREATEDB PASSWORD '${db_password}'" >/dev/null \
@@ -897,9 +922,9 @@ bootstrap_fresh_server() {
   run apt-get update || die "apt-get update after adding Node.js repository failed."
   run env DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git unzip sudo openssl python3 \
     php-cli php-fpm php-pgsql php-mbstring php-xml php-bcmath php-curl php-zip php-intl php-gd gnupg \
-    composer nodejs npm postgresql-client postgresql-common freeradius freeradius-postgresql \
+    composer nodejs postgresql-client postgresql-common freeradius freeradius-postgresql \
     || die "Installing system packages failed."
-  php -r 'exit(version_compare(PHP_VERSION, "8.2.0", ">=") ? 0 : 1)' || die "PHP 8.2+ is required; install a supported OS repository."
+  php -r 'exit(version_compare(PHP_VERSION, "8.2.0", ">=") ? 0 : 1);' || die "PHP 8.2+ is required; install a supported OS repository."
   node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 18 ? 0 : 1)' || die "Node.js 18+ is required."
   run systemctl enable --now freeradius || die "Unable to start FreeRADIUS."
 
@@ -1010,7 +1035,9 @@ PY
   run php "$ARTISAN" storage:link --force || die "Unable to create public storage symlink."
   install -d -o www-data -g www-data -m 0775 "$ROOT/storage" "$ROOT/bootstrap/cache"
   run chown -R www-data:www-data "$ROOT/storage" "$ROOT/bootstrap/cache"
-  run php "$ARTISAN" optimize:clear || die "Unable to clear Laravel caches."
+  run php "$ARTISAN" config:clear || true
+  run php "$ARTISAN" route:clear || true
+  run php "$ARTISAN" view:clear || true
   run php "$ARTISAN" config:cache || die "Unable to cache Laravel configuration."
   ok "Packages, .env, PostgreSQL, Composer, and frontend build are ready"
 }
